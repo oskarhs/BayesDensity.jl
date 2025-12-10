@@ -1,0 +1,6 @@
+[deps]
+BayesianDensityEstimationCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+BayesianDensityEstimationCore = {path = ".."}
