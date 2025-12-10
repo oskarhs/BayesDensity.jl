@@ -20,7 +20,7 @@ function Distributions.pdf(::AbstractBayesianDensityModel, ::NT, ::Real) where {
 
 # Suppose that pdf(bdm, params, t::Real) has been implemented...
 # size(f_samp) = (length(t), length(params))
-function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters, t::AbstractVector{T}) where {T<:Real}
+function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals, T<:Real}
     f_samp = Vector{T}(undef, length(t))
     for i in eachindex(t)
         f_samp[i] = pdf(bdm, parameters, t[i])
@@ -28,7 +28,7 @@ function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters, t::Abs
     return f_samp
 end
 
-function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::AbstractVector, t::Union{T, Vector{T}}) where {T<:Real}
+function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::Union{T, Vector{T}}) where {Names, Vals, T<:Real}
     f_samp = Matrix{T}(undef, (length(t), length(parameters)))
     for j in eachindex(parameters)
         f_samp[:, j] = pdf(bdm, parameters[j], t)
@@ -38,7 +38,7 @@ end
 
 include("monte_carlo.jl")
 
-export BayesianDensityChain
-export sample, pdf, quantile, mean, median
+export BayesianDensitySamples, AbstractBayesianDensityModel
+export sample, pdf, quantile, mean, median, model
 
 end # module

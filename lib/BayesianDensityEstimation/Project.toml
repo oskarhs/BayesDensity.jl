@@ -1,0 +1,4 @@
+name = "BayesianDensityEstimation"
+uuid = "4cc3c169-7268-405b-84ce-cc9eca2341c2"
+version = "0.1.0"
+authors = ["Oskar Høgberg Simensen"]

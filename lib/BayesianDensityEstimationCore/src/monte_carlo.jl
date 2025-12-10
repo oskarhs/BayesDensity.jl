@@ -1,8 +1,8 @@
 # Abstract super type for MCMC output for model parameters
-abstract type AbstractBayesianDensityChain end 
+abstract type AbstractBayesianDensitySamples end 
 
 """
-    BayesianDensityChain{T}
+    BayesianDensitySamples{T}
 
 Struct holding posterior samples of the parameters of a Bayesian density model.
 
@@ -12,33 +12,33 @@ Struct holding posterior samples of the parameters of a Bayesian density model.
 * `n_samples`: Total number of Monte Carlo samples. 
 * `n_burnin`: Number of burn-in samples.
 """
-struct BayesianDensityChain{T<:Real, M<:AbstractBayesianDensityModel, V<:AbstractVector}
+struct BayesianDensitySamples{T<:Real, M<:AbstractBayesianDensityModel, V<:AbstractVector}
     samples::V
     model::M
     n_samples::Int
     n_burnin::Int
-    function BayesianDensityChain{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T, M, V}
+    function BayesianDensitySamples{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T, M, V}
         return new{T, M, V}(samples, model, n_samples, n_burnin) 
     end
 end
 
 """
-    model(bdc::BayesianDensityChain)
+    model(bdc::BayesianDensitySamples)
 
 Return the model object of `bdc`.
 """
-model(bdc::BayesianDensityChain) = bdc.model
+model(bdc::BayesianDensitySamples) = bdc.model
 
-Base.eltype(::BayesianDensityChain{T,M,V}) where {T, M, V} = T
+Base.eltype(::BayesianDensitySamples{T,M,V}) where {T, M, V} = T
 
-function Base.show(io::IO, ::MIME"text/plain", bdc::BayesianDensityChain{T, M, V}) where {T, M, V}
-    println(io, "BayesianDensityChain{", T, "} object holding ", bdc.n_samples, " posterior samples, of which ", bdc.n_burnin, " are burn-in samples.")
+function Base.show(io::IO, ::MIME"text/plain", bdc::BayesianDensitySamples{T, M, V}) where {T, M, V}
+    println(io, "BayesianDensitySamples{", T, "} object holding ", bdc.n_samples, " posterior samples, of which ", bdc.n_burnin, " are burn-in samples.")
     println(io, "Model:")
     println(io, model(bdc))
     nothing
 end
 
-Base.show(io::IO, bsm::BSMModel) = show(io, MIME("text/plain"), bsm)
+Base.show(io::IO, bsm::BayesianDensitySamples) = show(io, MIME("text/plain"), bsm)
 
 
 """
@@ -47,7 +47,7 @@ Base.show(io::IO, bsm::BSMModel) = show(io, MIME("text/plain"), bsm)
         bdm::AbstractBayesianDensityModel,
         n_samples::Int;
         n_burnin::Int=min(1_000, div(n_samples, 5))
-    ) -> AbstractBayesianDensityChain
+    ) -> AbstractBayesianDensitySamples
 
 Generate approximate posterior samples from the density model `bdm` using Markov chain Monte Carlo methods.
 
@@ -57,11 +57,11 @@ function StatsBase.sample(::AbstractRNG, ::AbstractBayesianDensityModel, ::Int; 
 
 """
     quantile(
-        bdc::BayesianDensityChain, t::AbstractVector{<:Real}, q::Real
+        bdc::BayesianDensitySamples, t::AbstractVector{<:Real}, q::Real
     ) -> Vector{<:Real}
 
     quantile(
-        bdc::BayesianDensityChain, t::AbstractVector{<:Real}, q::AbstractVector{<:Real}
+        bdc::BayesianDensitySamples, t::AbstractVector{<:Real}, q::AbstractVector{<:Real}
     ) -> Matrix{<:Real}
 
 Compute the approximate posterior quantiles of f(t) for every element in the collection `t` using Monte Carlo samples.
@@ -70,7 +70,7 @@ In the case where both `t` and `q` are scalars, the output is a real number.
 When `t` is a vector and `q` a scalar, this functions returns a vector of the same length as `t`.
 If `q` is supplied as a Vector, then this function returns a Matrix of dimension `(length(t), length(q))`, where each column corresponds to a given quantile.
 """
-function Distributions.quantile(bdc::BayesianDensityChain, t, q::Real)
+function Distributions.quantile(bdc::BayesianDensitySamples, t, q::Real)
     if !(0 ≤ q ≤ 1)
         throws(DomainError("Requested quantile level is not in [0,1]."))
     end
@@ -79,7 +79,7 @@ function Distributions.quantile(bdc::BayesianDensityChain, t, q::Real)
     return mapslices(x -> quantile(x, q), f_samp; dims=2)[:]
 end
 
-function Distributions.quantile(bdc::BayesianDensityChain, t, q::AbstractVector{<:Real})
+function Distributions.quantile(bdc::BayesianDensitySamples, t, q::AbstractVector{<:Real})
     if !all(0 .≤ q .≤ 1)
         throw(DomainError("All requested quantile levels must lie in the interval [0,1]."))
     end
@@ -88,7 +88,7 @@ function Distributions.quantile(bdc::BayesianDensityChain, t, q::AbstractVector{
     result = mapslices(x -> quantile(x, q), f_samp; dims=2)
     return result  # shape: (length(t), length(q))
 end
-function Distributions.quantile(bdc::BayesianDensityChain, t::Real, q::Real)
+function Distributions.quantile(bdc::BayesianDensitySamples, t::Real, q::Real)
     if !(0 ≤ q ≤ 1)
         throws(DomainError("Requested quantile level is not in [0,1]."))
     end
@@ -98,25 +98,25 @@ function Distributions.quantile(bdc::BayesianDensityChain, t::Real, q::Real)
 end
 
 """
-    median(bdc::BayesianDensityChain, t)
+    median(bdc::BayesianDensitySamples, t)
 
 Compute the approximate posterior median of f(t) for every element in the collection `t` using Monte Carlo samples.
 """
-Distributions.median(bdc::BayesianDensityChain, t) = quantile(bdc, t, 0.5)
+Distributions.median(bdc::BayesianDensitySamples, t) = quantile(bdc, t, 0.5)
 
 """
-    mean(bdc::BayesianDensityChain, t)
+    mean(bdc::BayesianDensitySamples, t)
 
 Compute the approximate posterior mean of f(t) for every element in the collection `t` using Monte Carlo samples.
 """
-function Distributions.mean(bdc::BayesianDensityChain, t::AbstractVector{<:Real})
+function Distributions.mean(bdc::BayesianDensitySamples, t::AbstractVector{<:Real})
     f_samp = pdf(model(bdc), bdc.samples[bdc.n_burnin+1:end], t)
     
     result = mapslices(x -> mean(x), f_samp; dims=2)[:]
     return result
 end
-Base.Broadcast.broadcasted(::typeof(mean), bdc::BayesianDensityChain, t::AbstractVector{<:Real}) = Distributions.mean(bdc, t)
-function Distributions.mean(bdc::BayesianDensityChain, t::Real)
+Base.Broadcast.broadcasted(::typeof(mean), bdc::BayesianDensitySamples, t::AbstractVector{<:Real}) = Distributions.mean(bdc, t)
+function Distributions.mean(bdc::BayesianDensitySamples, t::Real)
     f_samp = pdf(model(bdc), bdc.samples[bdc.n_burnin+1:end], t)
     
     result = mapslices(x -> mean(x), f_samp; dims=2)[1]
@@ -124,18 +124,18 @@ function Distributions.mean(bdc::BayesianDensityChain, t::Real)
 end
 
 """
-    var(bdc::BayesianDensityChain, t)
+    var(bdc::BayesianDensitySamples, t)
 
 Compute the approximate posterior variance of f(t) for every element in the collection `t` using Monte Carlo samples.
 """
-function Distributions.var(bdc::BayesianDensityChain, t::AbstractVector{<:Real})
+function Distributions.var(bdc::BayesianDensitySamples, t::AbstractVector{<:Real})
     f_samp = pdf(model(bdc), bdc.samples[bdc.n_burnin+1:end], t)
     
     result = mapslices(x -> var(x), f_samp; dims=2)[:]
     return result
 end
-Base.Broadcast.broadcasted(::typeof(var), bdc::BayesianDensityChain, t::AbstractVector{<:Real}) = Distributions.var(bdc, t)
-function Distributions.var(bdc::BayesianDensityChain, t::Real)
+Base.Broadcast.broadcasted(::typeof(var), bdc::BayesianDensitySamples, t::AbstractVector{<:Real}) = Distributions.var(bdc, t)
+function Distributions.var(bdc::BayesianDensitySamples, t::Real)
     f_samp = pdf(model(bdc), bdc.samples[bdc.n_burnin+1:end], t)
     
     result = mapslices(x -> var(x), f_samp; dims=2)[1]
@@ -143,9 +143,9 @@ function Distributions.var(bdc::BayesianDensityChain, t::Real)
 end
 
 """
-    std(bdc::BayesianDensityChain, t)
+    std(bdc::BayesianDensitySamples, t)
 
 Compute the approximate posterior standard deviation of f(t) for every element in the collection `t` using Monte Carlo samples.
 """
-Distributions.std(bdc::BayesianDensityChain, t) = sqrt.(var(bdc, t))
-Base.Broadcast.broadcasted(::typeof(std), bdc::BayesianDensityChain, t::AbstractVector{<:Real}) = Distributions.std(bdc, t)
+Distributions.std(bdc::BayesianDensitySamples, t) = sqrt.(var(bdc, t))
+Base.Broadcast.broadcasted(::typeof(std), bdc::BayesianDensitySamples, t::AbstractVector{<:Real}) = Distributions.std(bdc, t)
