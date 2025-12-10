@@ -1,0 +1,6 @@
+[deps]
+BayesianDensityEstimation = "b9d21553-94d0-49ec-a93f-db45c669503c"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[sources]
+BayesianDensityEstimation = {path = ".."}

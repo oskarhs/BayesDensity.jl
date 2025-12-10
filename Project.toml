@@ -1,0 +1,20 @@
+name = "BayesianDensityEstimation"
+uuid = "b9d21553-94d0-49ec-a93f-db45c669503c"
+authors = ["Oskar Høgberg Simensen"]
+version = "0.1.0"
+
+[compat]
+julia = "1.12"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
+
+[workspace]
+projects = [
+    "test",
+    "docs",
+    "lib/BayesianDensityEstimationCore"
+]
