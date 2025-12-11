@@ -4,17 +4,23 @@ using Distributions
 using StatsBase
 using Random
 
+export linebandplot
+export linebandplot!
+
+function linebandplot end
+function linebandplot! end
+
 
 # Abstract super type for model objects
 abstract type AbstractBayesianDensityModel end
+
+export AbstractBayesianDensityModel
 
 """
     pdf(bdm::AbstractBayesianDensityModel, parameters, t)
     pdf(bdm::AbstractBayesianDensityModel, parameters::AbstractVector, t)
 
 Evaluate f(t | η) of the Bayesian density model `bdm` for every element in the collection `t` when η is given by the parameters keyword.
-
-
 """
 function Distributions.pdf(::AbstractBayesianDensityModel, ::NT, ::Real) where {NT} end
 
@@ -36,9 +42,12 @@ function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::Abstra
     return f_samp
 end
 
-include("monte_carlo.jl")
+export pdf
 
-export BayesianDensitySamples, AbstractBayesianDensityModel
-export sample, pdf, quantile, mean, median, model
+include("utils.jl")
+public softplus, sigmoid, logit, softmax, logistic_stickbreaking, countint, bin_regular, unitvector
+
+include("monte_carlo.jl")
+export BayesianDensitySamples, sample, quantile, mean, median, model
 
 end # module

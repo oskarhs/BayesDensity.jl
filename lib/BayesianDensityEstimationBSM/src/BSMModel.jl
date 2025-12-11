@@ -90,12 +90,6 @@ struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBay
             B, b_ind = create_spline_basis_matrix(T_x, basis)
             log_B = log.(B)
 
-            # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior mean)
-            μ = compute_μ(basis, T)
-
-            # Set up difference matrix:
-            P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
-
             data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
         end
         return new{T,A,typeof(data)}(data, basis, T_a_τ, T_b_τ, T_a_δ, T_b_δ)
@@ -192,7 +186,7 @@ function _pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t, ::Val{true}) wh
 end
 function _pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
     # Coefs not given, compute them from β
-    θ = stickbreaking(params.β)
+    θ = logistic_stickbreaking(params.β)
     spline_coefs = theta_to_coef(θ, basis)
     return _pdf(bsm, spline_coefs, t)
 end
@@ -210,7 +204,7 @@ function _pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t,
     # TODO allow for different types here
     spline_coefs = Matrix{Float64}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
-        θ = stickbreaking(params[i].β)
+        θ = logistic_stickbreaking(params[i].β)
         spline_coefs[:, i] = theta_to_coef(θ, basis(bsm))
     end
     return _pdf(bsm, spline_coefs, t)

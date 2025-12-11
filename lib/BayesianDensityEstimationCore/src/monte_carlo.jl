@@ -1,6 +1,3 @@
-# Abstract super type for MCMC output for model parameters
-abstract type AbstractBayesianDensitySamples end 
-
 """
     BayesianDensitySamples{T}
 
@@ -74,7 +71,7 @@ function Distributions.quantile(bdc::BayesianDensitySamples, t, q::Real)
     if !(0 ≤ q ≤ 1)
         throws(DomainError("Requested quantile level is not in [0,1]."))
     end
-    f_samp = pdf(bdc.model, model(bdc)[bdc.n_burnin+1:end], t)
+    f_samp = pdf(bdc.model, bdc.samples[bdc.n_burnin+1:end], t)
 
     return mapslices(x -> quantile(x, q), f_samp; dims=2)[:]
 end
@@ -147,5 +144,5 @@ end
 
 Compute the approximate posterior standard deviation of f(t) for every element in the collection `t` using Monte Carlo samples.
 """
-Distributions.std(bdc::BayesianDensitySamples, t) = sqrt.(var(bdc, t))
+Distributions.std(bdc::BayesianDensitySamples, t::Union{<:Real, <:AbstractVector{<:Real}}) = sqrt.(var(bdc, t))
 Base.Broadcast.broadcasted(::typeof(std), bdc::BayesianDensitySamples, t::AbstractVector{<:Real}) = Distributions.std(bdc, t)

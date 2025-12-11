@@ -17,7 +17,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
     logprobs = Vector{T}(undef, 4)  # class label probabilities
 
     #θ = Vector{T}(undef, K) # Mixture probabilities
-    θ = max.(eps(), stickbreaking(β))
+    θ = max.(eps(), logistic_stickbreaking(β))
     θ = θ / sum(θ)
     log_θ = log.(θ)
     
@@ -87,7 +87,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
         β = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
 
         # Record θ
-        θ = max.(eps(), stickbreaking(β))
+        θ = max.(eps(), logistic_stickbreaking(β))
         θ = θ / sum(θ)
         log_θ = log.(θ)
 
@@ -117,7 +117,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
     logprobs = Vector{T}(undef, 4)  # class label probabilities
 
     #θ = Vector{T}(undef, K) # Mixture probabilities
-    θ = max.(eps(), stickbreaking(β))
+    θ = max.(eps(), logistic_stickbreaking(β))
     θ = θ / sum(θ)
     log_θ = log.(θ)
     
@@ -188,7 +188,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
         β[:, m] = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
 
         # Record θ
-        θ = max.(eps(), stickbreaking(β))
+        θ = max.(eps(), logistic_stickbreaking(β))
         θ = θ / sum(θ)
         log_θ = log.(θ)
         

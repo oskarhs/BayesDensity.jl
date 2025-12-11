@@ -4,13 +4,35 @@ using BayesianDensityEstimationCore
 using Plots
 
 @recipe function f(bds::BayesianDensitySamples)
+    xmin, xmax = extrema(model(bds).data.x)
+    R = xmax - xmin
+    x = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
+    return x, bds
+end
+
+@recipe function f(x::AbstractVector{<:Real}, bds::BayesianDensitySamples)
     seriestype --> :line
     color --> :black
-    fillcolor --> :green
-    fillalpha --> 0.2
+    fillcolor --> RGB(0.22, 0.596, 0.149) # JuliaGreen
+    fillalpha --> 0.3
+    label --> ""
+    estimate --> :mean
+
+    # Allow the user to pass a tuple of two strings
+    if typeof(plotattributes[:label]) <: Tuple{<:AbstractString, <:AbstractString}
+        label1 = plotattributes[:label][1]
+        label2 = plotattributes[:label][2]
+    elseif typeof(plotattributes[:label]) <: AbstractString
+        label1 = plotattributes[:label]
+        label2 = ""
+    else
+        throw(ArgumentError("label keyword must be a single string or a tuple of strings."))
+    end
+
 
     ci = get(plotattributes, :ci, true)
     level = get(plotattributes, :level, 0.95)
+    α = 1 - level
 
     if ci && !(0 < level < 1)
         throw(ArgumentError("Level of credible intervals must lie in the interval (0, 1)."))
@@ -25,28 +47,38 @@ using Plots
         throw(ArgumentError("Seriestype :$(plotattributes[:seriestype]) not supported for objects of type BayesianDensitySamples."))
     end
 
-    xmin, xmax = extrema(model(bds).data.x)
-    R = xmax - xmin
-    x = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
-    y = mean(bds, x)
+    if plotattributes[:estimate] == :mean
+        y = mean(bds, x)
+        if ci
+            qs = [α/2, 1 - α/2]
+            quants = quantile(bds, x, qs)
+            lower, upper = (quants[:,i] for i in eachindex(qs))
+        end
+    elseif plotattributes[:estimate] == :median
+        if ci
+            qs = [α/2, 0.5, 1 - α/2]
+            quants = quantile(bds, x, qs)
+            lower, y, upper = (quants[:,i] for i in eachindex(qs))
+        else
+            y = median(bds, x)
+        end
+    end
 
     @series begin # Plot the posterior mean/median
         seriestype := :line
         color := plotattributes[:color]
+        label := label1
         x, y
     end
-    
 
     if ci
-        qs = [level/2, 1 - level/2]
-        quants = quantile(bds, x, qs)
-        lower, upper = (quants[:,i] for i in eachindex(qs))
         @series begin
+            seriestype := :line
             fillrange := lower        # fill from lower to upper
             fillcolor := plotattributes[:fillcolor]
             fillalpha := plotattributes[:fillalpha]
-            #color := :transparent      # no line color for CI
-            label := "Huh?"
+            color := :transparent      # no line color for CI
+            label := label2
             x, upper
         end
     end

@@ -23,9 +23,9 @@ function countint(z::AbstractVector{<:Integer}, K::Int)
     return counts
 end
 
-# Map an unconstrained K-1 dimensional vector to the K-simplex through stickbreaking
+# Map an unconstrained K-1 dimensional vector to the K-simplex through logistic stickbreaking, defined as the composition of the logistic and stickbreaking maps.
 # To ensure numerical stability, the calculation is performed in log-space.
-function stickbreaking(β::AbstractVector{T}) where {T<:Real}
+function logistic_stickbreaking(β::AbstractVector{T}) where {T<:Real}
     K = length(β) + 1
     log_π = Vector{T}(undef, K)
     softplus_sum = zero(T)
