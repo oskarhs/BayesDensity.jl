@@ -1,9 +1,9 @@
-include(joinpath(@__DIR__ ,"BayesianDensityEstimationBSM.jl"))
+#include(joinpath(@__DIR__ ,"BayesianDensityEstimationBSM.jl"))
 
-using BayesianDensityEstimationBSM
+#using BayesianDensityEstimationBSM
+using Plots
 
 using Random, Distributions
-using BSplineKit
 
 harp_means = [0.0, 5.0, 15.0, 30.0, 60.0]
 harp_sds = [0.5, 1.0, 2.0, 4.0, 8.0]
@@ -14,13 +14,40 @@ rng = Random.default_rng()
 #d_true = LogNormal()
 #d_true = Normal()
 #d_true = SymTriangularDist()
-#d_true = MixtureModel([Normal(0, 0.5), Normal(2, 0.1)], [0.4, 0.6])
+d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
 #d_true = MixtureModel([Normal(0, 1), Normal(0, 0.1)], [2/3, 1/3])
 #d_true = MixtureModel(vcat(Normal(0, 1) ,[Normal(0.5*j, 0.1) for j in -2:2]), [0.5, 0.1, 0.1, 0.1, 0.1, 0.1])
-d_true = MixtureModel([Normal(harp_means[i], harp_sds[i]) for i in eachindex(harp_means)], fill(0.2, 5))
+# d_true = MixtureModel([Normal(harp_means[i], harp_sds[i]) for i in eachindex(harp_means)], fill(0.2, 5))
 #d_true = Beta(1.2, 1.2)
 
 x = rand(rng, d_true, 1000)
+
+function bin_regular_nochmal(x::AbstractVector{T}, xmin::T, xmax::T, M::Int, right::Bool) where {T<:Real}
+    R = xmax - xmin
+    bincounts = zeros(Int, M)
+    edges_inc = M/R
+    if right
+        for val in x
+            idval = min(M-1, floor(Int, (val-xmin)*edges_inc+eps())) + 1
+            bincounts[idval] += 1.0
+        end
+    else
+        for val in x
+            idval = max(0, floor(Int, (val-xmin)*edges_inc-eps())) + 1
+            bincounts[idval] += 1.0
+        end
+    end
+    return bincounts
+end
+
+K = 100
+N = bin_regular_nochmal(x, minimum(x), maximum(x), K, true)
+R = maximum(x) - minimum(x)
+
+t = LinRange(-1, 1, 3001)
+plot(t, pdf(d_true, t))
+bar!(LinRange(minimum(x), maximum(x), K+1), K * N / (R*sum(N)), alpha=0.2)
+
 
 #bsm = BayesBSpline.BSMModel(x, BSplineBasis(BSplineOrder(4), LinRange(minimum(x), maximum(x), 98)))
 bsm = BSMModel(x)

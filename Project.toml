@@ -3,5 +3,6 @@ projects = [
     "test",
     "docs",
     "lib/BayesianDensityEstimationCore",
-    "lib/BayesianDensityEstimationBSM"
+    "lib/BayesianDensityEstimationBSM",
+    "lib/BayesianDensityEstimation"
 ]

@@ -1,5 +1,8 @@
 module BayesianDensityEstimation
 
-greet() = print("Hello World!")
+using Reexport
+
+@reexport using BayesianDensityEstimationCore
+@reexport using BayesianDensityEstimationBSM
 
 end # module BayesianDensityEstimation

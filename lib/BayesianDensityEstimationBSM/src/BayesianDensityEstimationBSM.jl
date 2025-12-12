@@ -14,6 +14,6 @@ include("spline_utils.jl")
 include("BSMModel.jl")
 include("gibbs.jl")
 
-export BSMModel, sample, hyperparams
+export BSMModel, sample, hyperparams, pdf
 
 end # module BayesianDensityEstimationBSM
