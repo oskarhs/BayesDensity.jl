@@ -2,7 +2,13 @@ using BayesianDensityEstimation
 using Plots, Random, Distributions, StatsBase, PGFPlotsX, LinearAlgebra
 
 push!(PGFPlotsX.CUSTOM_PREAMBLE, raw"\usepgfplotslibrary{fillbetween}")
-
+push!(PGFPlotsX.CUSTOM_PREAMBLE,
+raw"""
+\usepackage{xcolor}
+\definecolor{juliapurple}{RGB}{106,76,147}   % exact Julia purple
+\definecolor{juliared}{RGB}{215,39,40}
+\definecolor{juliagreen}{RGB}{27,158,119}
+""")
 
 rng = Random.Xoshiro(1)
 d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
@@ -59,12 +65,12 @@ axis = @pgf Axis(
         ymin = -0.04*M,
         ymax = 1.04*M
     },
-    Plot({ybar_interval, color=juliapurple, opacity=0.5, fill= juliapurple, fill_opacity=0.25}, Coordinates(H.edges[1], vcat(H.weights, 0))),
-    Plot({line_width = "1.8pt", color = juliared}, Table(x = t, y = med)),
+    Plot({ybar_interval, color=raw"juliapurple!50", fill=raw"juliapurple!30", fill_opacity=0.4}, Coordinates(H.edges[1], vcat(H.weights, 0))),
+    Plot({line_width = "2.0pt", color = juliared}, Table(x = t, y = med)),
 
     Plot({ "name path=upper", no_marks, draw="none"}, Coordinates(t, up)),
     Plot({ "name path=lower", no_marks, draw="none"}, Coordinates(t, low)),
-    Plot({ draw = "none", fill = juliagreen, fill_opacity = 0.5 },
+    Plot({ draw = "none", fill = raw"juliagreen!50"},
     raw"fill between [of=lower and upper]")
 )
 
