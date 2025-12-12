@@ -7,10 +7,10 @@ using Plots
     xmin, xmax = extrema(model(bds).data.x)
     R = xmax - xmin
     x = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
-    return x, bds
+    return bds, x
 end
 
-@recipe function f(x::AbstractVector{<:Real}, bds::BayesianDensitySamples)
+@recipe function f(bds::BayesianDensitySamples, x::AbstractVector{<:Real})
     seriestype --> :line
     color --> :black
     fillcolor --> RGB(0.22, 0.596, 0.149) # JuliaGreen

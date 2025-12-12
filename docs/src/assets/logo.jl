@@ -48,6 +48,8 @@ qs = [0.005, 0.5, 0.995]
 quants = quantile(model_fit, t, qs)
 low, med, up = (quants[:,i] for i in eachindex(qs))
 
+# NB! Estimates of rare quantiles are a bit noizy in this case, so we smooth them a bit to make the appearance of the logo a bit nicer!
+
 λ = 1e-3
 S_low = fit(BSplineOrder(4), t, low, λ)
 low = S_low.(t)

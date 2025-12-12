@@ -11,12 +11,6 @@ function Makie.convert_arguments(P::Type{<:AbstractPlot}, bds::BayesianDensityEs
     Makie.to_plotspec(P, Makie.convert_arguments(P, bds, t))
 end
 
-#= function Makie.convert_arguments(P::Type{<:AbstractPlot}, bds::BayesianDensitySamples, t::AbstractVector{<:Real})
-    ptype = plottype(P, Lines) # choose the more concrete one
-
-    return Makie.to_plotspec(ptype, convert_arguments(ptype, d.x, d.density))
-end
- =#
 Makie.@recipe LineBandPlot (bds, x) begin
     Makie.mixin_colormap_attributes()...
     Makie.mixin_generic_plot_attributes()...

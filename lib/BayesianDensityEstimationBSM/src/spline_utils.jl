@@ -100,10 +100,12 @@ function create_unnormalized_sparse_spline_basis_matrix(x::AbstractVector{T}, ba
     J = Vector{Int}(undef, 4*n) # column indices
     V = Vector{T}(undef, 4*n)
     # Note: BSplineKit returns the evaluated spline functions in "reverse" order
+    # TODO handle out of bounds indices...
     for i in eachindex(x)
         ind = (4*i-3):(4*i)
         j, basis_eval = basis(x[i])
         I[ind] .= i
+        j = max(4, j)
         J[ind] .= (j-3):j
         #V[ind] .= reverse(basis_eval) .* norm_fac[(j-3):j]
         V[ind] .= reverse(basis_eval)
