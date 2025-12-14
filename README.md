@@ -1,4 +1,4 @@
-# <img src="docs/src/assets/logo.svg" alt="alt text" width="120" height="90" align="center"> BayesianDensityEstimation.jl
+# <img src="docs/src/assets/logo.svg" alt="alt text" width="80" height="80" align="center"> BayesianDensityEstimation.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://oskarhs.github.io/BayesianDensityEstimation.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhs.github.io/BayesianDensityEstimation.jl/dev/)
