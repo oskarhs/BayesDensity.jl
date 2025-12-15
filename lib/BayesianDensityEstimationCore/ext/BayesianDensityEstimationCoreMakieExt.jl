@@ -15,9 +15,9 @@ Makie.@recipe LineBandPlot (bds, x) begin
     Makie.mixin_colormap_attributes()...
     Makie.mixin_generic_plot_attributes()...
     
-    color = :green
+    color = @inherit patchcolor
     alpha = 0.3
-    strokecolor = :black
+    strokecolor = @inherit linecolor
     strokewidth = @inherit linewidth
     linestyle = nothing
     estimate = :mean
