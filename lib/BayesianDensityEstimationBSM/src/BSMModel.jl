@@ -26,6 +26,22 @@ The BSMModel struct is used to generate quantities that are needed for the model
 # Returns
 * `bsm`: A B-Spline mixture model object.
 
+# Examples
+```julia
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> model = BSMModel(x)
+200-dimensional BSMModel{Float64}:
+Using 5000 binned observations on a regular grid consisting of 1187 bins.
+ basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
+ order:  4
+ knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
+
+julia> model = BSMModel(x, 150, (0, 1); n_bins=nothing, b_τ = 5e-3);
+
+julia> posterior_samples = sample(model, 5000; n_burnin = 1000);
+```
+
 # Extended help
 
 ### Binned fitting
@@ -254,8 +270,8 @@ function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,<:Inte
     hyperpar = [a_τ, b_τ, a_δ, b_δ]
     hyperpar_symb = [:a_τ, :b_τ, :a_δ, :b_δ]
     for i in eachindex(hyperpar)
-        if hyperpar[i] ≤ 0.0
-            throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be strictly positive."))
+        if hyperpar[i] ≤ 0.0 || hyperpar[i] == Inf
+            throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
         end
     end
 end
