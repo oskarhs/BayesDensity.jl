@@ -48,6 +48,9 @@ include("utils.jl")
 public softplus, sigmoid, logit, softmax, logistic_stickbreaking, countint, bin_regular, unitvector
 
 include("monte_carlo.jl")
-export BayesianDensitySamples, sample, quantile, mean, median, model
+export PosteriorSamples, sample, quantile, mean, median, model
+
+include("variational.jl")
+export AbstractVIPosterior
 
 end # module

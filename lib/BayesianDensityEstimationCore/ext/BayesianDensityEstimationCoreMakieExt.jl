@@ -4,14 +4,18 @@ using BayesianDensityEstimationCore
 using Makie
 import BayesianDensityEstimationCore: linebandplot, linebandplot!
 
-function Makie.convert_arguments(P::Type{<:AbstractPlot}, bds::BayesianDensityEstimationCore.BayesianDensitySamples)
-    xmin, xmax = extrema(model(bds).data.x)
+Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior) = Makie.convert_arguments(P, sample(ps, 1000))
+Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior, t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), t)
+
+
+function Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::PosteriorSamples)
+    xmin, xmax = extrema(model(ps).data.x)
     R = xmax - xmin
     t = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
-    Makie.to_plotspec(P, Makie.convert_arguments(P, bds, t))
+    Makie.to_plotspec(P, Makie.convert_arguments(P, ps, t))
 end
 
-Makie.@recipe LineBandPlot (bds, x) begin
+Makie.@recipe LineBandPlot (ps, x) begin
     Makie.mixin_colormap_attributes()...
     Makie.mixin_generic_plot_attributes()...
     
@@ -25,16 +29,16 @@ Makie.@recipe LineBandPlot (bds, x) begin
     level = 0.95
 end
 
-function Makie.plot!(plot::LineBandPlot{<:Tuple{<:BayesianDensityEstimationCore.BayesianDensitySamples, <:AbstractVector}})
+function Makie.plot!(plot::LineBandPlot{<:Tuple{<:PosteriorSamples, <:AbstractVector}})
 
-    map!(plot, [:bds, :x, :estimate, :ci, :level], [:est, :lower, :upper]) do bds, x, estimate, ci, level
+    map!(plot, [:ps, :x, :estimate, :ci, :level], [:est, :lower, :upper]) do ps, x, estimate, ci, level
         if estimate == :mean
-            #est = Point2f.(x, mean(bds, x))
-            est = mean(bds, x)
+            #est = Point2f.(x, mean(ps, x))
+            est = mean(ps, x)
             if ci
                 α = 1 - level
                 qs = [α/2, 1 - α/2]
-                quants = quantile(bds, x, qs)
+                quants = quantile(ps, x, qs)
                 lower, upper = (quants[:,i] for i in eachindex(qs))
             else
                 lower = copy(est)
@@ -44,10 +48,10 @@ function Makie.plot!(plot::LineBandPlot{<:Tuple{<:BayesianDensityEstimationCore.
             if ci
                 α = 1 - level
                 qs = [α/2, 0.5, 1 - α/2]
-                quants = quantile(bds, x, qs)
+                quants = quantile(ps, x, qs)
                 lower, est, upper = (quants[:,i] for i in eachindex(qs))
             else
-                est = median(bds, x)
+                est = median(ps, x)
                 lower = copy(est)
                 upper = copy(est)
             end
@@ -69,7 +73,7 @@ function Makie.plot!(plot::LineBandPlot{<:Tuple{<:BayesianDensityEstimationCore.
     return plot
 end
 
-Makie.plottype(::BayesianDensitySamples) = LineBandPlot
-Makie.plottype(::BayesianDensitySamples, ::AbstractVector{<:Real}) = LineBandPlot
+Makie.plottype(::PosteriorSamples) = LineBandPlot
+Makie.plottype(::PosteriorSamples, ::AbstractVector{<:Real}) = LineBandPlot
 
 end # module

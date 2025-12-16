@@ -102,8 +102,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
         spline_coefs = theta_to_coef(θ, basis)
         samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
     end
-    return BayesianDensitySamples{T}(samples, bsm, n_samples, n_burnin)
-    #return BSMChains{T}(samples, bsm, n_samples, n_burnin)
+    return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end
 
 
@@ -203,6 +202,5 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
         spline_coefs = theta_to_coef(θ, basis)
         samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
     end
-    #return BSMChains(samples, basis, n_samples, n_burnin)
-    return BayesianDensitySamples{T}(samples, bsm, n_samples, n_burnin)
+    return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end

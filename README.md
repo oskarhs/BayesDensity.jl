@@ -24,20 +24,24 @@ rng = Random.Xoshiro(1) # for reproducibility
 
 # Simulate some data:
 d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
-x = rand(rng, d_true, 1000) # 1000 random samples
+x = rand(rng, d_true, 1000)
 
 # Create a B-Spline mixture model object:
 bsm = BSMModel(x)
-
-# Generate samples from the posterior distribution using Markov chain Monte Carlo methods:
-posterior_samples = sample(rng, bsm, 5000; n_burnin=1000)
 ```
 
-The `posterior_samples` object can be used to compute posterior quantities of interest such as the posterior mean of $f(t)$ through `mean(posterior_samples, t)`. Additionally, convenient plotting functions. For instance, one can easily plot the posterior median, along with a 
+Having specified a model for the data, we can perform posterior inference through Markov chain Monte Carlo methods or variational inference:
+
+```julia
+mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
+vi_fit = ... # VI
+```
+
+The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of $f(t)$ through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval as follows:
 
 ```julia
 using CairoMakie
-plot(posterior_samples, estimate=:median)
+plot(vi_fit)
 ```
 
 For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the DOCUMENTATION

@@ -3,14 +3,22 @@ module BayesianDensityEstimationCorePlotsExt
 using BayesianDensityEstimationCore
 using Plots
 
-@recipe function f(bds::BayesianDensitySamples)
-    xmin, xmax = extrema(model(bds).data.x)
-    R = xmax - xmin
-    x = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
-    return bds, x
+@recipe function f(vip::AbstractVIPosterior)
+    return sample(vip, 1000)
 end
 
-@recipe function f(bds::BayesianDensitySamples, x::AbstractVector{<:Real})
+@recipe function f(vip::AbstractVIPosterior, t::AbstractVector{<:Real})
+    return sample(vip, 1000), t
+end
+
+@recipe function f(ps::PosteriorSamples)
+    xmin, xmax = extrema(model(ps).data.x)
+    R = xmax - xmin
+    x = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
+    return ps, x
+end
+
+@recipe function f(ps::PosteriorSamples, x::AbstractVector{<:Real})
     seriestype --> :line
     color --> :black
     fillcolor --> RGB(0.22, 0.596, 0.149) # JuliaGreen
@@ -44,23 +52,23 @@ end
     )
     seriestype := get(st_map, plotattributes[:seriestype], plotattributes[:seriestype])
     if !(plotattributes[:seriestype] in [:line])
-        throw(ArgumentError("Seriestype :$(plotattributes[:seriestype]) not supported for objects of type BayesianDensitySamples."))
+        throw(ArgumentError("Seriestype :$(plotattributes[:seriestype]) not supported for objects of type PosteriorSamples."))
     end
 
     if plotattributes[:estimate] == :mean
-        y = mean(bds, x)
+        y = mean(ps, x)
         if ci
             qs = [α/2, 1 - α/2]
-            quants = quantile(bds, x, qs)
+            quants = quantile(ps, x, qs)
             lower, upper = (quants[:,i] for i in eachindex(qs))
         end
     elseif plotattributes[:estimate] == :median
         if ci
             qs = [α/2, 0.5, 1 - α/2]
-            quants = quantile(bds, x, qs)
+            quants = quantile(ps, x, qs)
             lower, y, upper = (quants[:,i] for i in eachindex(qs))
         else
-            y = median(bds, x)
+            y = median(ps, x)
         end
     end
 

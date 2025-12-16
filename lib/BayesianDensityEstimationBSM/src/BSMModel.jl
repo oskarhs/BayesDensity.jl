@@ -83,7 +83,7 @@ struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBay
 
         K = length(basis)
 
-        # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior mean)
+        # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior median)
         μ = compute_μ(basis, T)
 
         # Set up difference matrix:

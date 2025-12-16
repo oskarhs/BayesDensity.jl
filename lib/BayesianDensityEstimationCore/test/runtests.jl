@@ -32,14 +32,35 @@ function Distributions.pdf(rhm::RandomHistogramModel, params::NT, t::Real) where
     return val
 end
 
-function StatsBase.sample(rng::Random.AbstractRNG, rhm::RandomHistogramModel, n_samples::Int; n_burnin = min(1000, div(n_samples, 5)))
+function StatsBase.sample(rng::Random.AbstractRNG, rhm::RandomHistogramModel{T, NT}, n_samples::Int; n_burnin = min(1000, div(n_samples, 5))) where {T, NT}
     (; data, K, a) = rhm
-    samples = Vector{NamedTuple{(:θ,), Tuple{Vector{typeof(a)}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:θ,), Tuple{Vector{T}}}}(undef, n_samples)
     for i in 1:n_samples
         θ = rand(rng, Dirichlet(fill(a, K) + data.bincounts))
         samples[i] = (θ = θ,)
     end
-    return BayesianDensitySamples{typeof(a)}(samples, rhm, n_samples, n_burnin)
+    return PosteriorSamples{T}(samples, rhm, n_samples, n_burnin)
+end
+
+# This is actually the true posterior in this case
+struct RHPosterior{T<:Real, S<:RandomHistogramModel} <: AbstractVIPosterior
+    α::Vector{T}
+    model::S
+    function RHPosterior{T}(rhm::RandomHistogramModel) where {T<:Real}
+        (; data, K, a) = rhm
+        α = a .+ data.bincounts
+        return new{T, typeof(rhm)}(α, rhm)
+    end
+end
+
+function StatsBase.sample(rng::Random.AbstractRNG, rhp::RHPosterior, n_samples::Int)
+    (; α, model) = rhp
+    samples = Vector{NamedTuple{(:θ,), Tuple{Vector{Float64}}}}(undef, n_samples)
+    for i in 1:n_samples
+        θ = rand(rng, Dirichlet(α))
+        samples[i] = (θ = θ,)
+    end
+    return PosteriorSamples(samples, model, n_samples, 0)
 end
 
 @testset "pdf fallback methods" begin
@@ -66,7 +87,7 @@ end
     @test pdf(rhm, params_vec, LinRange(0, 1, L)) == fill(1.0, (L, length(params_vec)))
 end
 
-@testset "sample" begin
+@testset "MC: sample" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -75,11 +96,11 @@ end
     n_samples = 2000
     model_fit = sample(rng, rhm, n_samples)
 
-    @test typeof(model_fit) <: BayesianDensitySamples
+    @test typeof(model_fit) <: PosteriorSamples
     @test length(model_fit.samples) == n_samples
 end
 
-@testset "mean and quantile fallback methods" begin
+@testset "MC: mean, var, std and quantile fallback methods" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -88,14 +109,15 @@ end
     # True posterior mean:
     θ_mean = (fill(a, K) + rhm.data.bincounts) / (a + length(x))
 
-    # Create dummy BayesianDensitySamples object where all samples are equal to θ_mean:
-    n_samples = 2000
+    # Create dummy PosteriorSamples object where all samples are equal to θ_mean:
+    n_samples = 100
     params_vec = fill((θ = θ_mean,), n_samples)
-    posterior = BayesianDensitySamples{Float64}(params_vec, rhm, n_samples, 0)
+    posterior = PosteriorSamples{Float64}(params_vec, rhm, n_samples, 0)
 
     t = LinRange(0, 1, 1001)
     posterior_mean = mean(posterior, t)
     posterior_median = median(posterior, t)
+    posterior_std = std(posterior, t)
 
     # Test vector version (mean)
     @test isapprox(posterior_mean, pdf(rhm, params_vec[1], t))
@@ -103,9 +125,50 @@ end
     # Test scalar version (mean)
     @test isapprox(posterior_mean[1], mean(posterior, t[1]))
 
+    # Test vector version (std)
+    @test all(posterior_std .== 0.0)
+
+    # Test scalar version (std)
+    @test posterior_std[1] == 0.0
+
     # Test vector version (median)
     @test isapprox(posterior_median, pdf(rhm, params_vec[1], t))
 
     # Test scalar version (median)
     @test isapprox(posterior_median[1], median(posterior, t[1]))
+end
+
+@testset "VI: sample" begin
+    K = 15
+    a = 1.0
+    x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
+    rhm = RandomHistogramModel{Float64}(x, K; a=a)
+    rhp = RHPosterior{Float64}(rhm)
+
+    n_samples = 100
+
+    @test typeof(rhp) <: AbstractVIPosterior
+
+    ps = sample(rng, rhp, n_samples)
+
+    @test typeof(ps) <: PosteriorSamples
+    @test length(ps.samples) == n_samples
+end
+
+@testset "VI: mean, var, std and quantile fallback methods" begin
+    K = 15
+    a = 1.0
+    x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
+    rhm = RandomHistogramModel{Float64}(x, K; a=a)
+    rhp = RHPosterior{Float64}(rhm)
+
+    t = LinRange(0, 1, 11)
+    qs = [0.2, 0.8]
+
+    @test typeof(quantile(rhp, t, 0.2)) <: AbstractVector{<:Real}
+    @test typeof(quantile(rhp, t, qs)) <: AbstractMatrix{<:Real}
+
+    @test typeof(median(rhp, t)) <: AbstractVector{<:Real}
+
+    @test typeof(mean(rhp, t)) <: AbstractVector{<:Real}
 end
