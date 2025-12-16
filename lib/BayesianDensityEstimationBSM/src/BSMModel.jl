@@ -109,7 +109,8 @@ struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBay
             data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
         end
         return new{T,A,typeof(data)}(data, basis, T_a_τ, T_b_τ, T_a_δ, T_b_δ)
-    end
+    end # NB! Might remove this constructor in the future (if we want to enforce the use of regularly spaced cubic splines)
+    # In this cae, we will likely make bounds a keyword argument instead.
 end
 BSMModel{T}(x::AbstractVector{<:Real}, K::Integer=get_default_splinedim(x), bounds::Tuple{<:Real,<:Real}=get_default_bounds(x); kwargs...) where {T<:Real} = BSMModel{T}(x, BSplineBasis(BSplineOrder(4), LinRange(bounds[1], bounds[2], K-2)); kwargs...)
 BSMModel{T}(x::AbstractVector{<:Real}, bounds::Tuple{<:Real,<:Real}; kwargs...) where {T<:Real} = BSMModel{T}(x, get_default_splinedim(x), bounds; kwargs...)
@@ -242,15 +243,29 @@ function _pdf(bsm::BSMModel, spline_coefs::AbstractVector{<:Real}, t::Union{Real
 end
 
 # More efficient version of the posterior mean (we only need to average the coefficients)
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S) where {T<:Real, M<:BSMModel, S<:Real} = _mean(ps, t)
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S) where {T<:Real, M<:BSMModel, S<:AbstractVector{<:Real}} = _mean(ps, t)
+Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSMModel, Names, Vals, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSMModel, Names, Vals, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
 
-function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
+
+function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{true}) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))
     for i in eachindex(ps.samples)
         mean_spline_coefs += ps.samples[i].spline_coefs
     end
     mean_spline_coefs /= length(ps.samples)
+    return _mean(ps, mean_spline_coefs, t)
+end
+function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{false}) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
+    mean_spline_coefs = zeros(T, length(model(ps)))
+    bs = basis(model(ps))
+    for i in eachindex(ps.samples)
+        θ = logistic_stickbreaking(ps.samples[i].β)
+        mean_spline_coefs += theta_to_coef(θ, bs)
+    end
+    mean_spline_coefs /= length(ps.samples)
+    return _mean(ps, mean_spline_coefs, t)
+end
+function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
     meanfunc = Spline(basis(model(ps)), mean_spline_coefs)
     return meanfunc.(t)
 end
@@ -266,7 +281,7 @@ function get_default_bounds(x::AbstractVector{<:Real})
     return xmin - 0.05*R, xmax + 0.05*R
 end
 
-function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,<:Integer}, bounds::Tuple{<:Real, <:Real}, a_τ::Real, b_τ::Real, a_δ::Real, b_δ::Real)
+function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, a_τ::Real, b_τ::Real, a_δ::Real, b_δ::Real)
     if !isnothing(n_bins) && n_bins ≤ 1
         throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
     end

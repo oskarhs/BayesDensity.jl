@@ -10,11 +10,19 @@ export linebandplot!
 function linebandplot end
 function linebandplot! end
 
-
 # Abstract super type for model objects
 abstract type AbstractBayesianDensityModel end
 
 export AbstractBayesianDensityModel
+
+"""
+    hyperparams(bdm::AbstractBayesianDensityModel)
+
+Return the hyperparameters of the model `bdm` as a tuple.
+"""
+function hyperparams(::AbstractBayesianDensityModel) end
+
+export hyperparams
 
 """
     pdf(bdm::AbstractBayesianDensityModel, parameters, t)

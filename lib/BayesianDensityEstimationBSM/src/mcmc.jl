@@ -149,7 +149,6 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
         τ2 = rand(rng, InverseGamma(a_τ_new, b_τ_new))
-        #τ2 = 0.01
 
         # Update z (N and S)
         N = zeros(Int, K)               # class label counts (of z[i]'s)
@@ -191,7 +190,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
         # Compute inv(Σ_new) * μ_new
         canon_mean_new = Q * μ + (N[1:K-1] - S[1:K-1]/2)
         # Sample β
-        β[:, m] = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
+        β = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
 
         # Record θ
         θ = max.(eps(), logistic_stickbreaking(β))
