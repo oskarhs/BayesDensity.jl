@@ -4,11 +4,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhs.github.io/BayesianDensityEstimation.jl/dev/)
 [![Build Status](https://github.com/oskarhs/BayesianDensityEstimation.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/oskarhs/BayesianDensityEstimation.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 
-A Julia package for nonparametric univariate Bayesian density estimation.
-
-## Introduction
-
-The main goal of this package is to provide easy access to various nonparametric Bayesian density estimators under a common API. BayesianDensityEstimation.jl is fully integrated with the Julia plotting ecosystem, allowing the user to easily visualize Bayesian density estimates, along with pointwise credible bands through the [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) packages.
+A Julia package for nonparametric univariate Bayesian density estimation. Provides access to many different from the statistical literature under a uniform API. Supports model fitting through Markov chain Monte Carlo and approximate inference through variational inference algorithms.
 
 ## Installation
 
@@ -41,7 +37,7 @@ The resulting fitted model objects can be used to compute posterior quantities o
 
 ```julia
 using CairoMakie
-plot(vi_fit)
+plot(mcmc_fit)
 ```
 
 For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the DOCUMENTATION

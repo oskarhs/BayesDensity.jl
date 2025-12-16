@@ -236,15 +236,16 @@ end
 _pdf(bsm::BSMModel, spline_coefs::AbstractMatrix{<:Real}, t::Real) = _pdf(bsm, spline_coefs, [t])
 
 # Evaluate for single sample
-function _pdf(bsm::BSMModel, spline_coefs::AbstractVector{<:Real}, t::AbstractVector{<:Real})
+function _pdf(bsm::BSMModel, spline_coefs::AbstractVector{<:Real}, t::Union{Real, AbstractVector{<:Real}})
     f = Spline(basis(bsm), spline_coefs)
     return f.(t)
 end
-function _pdf(bsm::BSMModel, spline_coefs::AbstractVector{<:Real}, t::Real)
-    f = Spline(basis(bsm), spline_coefs)
-    return f(t)
-end
 
+# More efficient version of the posterior mean (we only need to average the coefficients)
+function Distributions.mean(ps::PosteriorSamples{<:Real, M, <:AbstractVector}, t::Union{Real, AbstractVector{<:Real}}) where {M<:BSMModel}
+    meanfunc = Spline(basis(model(ps)), mean(ps.data.spline_coefs))
+    return meanfunc.(t)
+end
 
 function get_default_splinedim(x::AbstractVector{<:Real})
     n = length(x)

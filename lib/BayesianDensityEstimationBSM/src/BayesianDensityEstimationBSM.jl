@@ -12,7 +12,7 @@ using Random, Distributions, Base.Threads, StatsBase, BandedMatrices, PolyaGamma
 
 include("spline_utils.jl")
 include("BSMModel.jl")
-include("gibbs.jl")
+include("mcmc.jl")
 
 export BSMModel, sample, hyperparams, pdf
 
