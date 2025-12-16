@@ -4,7 +4,7 @@ using Random, Distributions
 
 const rng = Random.Xoshiro(1)
 
-@testset "BSMM: Constructor dimensions" begin
+@testset "BSMM: Constructor and model object" begin
     K = 20
     x = randn(rng, 10)
 
@@ -15,6 +15,13 @@ const rng = Random.Xoshiro(1)
     @test typeof(hyperparams(BSMModel(x))) <: NTuple{4, <:Real}
 
     @test Distributions.support(BSMModel([0.0], (-1.0, 1.0))) == (-1.0, 1.0)
+
+    for model in (BSMModel(x), BSMModel(x, n_bins=nothing))
+        io = IOBuffer() # just checks that we can call the show method
+        show(io, BSMModel(x))
+        output = String(take!(io))
+        @test typeof(output) == String
+    end
 end
 
 @testset "BSMM: Constructor throws error" begin
