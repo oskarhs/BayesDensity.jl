@@ -59,6 +59,6 @@ include("monte_carlo.jl")
 export PosteriorSamples, sample, quantile, mean, median, model
 
 include("variational.jl")
-export AbstractVIPosterior
+export AbstractVIPosterior, varinf
 
 end # module

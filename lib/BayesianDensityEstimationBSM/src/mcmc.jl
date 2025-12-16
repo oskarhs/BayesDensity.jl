@@ -2,11 +2,11 @@
 StatsBase.sample(bsm::BSMModel, n_samples::Int; kwargs...) = sample(Random.default_rng(), bsm, n_samples; kwargs...)
 
 function StatsBase.sample(rng::AbstractRNG, bsm::BSMModel, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)))
-    return sample_posterior(rng, bsm, n_samples, n_burnin)
+    return _sample_posterior(rng, bsm, n_samples, n_burnin)
 end
 
 # To do: make a multithreaded version (also one for unbinned data)
-function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
     (; log_B, b_ind, bincounts, μ, P, n) = bsm.data
@@ -106,7 +106,7 @@ function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, 
 end
 
 
-function sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
     (; log_B, b_ind, μ, P, n) = bsm.data

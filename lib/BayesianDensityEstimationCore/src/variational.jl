@@ -1,3 +1,21 @@
+"""
+    varinf(
+        bdm::AbstractBayesianDensityModel,
+        args...;
+        kwargs...
+    ) -> AbstractVIPosterior
+
+Compute a variational approximation to the posterior distribution.
+
+The positional arguments and keyword arguments supported by this function, as well as the type of the returned variational posterior object differs between different subtypes of [`AbstractBayesianDensityModel`](@ref).
+"""
+function varinf(::AbstractBayesianDensityModel) end
+
+"""
+    AbstractVIPosterior
+
+Abstract super type representing the variational posterior distribution of `AbstractBayesianDensityModel`
+"""
 abstract type AbstractVIPosterior end
 
 """
