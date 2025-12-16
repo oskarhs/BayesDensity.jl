@@ -14,7 +14,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
     n_bins = length(bincounts)
 end
 
-K = 200
+#= K = 200
 P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
 Q = transpose(P) * P + Diagonal(ones(199))
 inverse_diagonals_penta(Q[band(0)], Q[band(1)], Q[band(2)])
@@ -28,3 +28,4 @@ begin
     d1 = Vector(diag(Z, 1))
     d2 = Vector(diag(Z, 2))
 end
+ =#

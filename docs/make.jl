@@ -6,7 +6,7 @@ DocMeta.setdocmeta!(BayesianDensityEstimation, :DocTestSetup, :(using BayesianDe
 makedocs(;
     modules=[BayesianDensityEstimation],
     authors="Oskar Høgberg Simensen",
-    sitename="BayesianDensityEstimation.jl",
+    sitename="BayesDensity.jl",
     format=Documenter.HTML(;
         canonical="https://oskarhs.github.io/BayesianDensityEstimation.jl",
         edit_link="master",
@@ -14,6 +14,11 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "API" => [
+            "api/general_api.md",
+            "api/plotting_api.md" # Also add a subpage here with methods api
+        ],
+        "Contributing" => "contributing.md"
     ],
 )
 
