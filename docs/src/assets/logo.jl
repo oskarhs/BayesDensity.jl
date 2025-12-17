@@ -1,4 +1,4 @@
-using BayesianDensityEstimation
+using BayesDensity
 using Plots, Random, Distributions, StatsBase, PGFPlotsX, BSplineKit
 
 rng = Random.Xoshiro(1)
@@ -12,7 +12,7 @@ x = clamp.(x, -0.96, 0.96)
 R = maximum(x) - minimum(x)
 
 bsm = BSMModel(x, (-1.0, 1.0))
-model_fit = sample(bsm, 10000, n_burnin=1000)
+model_fit = sample(rng, bsm, 10000, n_burnin=1000)
 t = LinRange(-0.975, 0.975, 3001)
 
 qs = [0.005, 0.5, 0.995]
@@ -30,8 +30,8 @@ up1 = S_up.(t)
 
 # Increase distance between red, green and purple curves:
 
-low2 = med + 1.5*(low1 - med)
-up2 = med + 1.5*(up1 - med)
+low2 = med + 1.7*(low1 - med) .- 0.05
+up2 = med + 1.7*(up1 - med) .+ 0.05
 
 M = maximum(up)
 
@@ -43,9 +43,9 @@ axis = @pgf Axis(
                {
         axis_lines="none"
         },
-        Plot({line_width = "3.4pt", color = juliared}, Table(x = t, y = med)),
-        Plot({line_width = "3.4pt", color = juliagreen}, Table(x = t, y = up2)),
-        Plot({line_width = "3.4pt", color = juliapurple}, Table(x = t, y = low2)),
+        Plot({line_width = "4.5pt", color = juliared}, Table(x = t, y = med)),
+        Plot({line_width = "4.5pt", color = juliagreen}, Table(x = t, y = up2)),
+        Plot({line_width = "4.5pt", color = juliapurple}, Table(x = t, y = low2)),
        )
 
 PGFPlotsX.pgfsave(joinpath(@__DIR__, "logo.svg"), axis)
