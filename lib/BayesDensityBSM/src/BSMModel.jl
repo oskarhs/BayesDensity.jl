@@ -87,8 +87,8 @@ struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBay
         μ = compute_μ(basis, T)
 
         # Set up difference matrix:
-        #P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
-        P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
+        P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
+        #P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
 
         T_a_τ = T(a_τ)
         T_b_τ = T(b_τ)

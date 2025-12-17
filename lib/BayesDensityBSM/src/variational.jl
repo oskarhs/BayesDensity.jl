@@ -10,7 +10,7 @@ Struct representing the variational posterior distribution of a [`BSMModel`](@re
 * `b_τ_opt`: Rate parameter of q(τ²).
 * `a_δ_opt`: Vector of shape parameters of q(δ²).
 * `b_δ_opt`: Vector of rate parameters of q(δ²).
-* `model`: The `BSMModel` to which the variational posterior was fit.
+* `bsm`: The `BSMModel` to which the variational posterior was fit.
 """
 struct BSMVIPosterior{T<:Real, A<:AbstractMatrix{T}, M<:BSMModel} <: AbstractVIPosterior
     μ_opt::Vector{T}
@@ -19,24 +19,29 @@ struct BSMVIPosterior{T<:Real, A<:AbstractMatrix{T}, M<:BSMModel} <: AbstractVIP
     b_τ_opt::T
     a_δ_opt::Vector{T}
     b_δ_opt::Vector{T}
-    model::M
-    function BSMVIPosterior{T}(μ_opt::Vector{T}, inv_Σ_opt::A, a_τ_opt::T, b_τ_opt::T, a_δ_opt::Vector{T}, b_δ_opt::Vector{T}, model::M) where {T<:Real, A<:AbstractMatrix{T}, M<:BSMModel}
-        return new{T,A,M}(μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, model)
+    bsm::M
+    function BSMVIPosterior{T}(μ_opt::Vector{T}, inv_Σ_opt::A, a_τ_opt::T, b_τ_opt::T, a_δ_opt::Vector{T}, b_δ_opt::Vector{T}, bsm::M) where {T<:Real, A<:AbstractMatrix{T}, M<:BSMModel}
+        return new{T,A,M}(μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
     end
 end
 
 Base.eltype(::BSMVIPosterior{T, A, M}) where {T, A, M} = T
+BayesDensityCore.model(vip::BSMVIPosterior) = vip.bsm
 
 StatsBase.sample(vip::BSMVIPosterior{T, M, V}, n_samples::Int) where {T<:Real, M, V} = sample(Random.default_rng(), vip, n_samples)
 function StatsBase.sample(rng::AbstractRNG, vip::BSMVIPosterior{T, M, V}, n_samples::Int) where {T<:Real, M, V}
     (; μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm) = vip
+    K = length(basis(bsm))
     samples = Vector{NamedTuple{(:spline_coefs, :θ, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
+    δ2 = Vector{T}(undef, K-3)
+
+    potential_opt = inv_Σ_opt * μ_opt
 
     for m in 1:n_samples
-        β = rand(rng, MvNormalCanon(μ_opt, inv_Σ_opt))
+        β = rand(rng, MvNormalCanon(potential_opt, inv_Σ_opt))
         θ = max.(eps(), logistic_stickbreaking(β))
         θ = θ / sum(θ)
-        spline_coefs = theta_to_coef(θ, basis)
+        spline_coefs = theta_to_coef(θ, basis(bsm))
         τ2 = rand(rng, InverseGamma(a_τ_opt, b_τ_opt))
         for k in 1:K-3
             δ2[k] = rand(rng, InverseGamma(a_δ_opt[k], b_δ_opt[k]))
@@ -44,7 +49,7 @@ function StatsBase.sample(rng::AbstractRNG, vip::BSMVIPosterior{T, M, V}, n_samp
 
         samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
     end
-    return PosteriorSamples(samples, model, n_samples, 0)
+    return PosteriorSamples{T}(samples, bsm, n_samples, 0)
 end
 
 
@@ -55,7 +60,7 @@ end
 # Can do something more sophisticated here at a later point in time if we get a good idea.
 function get_default_initparams(bsm::BSMModel{T, A, NT}) where {T, A, NT}
     K = length(basis(bsm))
-    P = bsm.data.P
+    P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
     a_τ_opt, b_τ_opt, a_δ, b_δ = hyperparams(bsm)
     a_δ_opt = fill(a_δ, K-3)
     b_δ_opt = fill(b_δ, K-3)
@@ -70,6 +75,7 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
     bs = basis(bsm)
     K = length(bs)
     (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
+    P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
     n_bins = length(bincounts)
 
     a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
@@ -143,8 +149,8 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         end
         E_S[1] = n
         E_S[2:K] .= n .- cumsum(view(E_N, 1:K-1))
-        E_ω = @. tanh(E_β2/2) / (2*E_β2) * E_S[1:K-1]
-        println(E_ω)
+        E_S = clamp.(E_S, 0.0, n)
+        E_ω = @. tanh(sqrt(E_β2)/2) / (2*sqrt(E_β2)) * E_S[1:K-1]
         
         # Update q(β)
         D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
@@ -152,8 +158,9 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
         μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
+        #println(μ_opt)
     end
-    return BSMVIPosterior(μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt)
+    return BSMVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end
 
 #= K = 200
