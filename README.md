@@ -1,10 +1,10 @@
-# <img src="docs/src/assets/logo.svg" alt="alt text" width="80" height="80" align="center"> BayesianDensityEstimation.jl
+# <img src="docs/src/assets/logo.svg" alt="alt text" width="60" height="60" align="center"> BayesDensity.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://oskarhs.github.io/BayesianDensityEstimation.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhs.github.io/BayesianDensityEstimation.jl/dev/)
 [![Build Status](https://github.com/oskarhs/BayesianDensityEstimation.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/oskarhs/BayesianDensityEstimation.jl/actions/workflows/CI.yml?query=branch%3Amaster)
 
-A Julia package for nonparametric univariate Bayesian density estimation. Provides access to many different from the statistical literature under a uniform API. Supports model fitting through Markov chain Monte Carlo and approximate inference through variational inference algorithms.
+A Julia package for nonparametric univariate Bayesian density estimation. Provides access to many different density estimators from the statistical literature under a unified API. Supports model fitting through Markov chain Monte Carlo and approximate inference through variational inference algorithms.
 
 ## Installation
 
@@ -33,7 +33,7 @@ mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
 vi_fit = ... # VI
 ```
 
-The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of $f(t)$ through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval as follows:
+The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of $f(t)$ through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval with Makie.jl as follows:
 
 ```julia
 using CairoMakie

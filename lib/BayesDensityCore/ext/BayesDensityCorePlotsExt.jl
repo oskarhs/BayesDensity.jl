@@ -1,6 +1,6 @@
-module BayesianDensityEstimationCorePlotsExt
+module BayesDensityCorePlotsExt
 
-using BayesianDensityEstimationCore
+using BayesDensityCore
 using Plots
 
 @recipe function f(vip::AbstractVIPosterior)

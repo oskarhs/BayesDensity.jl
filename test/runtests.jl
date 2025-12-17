@@ -1,4 +1,4 @@
-using BayesianDensityEstimation
+using BayesDensity
 using Test
 
 @testset "BayesianDensityEstimation.jl" begin

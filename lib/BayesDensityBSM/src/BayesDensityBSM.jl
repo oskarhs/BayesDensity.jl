@@ -1,10 +1,10 @@
-module BayesianDensityEstimationBSM
+module BayesDensityBSM
 
 using Reexport
 
-@reexport using BayesianDensityEstimationCore
+@reexport using BayesDensityCore
 
-import BayesianDensityEstimationCore: logit, softmax, logistic_stickbreaking, bin_regular, unitvector
+import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, unitvector
 
 using BSplineKit
 
@@ -18,4 +18,4 @@ include("variational.jl")
 export BSMModel, sample, hyperparams, pdf, basis, order, knots
 public support
 
-end # module BayesianDensityEstimationBSM
+end # module

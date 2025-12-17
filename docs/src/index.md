@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = BayesianDensityEstimation
+CurrentModule = BayesDensity
 ```
 
-# BayesianDensityEstimation
+# BayesDensity.jl
 
-Documentation for [BayesianDensityEstimation](https://github.com/oskarhs/BayesianDensityEstimation.jl).
+Documentation for [BayesDensity](https://github.com/oskarhs/BayesianDensityEstimation.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [BayesianDensityEstimation]
+Modules = [BayesDensity]
 ```

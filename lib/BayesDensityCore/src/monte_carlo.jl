@@ -9,7 +9,7 @@ Struct holding posterior samples of the parameters of a Bayesian density model.
 * `n_samples`: Total number of Monte Carlo samples. 
 * `n_burnin`: Number of burn-in samples.
 """
-struct PosteriorSamples{T<:Real, M<:AbstractBayesianDensityModel, V<:AbstractVector}
+struct PosteriorSamples{T<:Real, M<:AbstractBayesDensityModel, V<:AbstractVector}
     samples::V
     model::M
     n_samples::Int
@@ -43,7 +43,7 @@ Base.show(io::IO, bsm::PosteriorSamples) = show(io, MIME("text/plain"), bsm)
 """
     sample(
         [rng::Random.AbstractRNG],
-        bdm::AbstractBayesianDensityModel,
+        bdm::AbstractBayesDensityModel,
         n_samples::Int;
         n_burnin::Int=min(1_000, div(n_samples, 5))
     ) -> PosteriorSamples
@@ -52,7 +52,7 @@ Generate approximate posterior samples from the density model `bdm` using Markov
 
 TODO: make the docs here more elaborate, in particular with examples.
 """
-function StatsBase.sample(::AbstractRNG, ::AbstractBayesianDensityModel, ::Int; n_burnin::Int) end
+function StatsBase.sample(::AbstractRNG, ::AbstractBayesDensityModel, ::Int; n_burnin::Int) end
 
 """
     quantile(

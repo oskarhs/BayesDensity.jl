@@ -1,28 +1,28 @@
-using BayesianDensityEstimation
-using Documenter
+using BayesDensity
+using Documenter, DocumenterCitations
 
-DocMeta.setdocmeta!(BayesianDensityEstimation, :DocTestSetup, :(using BayesianDensityEstimation); recursive=true)
+bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:authoryear)
+
+DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
 
 makedocs(;
-    modules=[BayesianDensityEstimation],
+    modules=[BayesDensity],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
-    format=Documenter.HTML(;
-        canonical="https://oskarhs.github.io/BayesianDensityEstimation.jl",
-        edit_link="master",
-        assets=String[],
-    ),
+    format=Documenter.HTML(; assets=["assets/favicon.ico"]),
     pages=[
         "Home" => "index.md",
         "API" => [
             "api/general_api.md",
             "api/plotting_api.md" # Also add a subpage here with methods api
         ],
-        "Contributing" => "contributing.md"
+        "Contributing" => "contributing.md",
+        "References" => "references.md"
     ],
+    plugins = [bib]
 )
 
 deploydocs(;
-    repo="github.com/oskarhs/BayesianDensityEstimation.jl",
+    repo="github.com/oskarhs/BayesDensity.jl",
     devbranch="master",
 )

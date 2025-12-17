@@ -1,8 +1,8 @@
 [deps]
-BayesianDensityEstimationCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+BayesDensityCore = "93712312-7690-42d2-80ab-295e38cb0be8"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
-BayesianDensityEstimationCore = {path = ".."}
+BayesDensityCore = {path = ".."}

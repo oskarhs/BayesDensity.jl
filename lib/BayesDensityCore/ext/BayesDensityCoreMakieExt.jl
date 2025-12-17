@@ -1,8 +1,8 @@
-module BayesianDensityEstimationCoreMakieExt
+module BayesDensityCoreMakieExt
 
-using BayesianDensityEstimationCore
+using BayesDensityCore
 using Makie
-import BayesianDensityEstimationCore: linebandplot, linebandplot!
+import BayesDensityCore: linebandplot, linebandplot!
 
 Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior) = Makie.convert_arguments(P, sample(ps, 1000))
 Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior, t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), t)

@@ -1,4 +1,4 @@
-using BayesianDensityEstimationBSM
+using BayesDensityBSM
 using Test
 using Random, Distributions
 
@@ -61,7 +61,7 @@ end
     @test isapprox(pdf(bsm, samples1, t), ones((length(t), length(samples1))))
     @test isapprox(mean(ps1, t), ones(length(t)))
 
-    samples2 = [(β = BayesianDensityEstimationBSM.compute_μ(basis(bsm)),) for _ in 1:10]
+    samples2 = [(β = BayesDensityBSM.compute_μ(basis(bsm)),) for _ in 1:10]
     ps2 = PosteriorSamples(samples2, bsm, 100, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
     @test isapprox(mean(ps2, t), ones(length(t)))

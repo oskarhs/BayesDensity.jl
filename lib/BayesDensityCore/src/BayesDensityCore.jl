@@ -1,4 +1,4 @@
-module BayesianDensityEstimationCore
+module BayesDensityCore
 
 using Distributions
 using StatsBase
@@ -11,30 +11,30 @@ function linebandplot end
 function linebandplot! end
 
 # Abstract super type for model objects
-abstract type AbstractBayesianDensityModel end
+abstract type AbstractBayesDensityModel end
 
-export AbstractBayesianDensityModel
+export AbstractBayesDensityModel
 
 """
-    hyperparams(bdm::AbstractBayesianDensityModel)
+    hyperparams(bdm::AbstractBayesDensityModel)
 
 Return the hyperparameters of the model `bdm` as a tuple.
 """
-function hyperparams(::AbstractBayesianDensityModel) end
+function hyperparams(::AbstractBayesDensityModel) end
 
 export hyperparams
 
 """
-    pdf(bdm::AbstractBayesianDensityModel, parameters, t)
-    pdf(bdm::AbstractBayesianDensityModel, parameters::AbstractVector, t)
+    pdf(bdm::AbstractBayesDensityModel, parameters, t)
+    pdf(bdm::AbstractBayesDensityModel, parameters::AbstractVector, t)
 
 Evaluate f(t | η) of the Bayesian density model `bdm` for every element in the collection `t` when η is given by the parameters keyword.
 """
-#function Distributions.pdf(::AbstractBayesianDensityModel, ::NT, ::Real) where {NT} end
+#function Distributions.pdf(::AbstractBayesDensityModel, ::NT, ::Real) where {NT} end
 
 # Suppose that pdf(bdm, params, t::Real) has been implemented...
 # size(f_samp) = (length(t), length(params))
-function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals, T<:Real}
+function Distributions.pdf(bdm::AbstractBayesDensityModel, parameters::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals, T<:Real}
     f_samp = Vector{T}(undef, length(t))
     for i in eachindex(t)
         f_samp[i] = pdf(bdm, parameters, t[i])
@@ -42,7 +42,7 @@ function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::NamedT
     return f_samp
 end
 
-function Distributions.pdf(bdm::AbstractBayesianDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::Union{T, <:AbstractVector{T}}) where {Names, Vals, T<:Real}
+function Distributions.pdf(bdm::AbstractBayesDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::Union{T, <:AbstractVector{T}}) where {Names, Vals, T<:Real}
     f_samp = Matrix{T}(undef, (length(t), length(parameters)))
     for j in eachindex(parameters)
         f_samp[:, j] .= pdf(bdm, parameters[j], t)

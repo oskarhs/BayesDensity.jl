@@ -1,4 +1,4 @@
-name = "BayesianDensityEstimationCore"
+name = "BayesDensityCore"
 uuid = "93712312-7690-42d2-80ab-295e38cb0be8"
 version = "0.1.0"
 authors = ["Oskar Høgberg Simensen"]
@@ -16,8 +16,8 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [extensions]
-BayesianDensityEstimationCorePlotsExt = "Plots"
-BayesianDensityEstimationCoreMakieExt = "Makie"
+BayesDensityCorePlotsExt = "Plots"
+BayesDensityCoreMakieExt = "Makie"
 
 [compat]
 Distributions = "0.25.0"

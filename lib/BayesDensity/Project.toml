@@ -1,0 +1,16 @@
+name = "BayesDensity"
+uuid = "4cc3c169-7268-405b-84ce-cc9eca2341c2"
+version = "0.1.0"
+authors = ["Oskar Høgberg Simensen"]
+
+[deps]
+BayesDensityBSM = "dc1a60f9-7a32-4f65-8b9e-ee7db92abd95"
+BayesDensityCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+
+[sources]
+BayesDensityBSM = {path = "..\\BayesDensityBSM"}
+BayesDensityCore = {path = "..\\BayesDensityCore"}
+
+[compat]
+Reexport = "1.0.0"

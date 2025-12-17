@@ -70,7 +70,7 @@ To control the smoothness in the resulting density estimates, we recommend adjus
 Setting `b_τ` to a smaller value generally yields smoother curves.
 Similar priors for regression models suggest that values in the range [5e-5, 5e-3] are reasonable.
 """
-struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesianDensityModel
+struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesDensityModel
     data::NT
     basis::A
     a_τ::T

@@ -1,11 +1,11 @@
-using BayesianDensityEstimationCore
+using BayesDensityCore
 using Distributions, Random, StatsBase
 using Test
 
 const rng = Random.Xoshiro(1)
 
 # Random Histogram model on [0, 1] with K-dimensional Dir(fill(a, K))-prior.
-struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesianDensityModel
+struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel
     data::NT
     K::Int
     a::T
@@ -13,7 +13,7 @@ struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesianDensityM
         T_x = T.(x)
         xmin, xmax = T(0), T(1)
         binedges = LinRange(xmin, xmax, K+1)
-        bincounts = BayesianDensityEstimationCore.bin_regular(T_x, xmin, xmax, K, true)
+        bincounts = BayesDensityCore.bin_regular(T_x, xmin, xmax, K, true)
         data = (x = x, binedges=binedges, bincounts=bincounts)
         new{T, typeof(data)}(data, K, a)
     end

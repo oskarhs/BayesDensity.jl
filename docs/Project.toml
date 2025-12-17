@@ -1,6 +1,6 @@
 [deps]
 BSplineKit = "093aae92-e908-43d7-9660-e50ee39d5a0a"
-BayesianDensityEstimation = "4cc3c169-7268-405b-84ce-cc9eca2341c2"
+BayesDensity = "4cc3c169-7268-405b-84ce-cc9eca2341c2"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
@@ -11,4 +11,4 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [sources]
-BayesianDensityEstimation = {path = "..\\lib\\BayesianDensityEstimation"}
+BayesDensity = {path = "..\\lib\\BayesDensity"}
