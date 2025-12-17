@@ -75,7 +75,7 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
     bs = basis(bsm)
     K = length(bs)
     (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
-    P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
+    P = sparse(P) # Needed for selinv
     n_bins = length(bincounts)
 
     a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
@@ -90,10 +90,10 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
     # Add converence check later
     for i in 1:max_iter
         # Find the required posterior moments of q(β):
-        Z, _ = selinv(inv_Σ_opt; depermute=true)
-        d0 = Vector(diag(Z)) # Vector of Σ_{k,k}
-        d1 = Vector(diag(Z, 1)) # Vector of Σ_{k,k+1}
-        d2 = Vector(diag(Z, 2)) # Vector of Σ_{k,k+2}
+        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
+        d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
+        d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
+        d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
         E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
@@ -101,47 +101,21 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         # Update q(δ²)
         a_δ_opt = fill(a_δ + T(0.5), K-3)
         b_δ_opt = b_δ .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
-#=         for k in 1:K-3
-            a_δ_opt[k] = a_δ + T(0.5)
-            b_δ_opt[k] = b_δ 
-            b_δ_opt[k] = b_δ + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) * a_τ_opt / b_τ_opt # Replace the β part with expectations...
-        end
- =#
+
         # Update q(τ²)
         a_τ_opt = a_τ + T(0.5) * (K-3)
         b_τ_opt = b_τ + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt)
-#=         b_τ_opt = b_τ
-        for k in 1:K-3
-            b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) * a_δ_opt[k] / b_δ_opt[k] # Replace the β part with expectations...
-        end =#
 
         # Update q(z, ω)
         E_N = zeros(T, K)
         non_basis_term[1:K-1] = cumsum(@. -log(cosh(T(0.5)*sqrt(E_β2))) - T(0.5) * E_β - log(T(2))) # Replace the β's with the corresponding expectations
         non_basis_term[K] = non_basis_term[K-1]
         non_basis_term[1:K-1] .+= E_β
-        # Precompute the next part:
-        #= if k != K
-            #sumterm = sum(@. -log(cosh(T(0.5)*β[1:k, m-1])) - T(0.5) * β[1:k, m-1] - log(T(2)))
-            sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:k, m-1])) - T(0.5) * β[k0+1:k, m-1] - log(T(2)))
-            logprobs[l] = log_B[i, l] + β[k, m-1] + sumterm
-        else
-            sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:K-1, m-1])) - T(0.5) * β[k0+1:K-1, m-1] - log(T(2)))
-            logprobs[l] = log_B[i, l] + sumterm
-        end =#
         for i in 1:n_bins
             # Compute the four nonzero probabilities:
             k0 = b_ind[i]
             for l in 1:4
                 k = k0 + l - 1
-                #= if k != K
-                    #sumterm = sum(@. -log(cosh(T(0.5)*β[1:k, m-1])) - T(0.5) * β[1:k, m-1] - log(T(2)))
-                    sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:k, m-1])) - T(0.5) * β[k0+1:k, m-1] - log(T(2)))
-                    logprobs[l] = log_B[i, l] + β[k, m-1] + sumterm
-                else
-                    sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:K-1, m-1])) - T(0.5) * β[k0+1:K-1, m-1] - log(T(2)))
-                    logprobs[l] = log_B[i, l] + sumterm
-                end =#
                 logprobs[l] = log_B[i,l] + non_basis_term[k] 
             end
             probs = softmax(logprobs)
@@ -158,7 +132,6 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
         μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
-        #println(μ_opt)
     end
     return BSMVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end

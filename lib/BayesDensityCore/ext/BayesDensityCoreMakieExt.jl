@@ -7,6 +7,8 @@ import BayesDensityCore: linebandplot, linebandplot!
 Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior) = Makie.convert_arguments(P, sample(ps, 1000))
 Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior, t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), t)
 
+Makie.plottype(::AbstractVIPosterior) = LineBandPlot
+Makie.plottype(::AbstractVIPosterior, ::AbstractVector{<:Real}) = LineBandPlot
 
 function Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::PosteriorSamples)
     xmin, xmax = extrema(model(ps).data.x)
@@ -21,19 +23,19 @@ Makie.@recipe LineBandPlot (ps, x) begin
     
     color = @inherit patchcolor
     alpha = 0.3
-    strokecolor = @inherit linecolor
+    strokecolor = @inherit patchstrokecolor
     strokewidth = @inherit linewidth
     linestyle = nothing
     estimate = :mean
     ci = true
     level = 0.95
+    cycle = [[:color, :strokecolor] => :patchcolor]
 end
 
 function Makie.plot!(plot::LineBandPlot{<:Tuple{<:PosteriorSamples, <:AbstractVector}})
 
     map!(plot, [:ps, :x, :estimate, :ci, :level], [:est, :lower, :upper]) do ps, x, estimate, ci, level
         if estimate == :mean
-            #est = Point2f.(x, mean(ps, x))
             est = mean(ps, x)
             if ci
                 α = 1 - level

@@ -40,7 +40,7 @@ end
     @test_throws ArgumentError BSMModel(x; n_bins=-10)
 end
 
-@testset "BSMM: Sample" begin
+@testset "BSMM: MC Sample" begin
     K = 20
     x = collect(-5:0.1:5)
 
