@@ -1,8 +1,16 @@
-# <img src="docs/src/assets/logo.svg" alt="alt text" width="60" height="60" align="center"> BayesDensity.jl
+<h1 align="center">
+<img src="docs/src/assets/logo.svg" alt="alt text" width="60" height="60" align="center"> BayesDensity.jl
+</h1>
+
+<div align="center">
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://oskarhs.github.io/BayesDensity.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhs.github.io/BayesDensity.jl/dev/)
 [![Build Status](https://github.com/oskarhs/BayesDensity.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/oskarhs/BayesDensity.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+[![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+</div>
+
+
 
 A Julia package for nonparametric univariate Bayesian density estimation. Provides access to many different density estimators from the statistical literature under a unified API. Supports model fitting through Markov chain Monte Carlo and approximate inference through variational inference algorithms.
 

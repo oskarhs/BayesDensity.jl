@@ -4,6 +4,8 @@ using Random, Distributions
 
 const rng = Random.Xoshiro(1)
 
+include("aqua.jl")
+
 @testset "BSMM: Constructor and model object" begin
     K = 20
     x = randn(rng, 10)

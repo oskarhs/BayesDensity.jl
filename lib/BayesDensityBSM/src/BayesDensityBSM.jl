@@ -16,6 +16,5 @@ include("mcmc.jl")
 include("variational.jl")
 
 export BSMModel, sample, hyperparams, pdf, basis, order, knots
-public support
 
 end # module

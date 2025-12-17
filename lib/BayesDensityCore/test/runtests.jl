@@ -4,6 +4,8 @@ using Test
 
 const rng = Random.Xoshiro(1)
 
+include("aqua.jl")
+
 # Random Histogram model on [0, 1] with K-dimensional Dir(fill(a, K))-prior.
 struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel
     data::NT
@@ -63,7 +65,7 @@ function StatsBase.sample(rng::Random.AbstractRNG, rhp::RHPosterior, n_samples::
     return PosteriorSamples(samples, model, n_samples, 0)
 end
 
-@testset "pdf fallback methods" begin
+@testset "Core: pdf fallback methods" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -87,7 +89,7 @@ end
     @test pdf(rhm, params_vec, LinRange(0, 1, L)) == fill(1.0, (L, length(params_vec)))
 end
 
-@testset "MC: sample" begin
+@testset "Core: MC sample" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -100,7 +102,7 @@ end
     @test length(model_fit.samples) == n_samples
 end
 
-@testset "MC: mean, var, std and quantile fallback methods" begin
+@testset "Core: MC mean, var, std and quantile fallback methods" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -138,7 +140,7 @@ end
     @test isapprox(posterior_median[1], median(posterior, t[1]))
 end
 
-@testset "VI: sample" begin
+@testset "Core: VI sample" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -155,7 +157,7 @@ end
     @test length(ps.samples) == n_samples
 end
 
-@testset "VI: mean, var, std and quantile fallback methods" begin
+@testset "Core: VI mean, var, std and quantile fallback methods" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))

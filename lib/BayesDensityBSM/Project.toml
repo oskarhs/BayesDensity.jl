@@ -19,17 +19,16 @@ SelectedInversion = "043bf095-3f01-458a-9f1c-8cf4448fe908"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
-[sources]
-BayesDensityCore = {path = "..\\BayesDensityCore"}
-
 [compat]
 BSplineKit = "0.19.0"
 BandedMatrices = "1.0.0"
 BayesDensityCore = "0.1.0"
+Distributions = "0.25.0"
 LinearAlgebra = "1.0.0"
 PolyaGammaHybridSamplers = "1.0.0"
 Random = "1.0.0"
 Reexport = "1.0.0"
-SelectedInversion = "0.1.7"
+SelectedInversion = "0.1.0"
 SparseArrays = "1.0.0"
 StatsBase = "0.34.0"
+julia = "1.12"
