@@ -11,8 +11,7 @@
 </div>
 
 
-
-A Julia package for nonparametric univariate Bayesian density estimation. Provides access to many different density estimators from the statistical literature under a unified API. Supports model fitting through Markov chain Monte Carlo and approximate inference through variational inference algorithms.
+BayesDensity.jl is a Julia package for nonparametric univariate Bayesian density estimation. It provides access to many different density estimators from the statistical literature under a unified API. Supports model fitting through Markov chain Monte Carlo and approximate inference through variational inference algorithms.
 
 ## Installation
 
@@ -23,7 +22,7 @@ PUT SOMETHING HERE ABOUT BEING ABLE TO INSTALL DIFFERENT DENSITY ESTIMATORS SEPA
 To get started, we illustrate the basic use of the package by fitting a B-spline mixture model to a two-component mixture of normal densities:
 
 ```julia
-using BayesianDensityEstimation, Distributions, Random
+using BayesDensity, Distributions, Random
 rng = Random.Xoshiro(1) # for reproducibility
 
 # Simulate some data:

@@ -8,13 +8,17 @@ import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, un
 
 using BSplineKit
 
-using Random, Distributions, Base.Threads, StatsBase, BandedMatrices, PolyaGammaHybridSamplers, LinearAlgebra, SparseArrays
+using Random, Distributions, Base.Threads, StatsBase, BandedMatrices, PolyaGammaHybridSamplers, LinearAlgebra, SparseArrays, SelectedInversion
 
 include("spline_utils.jl")
 include("BSMModel.jl")
 include("mcmc.jl")
+
+export BSMModel, sample, hyperparams, pdf, order, knots
+
 include("variational.jl")
 
-export BSMModel, sample, hyperparams, pdf, basis, order, knots
+export varinf
+
 
 end # module

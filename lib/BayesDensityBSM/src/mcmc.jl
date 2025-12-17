@@ -9,7 +9,7 @@ end
 function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
-    (; log_B, b_ind, bincounts, μ, P, n) = bsm.data
+    (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
     n_bins = length(bincounts)
 
     # Prior Hyperparameters
@@ -109,7 +109,7 @@ end
 function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
-    (; log_B, b_ind, μ, P, n) = bsm.data
+    (; x, log_B, b_ind, μ, P, n) = bsm.data
 
     # Prior Hyperparameters
     a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
