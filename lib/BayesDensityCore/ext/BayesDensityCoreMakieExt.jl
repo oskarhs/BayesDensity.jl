@@ -22,7 +22,7 @@ Makie.@recipe LineBandPlot (ps, x) begin
     Makie.mixin_generic_plot_attributes()...
     
     color = @inherit patchcolor
-    alpha = 0.3
+    alpha = 0.25
     strokecolor = @inherit patchstrokecolor
     strokewidth = @inherit linewidth
     linestyle = nothing

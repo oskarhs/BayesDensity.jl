@@ -20,23 +20,11 @@ end
 
 @recipe function f(ps::PosteriorSamples, x::AbstractVector{<:Real})
     seriestype --> :line
-    color --> :black
-    fillcolor --> RGB(0.22, 0.596, 0.149) # JuliaGreen
-    fillalpha --> 0.3
+    color --> :auto
+    fillcolor --> :auto
+    fillalpha --> 0.25
     label --> ""
     estimate --> :mean
-
-    # Allow the user to pass a tuple of two strings
-    if typeof(plotattributes[:label]) <: Tuple{<:AbstractString, <:AbstractString}
-        label1 = plotattributes[:label][1]
-        label2 = plotattributes[:label][2]
-    elseif typeof(plotattributes[:label]) <: AbstractString
-        label1 = plotattributes[:label]
-        label2 = ""
-    else
-        throw(ArgumentError("label keyword must be a single string or a tuple of strings."))
-    end
-
 
     ci = get(plotattributes, :ci, true)
     level = get(plotattributes, :level, 0.95)
@@ -72,23 +60,30 @@ end
         end
     end
 
-    @series begin # Plot the posterior mean/median
+#=     @series begin # Plot the posterior mean/median
         seriestype := :line
         color := plotattributes[:color]
-        label := label1
+        label := plotattributes[:label]
         x, y
     end
-
+ =#
     if ci
         @series begin
             seriestype := :line
-            fillrange := lower        # fill from lower to upper
-            fillcolor := plotattributes[:fillcolor]
+            ribbon := (y - lower, upper - y)        # fill from lower to upper
             fillalpha := plotattributes[:fillalpha]
-            color := :transparent      # no line color for CI
-            label := label2
-            x, upper
+            fillcolor := plotattributes[:fillcolor]
+            color := plotattributes[:color]      # no line color for CI
+            label := plotattributes[:label]
+            x, y
         end
+    else
+        @series begin # Plot the posterior mean/median
+        seriestype := :line
+        color := plotattributes[:color]
+        label := plotattributes[:label]
+        x, y
+    end
     end
     nothing
 end

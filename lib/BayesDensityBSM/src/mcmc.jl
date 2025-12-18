@@ -49,7 +49,6 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
         τ2 = rand(rng, InverseGamma(a_τ_new, b_τ_new))
-        #τ2 = 0.01
 
         # Update z (N and S)
         N = zeros(Int, K)               # class label counts (of z[i]'s)
@@ -58,14 +57,6 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
             k0 = b_ind[i]
             for l in 1:4
                 k = k0 + l - 1
-                #= if k != K
-                    #sumterm = sum(@. -log(cosh(T(0.5)*β[1:k, m-1])) - T(0.5) * β[1:k, m-1] - log(T(2)))
-                    sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:k, m-1])) - T(0.5) * β[k0+1:k, m-1] - log(T(2)))
-                    logprobs[l] = log_B[i, l] + β[k, m-1] + sumterm
-                else
-                    sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:K-1, m-1])) - T(0.5) * β[k0+1:K-1, m-1] - log(T(2)))
-                    logprobs[l] = log_B[i, l] + sumterm
-                end =#
                 logprobs[l] = log_B[i,l] + log_θ[k] 
             end
             probs = softmax(logprobs)
@@ -157,14 +148,6 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
             k0 = b_ind[i]
             for l in 1:4
                 k = k0 + l - 1
-                #= if k != K
-                    #sumterm = sum(@. -log(cosh(T(0.5)*β[1:k, m-1])) - T(0.5) * β[1:k, m-1] - log(T(2)))
-                    sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:k, m-1])) - T(0.5) * β[k0+1:k, m-1] - log(T(2)))
-                    logprobs[l] = log_B[i, l] + β[k, m-1] + sumterm
-                else
-                    sumterm = sum(@. -log(cosh(T(0.5)*β[k0+1:K-1, m-1])) - T(0.5) * β[k0+1:K-1, m-1] - log(T(2)))
-                    logprobs[l] = log_B[i, l] + sumterm
-                end =#
                 logprobs[l] = log_B[i,l] + log_θ[k] 
             end
             probs = softmax(logprobs)
