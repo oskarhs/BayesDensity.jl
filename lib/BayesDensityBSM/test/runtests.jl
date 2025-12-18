@@ -1,6 +1,6 @@
 using BayesDensityBSM
 using Test
-using Random, Distributions
+using Random, Distributions, LinearAlgebra
 
 const rng = Random.Xoshiro(1)
 
@@ -40,7 +40,7 @@ end
     @test_throws ArgumentError BSMModel(x; n_bins=-10)
 end
 
-@testset "BSMM: MC Sample" begin
+@testset "BSMM: MC: sample" begin
     K = 20
     x = collect(-5:0.1:5)
 
@@ -51,7 +51,7 @@ end
     @test typeof(sample(rng, bsm2, 100)) <: PosteriorSamples
 end
 
-@testset "BSMM: pdf and mean" begin
+@testset "BSMM: MC: pdf and mean" begin
     K = 20
     x = collect(0:0.1:1)
     t = LinRange(0, 1, 11)
@@ -67,4 +67,40 @@ end
     ps2 = PosteriorSamples(samples2, bsm, 100, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
     @test isapprox(mean(ps2, t), ones(length(t)))
+end
+
+@testset "BSMM: VI: varinf, sample, print" begin
+    K = 20
+    x = collect(0:0.1:1)
+    t = LinRange(0, 1, 11)
+
+    bsm1 = BSMModel(x, K, (0,1))
+    vip1 = varinf(bsm1; max_iter = 10)
+    
+    @test typeof(vip1) <: AbstractVIPosterior
+    @test typeof(sample(vip1, 10)) <: PosteriorSamples
+
+    bsm2 = BSMModel(x, K, (0,1); n_bins=nothing)
+    vip2 = varinf(bsm2; max_iter = 10)
+    @test typeof(vip1) <: AbstractVIPosterior
+    @test typeof(sample(vip1, 10)) <: PosteriorSamples
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, vip1)
+    output = String(take!(io))
+    @test typeof(output) == String
+end
+
+@testset "BSMM: VI: mean" begin
+    K = 20
+    x = collect(0:0.1:1)
+    t = LinRange(0, 1, 11)
+    bsm = BSMModel(x, K, (0,1))
+
+    # Create a dummy variational posterior with q_β = MvNormalCanon(inv_Σ * μ, inv_Σ), where inv_Σ is a diagonal matrix with very large entried (then q_β is almost a point mass at μ)
+    # Then the VIP mean should be approximately uniform...
+    inv_Σ = Diagonal(fill(1e10, K-1))
+    μ = BayesDensityBSM.compute_μ(basis(bsm))
+    vip = BSMVIPosterior{Float64}(μ, inv_Σ, 1.0, 1.0, fill(1.0, K-3), fill(1.0, K-3), bsm)
+    @test isapprox(mean(rng, vip, t), fill(1.0, length(t)), rtol=1e-3)
 end

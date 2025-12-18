@@ -149,3 +149,69 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
     end
     return BSMVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end
+
+function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int) where {T, A, Vals, NT}
+    bs = basis(bsm)
+    K = length(bs)
+    (; x, log_B, b_ind, μ, P, n) = bsm.data
+
+    P = sparse(P) # Needed for selinv
+
+    a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
+
+    (; μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt) = init_params
+
+    # These two stay constant throughout the optimization loop.
+    a_τ_opt = a_τ + (K-3)/2
+    a_δ_opt = fill(a_δ + 1/2, K-3)
+
+    non_basis_term = Vector{T}(undef, K)
+    logprobs = Vector{T}(undef, 4)
+    E_S = Vector{T}(undef, K)
+    E_ω = Vector{T}(undef, K-1)
+
+    # Add converence check later
+    for i in 1:max_iter
+        # Find the required posterior moments of q(β):
+        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
+        d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
+        d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
+        d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
+        E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+        E_β2 = abs2.(μ_opt) .+ d0
+        E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
+
+        # Update q(δ²)
+        b_δ_opt = b_δ .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
+
+        # Update q(τ²)
+        b_τ_opt = b_τ + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt)
+
+        # Update q(z, ω)
+        E_N = zeros(T, K)
+        non_basis_term[1:K-1] = cumsum(@. -log(cosh(T(0.5)*sqrt(E_β2))) - T(0.5) * E_β - log(T(2))) # Replace the β's with the corresponding expectations
+        non_basis_term[K] = non_basis_term[K-1]
+        non_basis_term[1:K-1] .+= E_β
+        @inbounds for i in 1:n
+            # Compute the four nonzero probabilities:
+            k0 = b_ind[i]
+            for l in 1:4
+                k = k0 + l - 1
+                logprobs[l] = log_B[i,l] + non_basis_term[k] 
+            end
+            E_N[k0:k0+3] .+= softmax(logprobs)
+        end
+        E_S[1] = n
+        E_S[2:K] .= n .- cumsum(view(E_N, 1:K-1))
+        E_S = clamp.(E_S, 0.0, n)
+        E_ω = @. tanh(sqrt(E_β2)/2) / (2*sqrt(E_β2)) * E_S[1:K-1]
+        
+        # Update q(β)
+        D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
+        Q = transpose(P) * D * P
+        Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
+        inv_Σ_opt = Q + Diagonal(E_ω)
+        μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
+    end
+    return BSMVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
+end

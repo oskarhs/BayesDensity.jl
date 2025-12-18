@@ -14,11 +14,11 @@ include("spline_utils.jl")
 include("BSMModel.jl")
 include("mcmc.jl")
 
-export BSMModel, sample, hyperparams, pdf, order, knots
+export BSMModel, sample, hyperparams, pdf, order, knots, basis
 
 include("variational.jl")
 
-export varinf
+export varinf, BSMVIPosterior
 
 
 end # module

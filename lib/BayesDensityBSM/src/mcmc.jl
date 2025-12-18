@@ -2,6 +2,15 @@
 StatsBase.sample(bsm::BSMModel, n_samples::Int; kwargs...) = sample(Random.default_rng(), bsm, n_samples; kwargs...)
 
 function StatsBase.sample(rng::AbstractRNG, bsm::BSMModel, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)))
+    if !(1 ≤ n_samples ≤ Inf)
+        throw(ArgumentError("Number of samples must be a positive integer."))
+    end
+    if !(0 ≤ n_burnin ≤ Inf)
+        throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
+    end
+    if n_samples < n_burnin
+        @warn "Number of total samples is smaller than the number of burn-in samples."
+    end
     return _sample_posterior(rng, bsm, n_samples, n_burnin)
 end
 
@@ -130,7 +139,6 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
             a_δ_k_new = a_δ + T(0.5)
             b_δ_k_new = b_δ + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
             δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
-            #δ2[k] = 1.0
         end
 
         # Update τ2
@@ -167,7 +175,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
         # Compute the Q matrix
         D = Diagonal(1 ./(τ2*δ2))
         Q = transpose(P) * D * P
-        # Compute the Ω matrix (Note: Q + D retains the banded structure!)
+        # Compute the Ω matrix (Note: Q + Ω retains the banded structure!)
         Ω = Diagonal(ω)
         inv_Σ_new = Ω + Q
         # Compute inv(Σ_new) * μ_new

@@ -27,7 +27,22 @@ abstract type AbstractVIPosterior end
 
 Generate `n_samples` i.i.d. samples from the variationonal posterior distribution `vip`.
 
-# TODO: Add examples, more explanation here
+# Examples
+```julia
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> vip = varinf(BSMModel(x));
+
+julia> vps = sample(Random.Xoshiro(1812), model, 5000)
+PosteriorSamples{Float64} object holding 5000 posterior samples, of which 1000 are burn-in samples.
+Model:
+200-dimensional BSMModel{Float64}:
+Using 5000 binned observations on a regular grid consisting of 1187 bins.
+ basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
+ order:  4
+ knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
+```
+
 """
 function StatsBase.sample(::AbstractRNG, ::AbstractVIPosterior, ::Int) end # NB! Remember to set the number of burn-in samples to zero when implementing this function!
 StatsBase.sample(vip::AbstractVIPosterior, n_samples::Int) = sample(Random.default_rng(), vip, n_samples)

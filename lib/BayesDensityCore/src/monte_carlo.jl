@@ -22,7 +22,7 @@ end
 PosteriorSamples(samples::V, model::M, n_samples::Int, n_burnin::Int) where {M, V} = PosteriorSamples{Float64}(samples, model, n_samples, n_burnin)
 
 """
-    model(ps::PosteriorSamples)
+    model(ps::PosteriorSamples) -> AbstractBayesDensityModel
 
 Return the model object of `ps`.
 """
@@ -50,9 +50,30 @@ Base.show(io::IO, bsm::PosteriorSamples) = show(io, MIME("text/plain"), bsm)
 
 Generate approximate posterior samples from the density model `bdm` using Markov chain Monte Carlo methods.
 
-TODO: make the docs here more elaborate, in particular with examples.
+This functions returns a [`PosteriorSamples`](@ref) object which can be used to compute posterior quantities of interest such as the posterior mean of ``f(t)`` or posterior quantiles.
+
+# Arguments
+* `rng`: Seed used for random variate generation.
+* `bdm`: The Bayesian density model object to generate posterior samples from.
+* `n_samples`: Number of Monte Carlo samples (including burn-in)
+
+# Keyword arguments
+* `n_burnin`: Number of burn-in samples.
+
+# Returns
+* `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
+
+# Examples
+```julia
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> model = BSMModel(x);
+
+julia> posterior_samples = sample(Random.Xoshiro(1812), model, 5000; n_burnin = 1000)
+
+```
 """
-function StatsBase.sample(::AbstractRNG, ::AbstractBayesDensityModel, ::Int; n_burnin::Int) end
+function StatsBase.sample(::AbstractRNG, ::AbstractBayesDensityModel, ::Int; n_burnin::Int) end # Perhaps the user should have the option to discard burn-in samples?
 
 """
     quantile(
@@ -61,7 +82,7 @@ function StatsBase.sample(::AbstractRNG, ::AbstractBayesDensityModel, ::Int; n_b
         q::Union{Real, AbstractVector{<:Real}},
     ) -> Union{Real, Vector{<:Real}, Matrix{<:Real}}
 
-Compute the approximate posterior quantiles of f(t) for every element in the collection `t` using Monte Carlo samples.
+Compute the approximate posterior quantiles of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
 
 In the case where both `t` and `q` are scalars, the output is a real number.
 When `t` is a vector and `q` a scalar, this functions returns a vector of the same length as `t`.

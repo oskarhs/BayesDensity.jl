@@ -167,10 +167,10 @@ end
     t = LinRange(0, 1, 11)
     qs = [0.2, 0.8]
 
-    @test typeof(quantile(rhp, t, 0.2)) <: AbstractVector{<:Real}
-    @test typeof(quantile(rhp, t, qs)) <: AbstractMatrix{<:Real}
+    @test typeof(quantile(rng, rhp, t, 0.2)) <: AbstractVector{<:Real}
+    @test typeof(quantile(rng, rhp, t, qs)) <: AbstractMatrix{<:Real}
 
-    @test typeof(median(rhp, t)) <: AbstractVector{<:Real}
+    @test typeof(median(rng, rhp, t)) <: AbstractVector{<:Real}
 
-    @test typeof(mean(rhp, t)) <: AbstractVector{<:Real}
+    @test typeof(mean(rng, rhp, t)) <: AbstractVector{<:Real}
 end

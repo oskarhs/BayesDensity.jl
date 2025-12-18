@@ -39,7 +39,9 @@ Using 5000 binned observations on a regular grid consisting of 1187 bins.
 
 julia> model = BSMModel(x, 150, (0, 1); n_bins=nothing, b_τ = 5e-3);
 
-julia> posterior_samples = sample(model, 5000; n_burnin = 1000);
+julia> posterior_samples = sample(Random.Xoshiro(1812), model, 5000; n_burnin = 1000);
+
+julia> vip = varinf(model);
 ```
 
 # Extended help
