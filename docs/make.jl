@@ -6,7 +6,11 @@ bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:author
 DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
 
 makedocs(;
-    modules=[BayesDensity],
+    modules=[
+        BayesDensity,
+        BayesDensityCore,
+        BayesDensityBSM
+    ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
     format=Documenter.HTML(; assets=["assets/favicon.ico"]),
@@ -16,10 +20,17 @@ makedocs(;
             "api/general_api.md",
             "api/plotting_api.md" # Also add a subpage here with methods api
         ],
+        "Methods" => [
+            "methods/BSMM.md"
+        ],
+        "Tutorials" => [
+            "tutorials/add_new_models.md"
+        ],
         "Contributing" => "contributing.md",
         "References" => "references.md"
     ],
-    plugins = [bib]
+    plugins = [bib],
+    checkdocs=:none
 )
 
 deploydocs(;

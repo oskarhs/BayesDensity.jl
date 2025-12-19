@@ -8,6 +8,26 @@ Struct representing the variational posterior distribution of a [`BSMModel`](@re
 * `q_τ`: Distribution representing the optimal variational density q*(τ²).
 * `q_δ`: Vector of distributions, with element `k` corresponding to the optimal variational density q*(δₖ²).
 * `bsm`: The `BSMModel` to which the variational posterior was fit.
+
+# Examples
+```julia
+julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
+
+julia> vip = varinf(BSMModel(x))
+BSMVIPosterior{Float64} vith variational densities:
+ q_β <: Distributions.MvNormalCanon{Float64},
+ q_τ <: Distributions.InverseGamma{Float64},
+ q_δ <: Vector{Distributions.InverseGamma{Float64}}.
+Model:
+200-dimensional BSMModel{Float64}:
+Using 5001 binned observations on a regular grid consisting of 1187 bins.
+ basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
+ order:  4
+ knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
+
+julia> mean(Random.Xoshiro(1), vip, 0.2)
+0.35127443392229263
+```
 """
 struct BSMVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSMModel} <: AbstractVIPosterior
     q_β::A
@@ -33,7 +53,7 @@ function Base.show(io::IO, ::MIME"text/plain", vip::BSMVIPosterior{T, A, B, M}) 
     println(io, "BSMVIPosterior{", T, "} vith variational densities:")
     println(io, " q_β <: ", A, ",")
     println(io, " q_τ <: ", B, ",")
-    println(io, " q_δ <:" , Vector{B}, ".")
+    println(io, " q_δ <: " , Vector{B}, ".")
     println(io, "Model:")
     println(io, model(vip))
     nothing
@@ -64,7 +84,7 @@ function StatsBase.sample(rng::AbstractRNG, vip::BSMVIPosterior{T, A, B, M}, n_s
 end
 
 
-function varinf(bsm::BSMModel; init_params=get_default_initparams(bsm), max_iter::Int=1000) # Also: tolerance parameters
+function BayesDensityCore.varinf(bsm::BSMModel; init_params=get_default_initparams(bsm), max_iter::Int=1000) # Also: tolerance parameters
     return _variational_inference(bsm, init_params, max_iter)
 end
 
@@ -111,7 +131,7 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-        E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+        E_β = μ_opt         # Do this for enhanced readability, remove later
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -177,7 +197,7 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-        E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+        E_β = μ_opt         # Do this for enhanced readability, remove later
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 

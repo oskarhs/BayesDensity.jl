@@ -15,7 +15,16 @@ BayesDensity.jl is a Julia package for nonparametric univariate Bayesian density
 
 ## Installation
 
-PUT SOMETHING HERE ABOUT BEING ABLE TO INSTALL DIFFERENT DENSITY ESTIMATORS SEPARATELY.
+The BayesDensity.jl package is currently not part of any package repository, but can be installed from its GitHub repository as follows:
+```@repl
+using Pkg
+Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
+```
+
+Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
+```@repl
+Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSM.jl")
+```
 
 ## Quick start
 
@@ -37,7 +46,7 @@ Having specified a model for the data, we can perform posterior inference throug
 
 ```julia
 mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
-vi_fit = ... # VI
+vi_fit = varinf(bsm) # VI
 ```
 
 The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of $f(t)$ through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval with Makie.jl as follows:

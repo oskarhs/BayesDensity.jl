@@ -133,14 +133,14 @@ BSplineKit.knots(bsm::B) where {B<:BSMModel} = knots(bsm.basis)
 
 Get the support of the B-Spline mixture model `bsm`.
 """
-Distributions.support(bsm::BSMModel) = boundaries(bsm.basis)
+support(bsm::BSMModel) = boundaries(bsm.basis)
 
 """
     hyperparams(bsm::BSMModel) -> NTuple{4, <:Real}
 
 Returns the hyperparameters of the B-Spline mixture model `bsm` as a tuple `(a_τ, b_τ, a_δ, b_δ)`.
 """
-hyperparams(bsm::B) where {B<:BSMModel} = (bsm.a_τ, bsm.b_τ, bsm.a_δ, bsm.b_δ)
+BayesDensityCore.hyperparams(bsm::BSMModel) = (bsm.a_τ, bsm.b_τ, bsm.a_δ, bsm.b_δ)
 
 Base.eltype(::BSMModel{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
 
@@ -178,8 +178,11 @@ end
 Base.show(io::IO, bsm::BSMModel) = show(io, MIME("text/plain"), bsm)
 
 """
-    pdf(bsm::BSMModel, params::NamedTuple, t)
-    pdf(bsm::BSMModel, params::AbstractVector{NamedTuple}, t)
+    pdf(
+        bsm::BSMModel,
+        params::Union{NamedTuple, AbstractVector{NamedTuple}},
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}, Matrix{<:Real}}
 
 Evaluate f(t | η) when the model parameters are equal to η.
 

@@ -10,7 +10,11 @@ export linebandplot!
 function linebandplot end
 function linebandplot! end
 
-# Abstract super type for model objects
+"""
+    AbstractBayesDensityModel
+
+Abstract super type for all Bayesian density models implemented in this package.
+"""
 abstract type AbstractBayesDensityModel end
 
 export AbstractBayesDensityModel
@@ -30,7 +34,7 @@ export hyperparams
 
 Evaluate f(t | η) of the Bayesian density model `bdm` for every element in the collection `t` when η is given by the parameters keyword.
 """
-#function Distributions.pdf(::AbstractBayesDensityModel, ::NT, ::Real) where {NT} end
+function Distributions.pdf(::AbstractBayesDensityModel, ::Any, ::Real) end
 
 # Suppose that pdf(bdm, params, t::Real) has been implemented...
 # size(f_samp) = (length(t), length(params))
@@ -56,7 +60,7 @@ include("utils.jl")
 public softplus, sigmoid, logit, softmax, logistic_stickbreaking, countint, bin_regular, unitvector
 
 include("monte_carlo.jl")
-export PosteriorSamples, sample, quantile, mean, median, model
+export PosteriorSamples, sample, quantile, mean, median, var, std, model
 
 include("variational.jl")
 export AbstractVIPosterior, varinf
