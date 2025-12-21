@@ -30,11 +30,15 @@ p(\boldsymbol{\theta}, \boldsymbol{z}\, |\, \boldsymbol{x}) \propto \prod_{k = 1
 where ``N_k = \sum_{i=1}^n \mathbf{1}_{\{k\}}(z_i)``.
 
 ### Gibbs sampling
-To write down a Gibbs sampler for this, we need to derive the full conditional distributions of ``\boldsymbol{\theta}`` and ``\boldsymbol{z}``. In this case, direct inspection of the joint posterior yields
+To write down a Gibbs sampler for this model, we need to derive the full conditional distributions of ``\boldsymbol{\theta}`` and ``\boldsymbol{z}``. In this case, direct inspection of the joint posterior yields
 ```math
 p(\boldsymbol{\theta}\, |\, \boldsymbol{z}, \boldsymbol{x}) = \mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{N}),
 ```
-where ``\boldsymbol{N} = (N_1, N_2, \ldots, N_K)``.
+where ``\boldsymbol{N} = (N_1, N_2, \ldots, N_K)``. The full conditional distributions for ``\boldsymbol{z}`` are 
+
+```math
+p(\boldsymbol{z}\, |\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \prod_{i=1}^n \prod_{k=1}^K \big\{\theta_k\,\varphi_k(x_i)\big\}^{\mathbf{1}_{\{k\}}(z_i)} 
+```
 
 TODO: Write down the full conditionals and the VI updates. Should probably also find the ELBO in the VI case.
 
