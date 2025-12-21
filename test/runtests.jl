@@ -1,6 +1,8 @@
-using BayesDensity
+using BayesDensityCore, BayesDensityBSM
 using Test
 
-@testset "BayesianDensityEstimation.jl" begin
-    # Write your tests here.
-end
+# Core:
+include(joinpath(@__DIR__, "..", "lib", "BayesDensityCore", "test", "runtests.jl"))
+
+# BSM:
+include(joinpath(@__DIR__, "..", "lib", "BayesDensityBSM", "test", "runtests.jl"))

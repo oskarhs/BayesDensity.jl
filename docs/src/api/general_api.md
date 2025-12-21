@@ -6,7 +6,7 @@ We also document most of the convenience methods available for computing select 
 The plotting API of this package is documented on a [separate page](plotting_api.md)
 
 ## Defining models
-The first step to Bayesian density is to create a model object for which posterior inference is desired. All density models in this package are subtypes of `AbstractBayesDensityModel`:
+The first step to estimating a density with this package is to create a model object for which posterior inference is desired. All density models in this package are subtypes of `AbstractBayesDensityModel`:
 ```@docs
 AbstractBayesDensityModel
 ```
@@ -26,10 +26,17 @@ For more detailed information on the arguments supported by each specific Bayesi
 
 
 ### Evaluating the density
-All density models in this package implement a method for calculating the probability density ``f(t\,|\, \boldsymbol{\eta})``, when the parameters of the model are equal to ``\boldsymbol{\eta}``
+The density estimators implemented in this package all specify a model ``f(t\,|\, \boldsymbol{\eta})`` for the density of the data, which depends on a parameter vector ``\boldsymbol{\eta}``.
+In order to calculate ``f(\cdot)`` for a given ``\eta``, each Bayesian density model implements the `pdf` method.
 ```@docs
 pdf(::AbstractBayesDensityModel, ::Any, ::Real)
 ```
+
+For Models that only implement the signature `pdf(::BayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided when the . However, it is recommended that most models provide specialized methods for vectors of parameters and evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
+
+### Evaluating the cdf
+
+TODO: Write this section once we have provided a generic fallback method...
 
 ## Markov chain Monte Carlo
 The main workhorse of MCMC-based inference is the `sample` method, which takes a Bayesian density model object as input and generates posterior samples through a specialized MCMC routine.

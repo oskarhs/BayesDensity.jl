@@ -92,8 +92,9 @@ end
 function get_default_initparams(bsm::BSMModel{T, A, NT}) where {T, A, NT}
     K = length(basis(bsm))
     P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
-    a_τ_opt, b_τ_opt, a_δ, b_δ = hyperparams(bsm)
-    a_τ_opt += (K-3)/2
+    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
+    a_τ_opt = a_τ + (K-3)/2
+    b_τ_opt = b_τ
     a_δ_opt = fill(a_δ + 1/2, K-3)
     b_δ_opt = fill(b_δ, K-3)
 
@@ -101,7 +102,7 @@ function get_default_initparams(bsm::BSMModel{T, A, NT}) where {T, A, NT}
     D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
     Q = transpose(P) * D * P
     inv_Σ_opt = Q + 0.05 * Diagonal(ones(K-1))
-    return (μ_opt = μ_opt, inv_Σ_opt = inv_Σ_opt, a_τ_opt = a_τ_opt, b_τ_opt = b_τ_opt, a_δ_opt = a_δ_opt, b_δ_opt = b_δ_opt)
+    return (μ_opt = μ_opt, inv_Σ_opt = inv_Σ_opt, b_τ_opt = b_τ_opt, b_δ_opt = b_δ_opt)
 end
 
 function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int) where {T, A, Vals, NT}
@@ -111,9 +112,9 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
     P = sparse(P) # Needed for selinv
     n_bins = length(bincounts)
 
-    a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
 
-    (; μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt) = init_params
+    (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = init_params
 
     # These two stay constant throughout the optimization loop.
     a_τ_opt = a_τ + (K-3)/2
@@ -177,9 +178,9 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
 
     P = sparse(P) # Needed for selinv
 
-    a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
 
-    (; μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt) = init_params
+    (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = init_params
 
     # These two stay constant throughout the optimization loop.
     a_τ_opt = a_τ + (K-3)/2

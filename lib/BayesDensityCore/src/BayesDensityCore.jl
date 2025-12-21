@@ -22,7 +22,7 @@ export AbstractBayesDensityModel
 """
     hyperparams(bdm::AbstractBayesDensityModel)
 
-Return the hyperparameters of the model `bdm` as a tuple.
+Return the hyperparameters of the model `bdm` as a `NamedTuple`.
 """
 function hyperparams(::AbstractBayesDensityModel) end
 
@@ -46,7 +46,15 @@ function Distributions.pdf(bdm::AbstractBayesDensityModel, parameters::NamedTupl
     return f_samp
 end
 
-function Distributions.pdf(bdm::AbstractBayesDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::Union{T, <:AbstractVector{T}}) where {Names, Vals, T<:Real}
+function Distributions.pdf(bdm::AbstractBayesDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::T) where {Names, Vals, T<:Real}
+    f_samp = Matrix{T}(undef, (length(t), length(parameters)))
+    for j in eachindex(parameters)
+        f_samp[:, j] .= pdf(bdm, parameters[j], t)
+    end
+    return f_samp
+end
+
+function Distributions.pdf(bdm::AbstractBayesDensityModel, parameters::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals, T<:Real}
     f_samp = Matrix{T}(undef, (length(t), length(parameters)))
     for j in eachindex(parameters)
         f_samp[:, j] .= pdf(bdm, parameters[j], t)

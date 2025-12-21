@@ -14,7 +14,7 @@ include("aqua.jl")
 
     @test order(BSMModel(x)) == 4
 
-    @test typeof(hyperparams(BSMModel(x))) <: NTuple{4, <:Real}
+    @test typeof(hyperparams(BSMModel(x))) <: NamedTuple
 
     @test Distributions.support(BSMModel([0.0], (-1.0, 1.0))) == (-1.0, 1.0)
 

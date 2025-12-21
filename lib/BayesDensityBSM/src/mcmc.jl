@@ -22,7 +22,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
     n_bins = length(bincounts)
 
     # Prior Hyperparameters
-    a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
     
     # Store draws
     β = copy(μ)
@@ -112,7 +112,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
     (; x, log_B, b_ind, μ, P, n) = bsm.data
 
     # Prior Hyperparameters
-    a_τ, b_τ, a_δ, b_δ = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
     
     # Store draws
     β = copy(μ)

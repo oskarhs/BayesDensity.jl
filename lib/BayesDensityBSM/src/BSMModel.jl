@@ -136,11 +136,13 @@ Get the support of the B-Spline mixture model `bsm`.
 support(bsm::BSMModel) = boundaries(bsm.basis)
 
 """
-    hyperparams(bsm::BSMModel) -> NTuple{4, <:Real}
+    hyperparams(
+        bsm::BSMModel{T}
+    ) where {T} -> @NamedTuple{a_τ::T, b_τ::T, a_δ::T, b_δ::T}
 
-Returns the hyperparameters of the B-Spline mixture model `bsm` as a tuple `(a_τ, b_τ, a_δ, b_δ)`.
+Returns the hyperparameters of the B-Spline mixture model `bsm` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(bsm::BSMModel) = (bsm.a_τ, bsm.b_τ, bsm.a_δ, bsm.b_δ)
+BayesDensityCore.hyperparams(bsm::BSMModel) = (a_τ=bsm.a_τ, b_τ=bsm.b_τ, a_δ=bsm.a_δ, b_δ=bsm.b_δ)
 
 Base.eltype(::BSMModel{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
 
