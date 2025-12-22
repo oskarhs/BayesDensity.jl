@@ -191,16 +191,16 @@ Evaluate f(t | η) when the model parameters are equal to η.
 
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """
-function Distributions.pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals}
+function Distributions.pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals, T<:Real}
+function Distributions.pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals}
+function Distributions.pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals, T<:Real}
+function Distributions.pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
 
