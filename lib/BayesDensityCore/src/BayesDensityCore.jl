@@ -24,7 +24,7 @@ export AbstractBayesDensityModel
 Base.eltype(::AbstractBayesDensityModel{T}) where {T} = T
 
 """
-    hyperparams(bdm::AbstractBayesDensityModel)
+    hyperparams(bdm::AbstractBayesDensityModel) -> @NamedTuple
 
 Return the hyperparameters of the model `bdm` as a `NamedTuple`.
 """
@@ -33,19 +33,32 @@ function hyperparams(::AbstractBayesDensityModel) end
 export hyperparams
 
 """
-    hyperparams(bdm::AbstractBayesDensityModel)
+    support(bdm::AbstractBayesDensityModel) -> NTuple{2, <:Real}
 
-Return the support of the model `bdm` as a tuple.
+Return the support of the model `bdm` as an 2-dimensional tuple.
 """
 function support(::AbstractBayesDensityModel) end
 
 export support
 
 """
-    pdf(bdm::AbstractBayesDensityModel, parameters, t)
-    pdf(bdm::AbstractBayesDensityModel, parameters::AbstractVector, t)
+    pdf(
+        bdm::AbstractBayesDensityModel,
+        parameters::NamedTuple,
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+    
+    pdf(
+        bdm::AbstractBayesDensityModel,
+        parameters::AbstractVector{<:NamedTuple},
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
 
-Evaluate f(t | η) of the Bayesian density model `bdm` for every element in the collection `t` when the parameter is equal to η.
+Evaluate f(t | η) of the Bayesian density model `bdm` for every η in `parameters` and every element in the collection `t`.
+
+If a single NamedTuple is passed to the parameters argument, this function outputs either a scalar or a vector depending on the input type of the third argument `t`.
+
+If a vector of NamedTuples is passed to the second positional argument, then this function returns a Matrix of size `(length(t), length(parameters))`.
 """
 function Distributions.pdf(::AbstractBayesDensityModel, ::Any, ::Real) end
 

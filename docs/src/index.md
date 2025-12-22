@@ -43,7 +43,7 @@ mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
 vi_fit = varinf(bsm) # VI
 ```
 
-The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` credible intervals can be plotted via Make as follows:
+The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Make as follows:
 ```julia
 using CairoMakie
 plot(mcmc_fit)

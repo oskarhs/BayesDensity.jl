@@ -46,7 +46,7 @@ where ``\boldsymbol{N} = (N_1, N_2, \ldots, N_K)``. The full conditional distrib
 ```math
 p(\boldsymbol{z}\, |\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \prod_{i=1}^n \prod_{k=1}^K \big\{\theta_k\,\varphi_k(x_i)\big\}^{\mathbf{1}_{\{k\}}(z_i)}.
 ```
-Hence, we see that ``z_1, \ldots, z_n`` are independent given ``\boldsymbol{\theta}, \boldsymbol{x}``, with ``p(z_i \,|\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \theta_k\varphi_k(x_i)``.
+Hence, we see that ``z_1, \ldots, z_n`` are independent given ``\boldsymbol{\theta}, \boldsymbol{x}``, with ``p(z_i \,|\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \theta_k\, \varphi_k(x_i)``.
 
 ## Implementation
 We start by importing the required packages:
