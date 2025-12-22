@@ -11,12 +11,6 @@ The first step to estimating a density with this package is to create a model ob
 AbstractBayesDensityModel
 ```
 
-All of the density models implemented in this package depend on the choice of various hyperparameters, which can be retrieved by utilizing the following method:
-```@docs
-hyperparams(::AbstractBayesDensityModel)
-```
-For the exact format of the returned hyperparameters for a specific Bayesian density model type, we refer to the docs of the individual density estimators.
-
 In order to create a model object, we call the corresponding contructor with the data and other positional- and keyword arguments. For example, we can create a [`BSMModel`](@ref) object with default hyperparameters as follows:
 ```@repl
 using BayesDensity
@@ -26,17 +20,30 @@ For more detailed information on the arguments supported by each specific Bayesi
 
 
 ### Evaluating the density
-The density estimators implemented in this package all specify a model ``f(t\,|\, \boldsymbol{\eta})`` for the density of the data, which depends on a parameter vector ``\boldsymbol{\eta}``.
-In order to calculate ``f(\cdot)`` for a given ``\eta``, each Bayesian density model implements the `pdf` method.
+The density estimators implemented in this package all specify a model ``f(t\,|\, \boldsymbol{\eta})`` for the density of the data, which depends on a parameter ``\boldsymbol{\eta}``.
+In order to calculate ``f(\cdot)`` for a given ``\boldsymbol{\eta}``, each Bayesian density model implements the `pdf` method.
 ```@docs
 pdf(::AbstractBayesDensityModel, ::Any, ::Real)
 ```
 
-For Models that only implement the signature `pdf(::BayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided when the . However, it is recommended that most models provide specialized methods for vectors of parameters and evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
+For Models that only implement the signature `pdf(::BayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
 
 ### Evaluating the cdf
 
 TODO: Write this section once we have provided a generic fallback method...
+
+### Other methods
+All of the density models implemented in this package depend on the choice of various hyperparameters, which can be retrieved by utilizing the following method:
+```@docs
+hyperparams(::AbstractBayesDensityModel)
+```
+For the exact format of the returned hyperparameters for a specific Bayesian density model type, we refer to the docs of the individual density estimators.
+
+To compute the support of a given model, the `support` method is provided.
+```@docs
+support(::AbstractBayesDensityModel)
+```
+
 
 ## Markov chain Monte Carlo
 The main workhorse of MCMC-based inference is the `sample` method, which takes a Bayesian density model object as input and generates posterior samples through a specialized MCMC routine.
@@ -89,4 +96,4 @@ std(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
 
 !!! note
     Note that each call to any of the above functions will in most cases first simulate a random sample from the posterior distribution, and then approximate the quantity of interest using these samples.
-    If posterior inference for multiple quantities is desired, then it is recommended to first use [`sample`], and call these functions on this object as only a single batch of posterior samples is generated in this case.
+    If posterior inference for multiple quantities is desired, then it is recommended to first use [`sample`](@ref), and call these functions on this object as only a single batch of posterior samples is generated in this case.

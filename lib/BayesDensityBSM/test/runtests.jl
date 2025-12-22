@@ -16,7 +16,7 @@ include("aqua.jl")
 
     @test typeof(hyperparams(BSMModel(x))) <: NamedTuple
 
-    @test Distributions.support(BSMModel([0.0], (-1.0, 1.0))) == (-1.0, 1.0)
+    @test Distributions.support(BSMModel(LinRange(-0.5, 0.5, 11); bounds = (-1.0, 1.0))) == (-1.0, 1.0)
 
     for model in (BSMModel(x), BSMModel(x, n_bins=nothing))
         io = IOBuffer() # just checks that we can call the show method
@@ -30,8 +30,8 @@ end
     K = 20
     x = collect(-5:0.1:5)
 
-    @test_throws ArgumentError BSMModel(x, (-1, 1))
-    @test_throws ArgumentError BSMModel(x, (1, -1))
+    @test_throws ArgumentError BSMModel(x; bounds=(-1, 1))
+    @test_throws ArgumentError BSMModel(x; bounds=(1, -1))
 
     for hyp in [:a_τ, :b_τ, :a_δ, :b_δ]
         @eval @test_throws ArgumentError $BSMModel($x; $hyp = -1)
@@ -45,10 +45,10 @@ end
     x = collect(-5:0.1:5)
 
     bsm1 = BSMModel(x; n_bins = 20)
-    @test typeof(sample(rng, bsm1, 100)) <: PosteriorSamples
+    @test typeof(sample(rng, bsm1, 100)) <: PosteriorSamples{Float64}
 
     bsm2 = BSMModel(x; n_bins = nothing)
-    @test typeof(sample(rng, bsm2, 100)) <: PosteriorSamples
+    @test typeof(sample(rng, bsm2, 100)) <: PosteriorSamples{Float64}
 end
 
 @testset "BSMM: MC: pdf and mean" begin
@@ -56,15 +56,15 @@ end
     x = collect(0:0.1:1)
     t = LinRange(0, 1, 11)
 
-    bsm = BSMModel(x, K, (0,1))
+    bsm = BSMModel(x, K; bounds=(0,1))
 
     samples1 = [(spline_coefs = ones(K),) for _ in 1:10]
-    ps1 = PosteriorSamples(samples1, bsm, 100, 0)
+    ps1 = PosteriorSamples{Float64}(samples1, bsm, 100, 0)
     @test isapprox(pdf(bsm, samples1, t), ones((length(t), length(samples1))))
     @test isapprox(mean(ps1, t), ones(length(t)))
 
     samples2 = [(β = BayesDensityBSM.compute_μ(basis(bsm)),) for _ in 1:10]
-    ps2 = PosteriorSamples(samples2, bsm, 100, 0)
+    ps2 = PosteriorSamples{Float64}(samples2, bsm, 100, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
     @test isapprox(mean(ps2, t), ones(length(t)))
 end
@@ -74,16 +74,16 @@ end
     x = collect(0:0.1:1)
     t = LinRange(0, 1, 11)
 
-    bsm1 = BSMModel(x, K, (0,1))
+    bsm1 = BSMModel(x, K; bounds=(0,1))
     vip1 = varinf(bsm1; max_iter = 10)
     
     @test typeof(vip1) <: AbstractVIPosterior
-    @test typeof(sample(vip1, 10)) <: PosteriorSamples
+    @test typeof(sample(vip1, 10)) <: PosteriorSamples{Float64}
 
-    bsm2 = BSMModel(x, K, (0,1); n_bins=nothing)
+    bsm2 = BSMModel(x, K, bounds=(0,1); n_bins=nothing)
     vip2 = varinf(bsm2; max_iter = 10)
     @test typeof(vip1) <: AbstractVIPosterior
-    @test typeof(sample(vip1, 10)) <: PosteriorSamples
+    @test typeof(sample(vip1, 10)) <: PosteriorSamples{Float64}
 
     io = IOBuffer() # just checks that we can call the show method
     show(io, vip1)
@@ -95,7 +95,7 @@ end
     K = 20
     x = collect(0:0.1:1)
     t = LinRange(0, 1, 11)
-    bsm = BSMModel(x, K, (0,1))
+    bsm = BSMModel(x, K; bounds=(0,1))
 
     # Create a dummy variational posterior with q_β = MvNormalCanon(inv_Σ * μ, inv_Σ), where inv_Σ is a diagonal matrix with very large entried (then q_β is almost a point mass at μ)
     # Then the VIP mean should be approximately uniform...

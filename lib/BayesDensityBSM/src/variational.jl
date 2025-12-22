@@ -98,7 +98,7 @@ function get_default_initparams(bsm::BSMModel{T, A, NT}) where {T, A, NT}
     a_δ_opt = fill(a_δ + 1/2, K-3)
     b_δ_opt = fill(b_δ, K-3)
 
-    μ_opt = compute_μ(basis(bsm), T)
+    μ_opt = compute_μ(basis(bsm))
     D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
     Q = transpose(P) * D * P
     inv_Σ_opt = Q + 0.05 * Diagonal(ones(K-1))

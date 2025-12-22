@@ -57,3 +57,13 @@ plot(mcmc_fit)
 ```
 
 For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the DOCUMENTATION
+
+TODO list:
+- Implement check for proper posterior (BSM)
+- Make StatsBase.sample take in initial values as a kwarg.
+- Split up general docs into three parts (with an index page to start)
+- Finish example on how to implement new models.
+- Implement more methods.
+- 
+- Add (basic) tutorial illustrating the basic use of the package.
+- Add a primer on Bayesian nonparametric density estimation.

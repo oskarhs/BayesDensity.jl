@@ -10,13 +10,13 @@ using BSplineKit
 
 using Random, Distributions, Base.Threads, StatsBase, BandedMatrices, PolyaGammaHybridSamplers, LinearAlgebra, SparseArrays, SelectedInversion
 
-import Distributions: support # Not exported by Distributions for some reason.
+import Distributions: support
 
 include("spline_utils.jl")
 include("BSMModel.jl")
 include("mcmc.jl")
 
-export BSMModel, sample, hyperparams, order, knots, basis, support
+export BSMModel, sample, hyperparams, order, knots, basis
 
 include("variational.jl")
 

@@ -1,5 +1,5 @@
 """
-    BSMModel{T<:Real, A<:AbstractSplineBasis} <: AbstractBayesDensityModel
+    BSMModel{T<:Real} <: AbstractBayesDensityModel{T}
     
 Struct representing a B-spline mixture model.
 
@@ -7,8 +7,11 @@ The BSMModel struct is used to generate quantities that are needed for the model
 
 # Constructors
     
-    BSMModel(x::AbstractVector{<:Real}, [K::Integer=get_default_splinedim(x)], [bounds::Tuple{<:Real,<:Real}=get_default_bounds(x)]; kwargs...) 
-    BSMModel(x::AbstractVector{<:Real}, basis::AbstractBSplineBasis; kwargs...)
+    BSMModel(
+        x::AbstractVector{<:Real},
+        K::Int = get_default_splinedim(x);
+        kwargs...
+    ) 
 
 # Arguments
 * `x`: The data vector.
@@ -17,11 +20,12 @@ The BSMModel struct is used to generate quantities that are needed for the model
 * `bounds`: A tuple specifying the range of the `K`-dimensional B-spline basis. Defaults to [minimum(x) - 0.05*R, maximum(x) + 0.05*R] where `R` is the sample range. 
 
 # Keyword arguments
+* `bounds`: A tuple giving the support of the B-spline mixture model.
 * `n_bins`: Lower bound on the number of bins used when fitting the `BSMModel` to data. Binned fitting can be disabled by setting this equal to `nothing`. Defaults to `1000`.
-* `a_τ`: Shape hyperparameter for the global smoothing parameter τ².
-* `b_τ`: Rate hyperparameter for the global smoothing parameter τ².
-* `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ².
-* `b_δ`: Rate hyperparameter for the local smoothing parameters δₖ².
+* `a_τ`: Shape hyperparameter for the global smoothing parameter τ². Defaults to `1.0`.
+* `b_τ`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
+* `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
+* `b_δ`: Rate hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
 
 # Returns
 * `bsm`: A B-Spline mixture model object.
@@ -37,9 +41,9 @@ Using 5000 binned observations on a regular grid consisting of 1187 bins.
  order:  4
  knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
 
-julia> model = BSMModel(x, 150, (0, 1); n_bins=nothing, b_τ = 5e-3);
+julia> model = BSMModel(x, 150; bounds=(0, 1), n_bins=nothing, b_τ = 5e-3);
 
-julia> posterior_samples = sample(Random.Xoshiro(1812), model, 5000; n_burnin = 1000);
+julia> posterior_samples = sample(Random.Xoshiro(1), model, 5000; n_burnin = 1000);
 
 julia> vip = varinf(model);
 ```
@@ -47,7 +51,7 @@ julia> vip = varinf(model);
 # Extended help
 
 ### Binned fitting
-To disable binned fitting, one can set the `n_bins=nothing`.
+To disable binned fitting, one can set `n_bins=nothing`.
 Note that the binning is only used as part of the model fitting procedure, and the structure of the resulting fitted model object is the same regardless of whether the binning step is performed or not.
 Empirically, the results obtained from running the binned and unbinned model fitting procedures tend to be very similar.
 We therefore recommend using the binned fitting procedure, due to the large improvements in model fitting speed, particularly for larger samples.
@@ -72,25 +76,24 @@ To control the smoothness in the resulting density estimates, we recommend adjus
 Setting `b_τ` to a smaller value generally yields smoother curves.
 Similar priors for regression models suggest that values in the range [5e-5, 5e-3] are reasonable.
 """
-struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesDensityModel
+struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
     basis::A
     a_τ::T
     b_τ::T
     a_δ::T
     b_δ::T
-    function BSMModel{T}(x::AbstractVector{<:Real}, basis::A; n_bins::Union{Nothing,<:Integer}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5) where {T<:Real, A<:AbstractBSplineBasis}
-        bounds = boundaries(basis)
+    function BSMModel{T}(x::AbstractVector{<:Real}, K::Int = get_default_splinedim(x); bounds::Tuple{<:Real,<:Real} = get_default_bounds(x), n_bins::Union{Nothing,Int}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5) where {T<:Real}
         check_bsmkwargs(x, n_bins, bounds, a_τ, b_τ, a_δ, b_δ) # verify that supplied parameters make sense
 
-        K = length(basis)
+        bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
+        K = length(bs)
 
         # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior median)
-        μ = compute_μ(basis, T)
+        μ = compute_μ(bs)
 
         # Set up difference matrix:
         P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
-        #P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
 
         T_a_τ = T(a_τ)
         T_b_τ = T(b_τ)
@@ -101,22 +104,20 @@ struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBay
         n = length(x)
         if !isnothing(n_bins)
             # Create binned B-Spline basis matrix
-            B, b_ind, bincounts = create_spline_basis_matrix_binned(T_x, basis, n_bins)
+            B, b_ind, bincounts = create_spline_basis_matrix_binned(T_x, bs, n_bins)
             log_B = log.(B)
 
             data = (x = x, log_B = log_B, b_ind = b_ind, bincounts = bincounts, μ = μ, P = P, n = n)
         else
-            B, b_ind = create_spline_basis_matrix(T_x, basis)
+            B, b_ind = create_spline_basis_matrix(T_x, bs)
             log_B = log.(B)
 
             data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
         end
-        return new{T,A,typeof(data)}(data, basis, T_a_τ, T_b_τ, T_a_δ, T_b_δ)
+        return new{T,typeof(bs),typeof(data)}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ)
     end # NB! Might remove this constructor in the future (if we want to enforce the use of regularly spaced cubic splines)
     # In this cae, we will likely make bounds a keyword argument instead.
 end
-BSMModel{T}(x::AbstractVector{<:Real}, K::Integer=get_default_splinedim(x), bounds::Tuple{<:Real,<:Real}=get_default_bounds(x); kwargs...) where {T<:Real} = BSMModel{T}(x, BSplineBasis(BSplineOrder(4), LinRange(bounds[1], bounds[2], K-2)); kwargs...)
-BSMModel{T}(x::AbstractVector{<:Real}, bounds::Tuple{<:Real,<:Real}; kwargs...) where {T<:Real} = BSMModel{T}(x, get_default_splinedim(x), bounds; kwargs...)
 BSMModel(args...; kwargs...) = BSMModel{Float64}(args...; kwargs...)
 
 function Base.:(==)(bsm1::BSMModel, bsm2::BSMModel)
@@ -133,7 +134,7 @@ BSplineKit.knots(bsm::B) where {B<:BSMModel} = knots(bsm.basis)
 
 Get the support of the B-Spline mixture model `bsm`.
 """
-support(bsm::BSMModel) = boundaries(bsm.basis)
+BayesDensityCore.support(bsm::BSMModel) = boundaries(bsm.basis)
 
 """
     hyperparams(
@@ -215,19 +216,19 @@ function _pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t, ::Val{false}) w
     spline_coefs = theta_to_coef(θ, basis)
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t, ::Val{true}) where {Names, Vals}
+function _pdf(bsm::BSMModel{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs are given)
     # TODO allow for different types here
-    spline_coefs = Matrix{Float64}(undef, (length(bsm), length(params)))
+    spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
         spline_coefs[:, i] = params[i].spline_coefs
     end
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t, ::Val{false}) where {Names, Vals}
+function _pdf(bsm::BSMModel{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs not given)
     # TODO allow for different types here
-    spline_coefs = Matrix{Float64}(undef, (length(bsm), length(params)))
+    spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
         θ = logistic_stickbreaking(params[i].β)
         spline_coefs[:, i] = theta_to_coef(θ, basis(bsm))

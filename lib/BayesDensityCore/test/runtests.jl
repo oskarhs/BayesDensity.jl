@@ -7,7 +7,7 @@ const rng = Random.Xoshiro(1)
 include("aqua.jl")
 
 # Random Histogram model on [0, 1] with K-dimensional Dir(fill(a, K))-prior.
-struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel
+struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
     K::Int
     a::T
@@ -55,14 +55,14 @@ struct RHPosterior{T<:Real, S<:RandomHistogramModel} <: AbstractVIPosterior
     end
 end
 
-function StatsBase.sample(rng::Random.AbstractRNG, rhp::RHPosterior, n_samples::Int)
+function StatsBase.sample(rng::Random.AbstractRNG, rhp::RHPosterior{T, S}, n_samples::Int) where {T, S}
     (; α, model) = rhp
     samples = Vector{NamedTuple{(:θ,), Tuple{Vector{Float64}}}}(undef, n_samples)
     for i in 1:n_samples
         θ = rand(rng, Dirichlet(α))
         samples[i] = (θ = θ,)
     end
-    return PosteriorSamples(samples, model, n_samples, 0)
+    return PosteriorSamples{T}(samples, model, n_samples, 0)
 end
 
 @testset "Core: pdf fallback methods" begin
@@ -98,7 +98,7 @@ end
     n_samples = 2000
     model_fit = sample(rng, rhm, n_samples)
 
-    @test typeof(model_fit) <: PosteriorSamples
+    @test typeof(model_fit) <: PosteriorSamples{Float64}
     @test length(model_fit.samples) == n_samples
 end
 
@@ -153,7 +153,7 @@ end
 
     ps = sample(rng, rhp, n_samples)
 
-    @test typeof(ps) <: PosteriorSamples
+    @test typeof(ps) <: PosteriorSamples{Float64}
     @test length(ps.samples) == n_samples
 end
 
@@ -167,10 +167,10 @@ end
     t = LinRange(0, 1, 11)
     qs = [0.2, 0.8]
 
-    @test typeof(quantile(rng, rhp, t, 0.2)) <: AbstractVector{<:Real}
-    @test typeof(quantile(rng, rhp, t, qs)) <: AbstractMatrix{<:Real}
+    @test typeof(quantile(rng, rhp, t, 0.2)) <: AbstractVector{Float64}
+    @test typeof(quantile(rng, rhp, t, qs)) <: AbstractMatrix{Float64}
 
-    @test typeof(median(rng, rhp, t)) <: AbstractVector{<:Real}
+    @test typeof(median(rng, rhp, t)) <: AbstractVector{Float64}
 
-    @test typeof(mean(rng, rhp, t)) <: AbstractVector{<:Real}
+    @test typeof(mean(rng, rhp, t)) <: AbstractVector{Float64}
 end

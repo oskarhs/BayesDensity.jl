@@ -19,8 +19,6 @@ struct PosteriorSamples{T<:Real, M<:AbstractBayesDensityModel, V<:AbstractVector
     end
 end
 
-PosteriorSamples(samples::V, model::M, n_samples::Int, n_burnin::Int) where {M, V} = PosteriorSamples{Float64}(samples, model, n_samples, n_burnin)
-
 """
     model(ps::PosteriorSamples) -> AbstractBayesDensityModel
 
