@@ -13,7 +13,7 @@ The BayesDensity.jl package is currently not part of any package repository, but
 using Pkg
 Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
 ```
-After installation, `using BayeDensity` will load all of the estimators implemented by this package.
+After installation, `using BayesDensity` will load all of the estimators implemented by this package.
 
 Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
 ```julia

@@ -20,7 +20,7 @@ include("aqua.jl")
 
     for model in (BSMModel(x), BSMModel(x, n_bins=nothing))
         io = IOBuffer() # just checks that we can call the show method
-        show(io, BSMModel(x))
+        show(io, model)
         output = String(take!(io))
         @test typeof(output) == String
     end

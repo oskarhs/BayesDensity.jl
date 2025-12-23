@@ -133,7 +133,7 @@ function Distributions.quantile(ps::PosteriorSamples, t::Real, q::Real)
 end
 
 """
-    quantile(
+    median(
         ps::PosteriorSamples,
         t::Union{Real, AbstractVector{<:Real}},
     ) -> Union{Real, Vector{<:Real}}

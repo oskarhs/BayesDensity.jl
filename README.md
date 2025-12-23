@@ -60,6 +60,7 @@ For a more thorough introduction to the API and the capabilities of the package,
 
 TODO list:
 - Implement check for proper posterior (BSM)
+- Try standardizing the data to see if this improves performance with e.g. the triangle density (BSM)
 - Make StatsBase.sample take in initial values as a kwarg.
 - Split up general docs into three parts (with an index page to start)
 - Finish example on how to implement new models.

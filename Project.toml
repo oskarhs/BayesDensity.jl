@@ -4,5 +4,6 @@ projects = [
     "docs",
     "lib/BayesDensityCore",
     "lib/BayesDensityBSM",
+    "lib/BayesDensitySHS",
     "lib/BayesDensity"
 ]
