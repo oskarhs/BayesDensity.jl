@@ -52,7 +52,7 @@ function _sample_posterior(rng::AbstractRNG, shs::SHSModel{T, A, D}, n_samples::
         b_σ = sum(abs2, view(β, 3:K)) / 2 + 1 / ξ
         σ2 = rand(rng, InverseGamma(a_σ, b_σ))
 
-        samples_temp[m] = (β = β, σ2 = σ2) # We compute the normalization constants after completing the MCMC loop
+        samples_temp[m] = (β = copy(β), σ2 = σ2) # We compute the normalization constants after completing the MCMC loop
     end
 
     # Compute normalization constants:

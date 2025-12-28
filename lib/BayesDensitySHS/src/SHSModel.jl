@@ -108,7 +108,7 @@ function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{
 
     # Compute linear predictor, exponentiate and normalize:
     linpreds = C * params.β
-    return exp.(linpreds) / l1_norm * (bounds[2] - bounds[1]) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    return exp.(linpreds) / l1_norm .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
 function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
@@ -126,7 +126,7 @@ function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, V
     # Normalize:
     f_samp = Matrix{R}(undef, (length(t), length(params)))
     for i in eachindex(params)
-        f_samp[:,i] = exp.(linpreds[:,i]) / l1_norm_vec[i] * (bounds[2] - bounds[1]) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+        f_samp[:,i] = exp.(linpreds[:,i]) / l1_norm_vec[i] .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
     end
     return f_samp
 end
@@ -142,7 +142,7 @@ function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{
 
     # Compute linear predictor, exponentiate and normalize:
     linpreds = C * params.β
-    return exp.(linpreds) / l1_norm * (bounds[2] - bounds[1]) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    return exp.(linpreds) / l1_norm .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
 function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
@@ -157,7 +157,7 @@ function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, V
     # Normalize:
     f_samp = Matrix{R}(undef, (length(t), length(params)))
     for i in eachindex(params)
-        f_samp[:,i] = exp.(linpreds[:,i]) / l1_norm_vec[i] * (bounds[2] - bounds[1]) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+        f_samp[:,i] = exp.(linpreds[:,i]) / l1_norm_vec[i] .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
     end
     return f_samp
 end

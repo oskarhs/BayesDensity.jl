@@ -16,13 +16,13 @@ BayesDensity.jl is a Julia package for nonparametric univariate Bayesian density
 ## Installation
 
 The BayesDensity.jl package is currently not part of any package repository, but can be installed from its GitHub repository as follows:
-```@repl
+```julia
 using Pkg
 Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
 ```
 
 Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
-```@repl
+```julia
 Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSM.jl")
 ```
 
