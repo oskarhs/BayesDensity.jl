@@ -1,5 +1,5 @@
 # Compute the normalization constant of `shs` for given parameters using Simpson's method
-# Make 
+# NB! Computes the normalization constant on [0, 1] and not on the original scale.
 function compute_norm_constants(shs::SHSModel{T, A, D}, params::NamedTuple{Names, Vals}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
     n = 2048

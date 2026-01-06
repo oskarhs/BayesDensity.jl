@@ -1,6 +1,4 @@
-StatsBase.sample(shs::SHSModel, n_samples::Int; kwargs...) = sample(Random.default_rng(), shs, n_samples; kwargs...) # Move this to Core?
-
-function StatsBase.sample(rng::AbstractRNG, shs::SHSModel, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)))
+function StatsBase.sample(rng::AbstractRNG, shs::SHSModel, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100))
     if !(1 ≤ n_samples ≤ Inf)
         throw(ArgumentError("Number of samples must be a positive integer."))
     end

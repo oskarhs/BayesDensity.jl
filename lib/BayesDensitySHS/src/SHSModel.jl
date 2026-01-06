@@ -2,6 +2,49 @@
     SHSModel{T<:Real} <: AbstractBayesDensityModel{T}
 
 Struct representing a spline histogram smoothing model.
+
+# Constructors
+    
+    SHSModel(
+        x::AbstractVector{<:Real},
+        K::Int = get_default_splinedim(x);
+        kwargs...
+    ) 
+
+# Arguments
+* `x`: The data vector.
+* `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
+
+# Keyword arguments
+* `bounds`: A tuple giving the support of the B-spline mixture model.
+* `n_bins`: Number of bins used to construct the histogram likelihood. Defaults to `400`.
+* `σ_β`: Scale hyperparameter for 0th and 1st order (fixed effect) spline terms. Defaults to `1000.0`.
+* `s_σ`: Scale hyperparameter for the (higher order) mixed effects spline terms. Defaults to `1000.0`.
+
+# Returns
+* `shs`: A histogram spline smoother object.
+
+# Examples
+```julia
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> shs = SHSModel(x)
+52-dimensional SHSModel{Float64}:
+Using 5000 binned observations with 400 bins.
+
+julia> shs = SHSModel(x, 80; σ_β = 1e5);
+```
+
+# Extended help
+
+### Binning
+The binning step used by the spline histogram smoother is an essential part of the model fitting procedure, and can as such not be disabled.
+Using a greater number of bins means that less precision is lost due to the binning step, but makes the model fitting procedure slower due to a larger compuatational burden.
+Note that the number of bins only affects the model fitting process, and does otherwise not change the returned 
+
+### Hyperparameter selection
+The hyperparameter `s_β` contols the smoothness of the resulting density estimates.
+Setting this to a smaller value leads to smoother estimates.
 """
 struct SHSModel{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::D
@@ -44,6 +87,18 @@ SHSModel(args...; kwargs...) = SHSModel{Float64}(args...; kwargs...)
 
 Base.eltype(::SHSModel{T, A, D}) where {T, A, D} = T
 
+function Base.:(==)(shs1::SHSModel, shs2::SHSModel)
+    return shs1.bs == shs2.bs && shs1.data == shs2.data && hyperparams(bsm1) == hyperparams(bsm2)
+end
+
+function Base.show(io::IO, ::MIME"text/plain", shs::SHSModel{T, A, D}) where {T, A, D}
+    println(io, length(shs.bs), "-dimensional ", nameof(typeof(shs)), '{', T, "}:")
+    println(io, "Using ", shs.data.n, " binned observations with ", length(shs.data.N), " bins.")
+    nothing
+end
+
+Base.show(io::IO, shs::SHSModel) = show(io, MIME("text/plain"), shs)
+
 """
     support(shs::SHSModel) -> NTuple{2, <:Real}
 
@@ -58,27 +113,27 @@ end
 
 """
     hyperparams(
-        bsm::BSMModel{T}
-    ) where {T} -> @NamedTuple{a_τ::T, b_τ::T, a_δ::T, b_δ::T}
+        bsm::SHSModel{T}
+    ) where {T} -> @NamedTuple{σ_β::T, s_σ::T}
 
-Returns the hyperparameters of the B-Spline mixture model `bsm` as a `NamedTuple`.
+Returns the hyperparameters of the spline histogram smoother `shs` as a `NamedTuple`.
 """
 BayesDensityCore.hyperparams(shs::SHSModel) = (σ_β = shs.σ_β, s_σ = shs.s_σ)
 
 """
     pdf(
-        bsm::SHSModel,
+        shs::SHSModel,
         params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
     pdf(
-        bsm::SHSModel,
+        shs::SHSModel,
         params::AbstractVector{NamedTuple},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate f(t | η) when the model parameters are equal to η.
+Evaluate f(t | η) for the SHSModel `shs` when the model parameters are equal to η.
 
 The named tuple should contain a field named `:β`.
 If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
@@ -108,7 +163,7 @@ function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{
 
     # Compute linear predictor, exponentiate and normalize:
     linpreds = C * params.β
-    return exp.(linpreds) / l1_norm .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    return exp.(linpreds) / (l1_norm*(bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
 function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
@@ -126,7 +181,7 @@ function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, V
     # Normalize:
     f_samp = Matrix{R}(undef, (length(t), length(params)))
     for i in eachindex(params)
-        f_samp[:,i] = exp.(linpreds[:,i]) / l1_norm_vec[i] .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+        f_samp[:,i] = exp.(linpreds[:,i]) / (l1_norm_vec[i] * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
     end
     return f_samp
 end
@@ -142,7 +197,7 @@ function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{
 
     # Compute linear predictor, exponentiate and normalize:
     linpreds = C * params.β
-    return exp.(linpreds) / l1_norm .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    return exp.(linpreds) / (l1_norm * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
 function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
@@ -157,7 +212,7 @@ function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, V
     # Normalize:
     f_samp = Matrix{R}(undef, (length(t), length(params)))
     for i in eachindex(params)
-        f_samp[:,i] = exp.(linpreds[:,i]) / l1_norm_vec[i] .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+        f_samp[:,i] = exp.(linpreds[:,i]) / (l1_norm_vec[i] * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
     end
     return f_samp
 end

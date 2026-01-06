@@ -1,5 +1,5 @@
 """
-    PosteriorSamples{T}
+    PosteriorSamples{T<:Real}
 
 Struct holding posterior samples of the parameters of a Bayesian density model.
 
@@ -76,6 +76,8 @@ Using 5001 binned observations on a regular grid consisting of 1187 bins.
 ```
 """
 function StatsBase.sample(::AbstractBayesDensityModel, ::Int) end # Perhaps the user should have the option to discard burn-in samples?
+
+StatsBase.sample(bdm::AbstractBayesDensityModel, args...; kwargs...) = StatsBase.sample(Random.default_rng(), bdm, args...; kwargs...)
 
 """
     quantile(

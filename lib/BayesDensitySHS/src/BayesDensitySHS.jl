@@ -4,7 +4,7 @@ using Reexport
 
 @reexport using BayesDensityCore
 
-using Distributions, BSplineKit, LinearAlgebra, SparseArrays, StatsBase, Random
+using Distributions, BSplineKit, LinearAlgebra, SparseArrays, StatsBase, Random, MixedModels
 
 import Distributions: support
 

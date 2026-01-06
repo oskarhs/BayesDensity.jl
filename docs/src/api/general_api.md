@@ -1,7 +1,7 @@
 # General API
 
-This explains how to fit the Bayesian density models implemented in BayesDensity.jl.
-Most of the methods implemented in this package support two modes of posterior inference: asymptotically exact inference through Markov chain Monte Carlo (MCMC) and approximate through variational inference (VI).
+This page explains how to fit the Bayesian density models implemented in BayesDensity.jl.
+Most of the methods implemented in this package support two modes of posterior inference: simulation consistent inference through Markov chain Monte Carlo (MCMC) and approximate through variational inference (VI).
 We also document most of the convenience methods available for computing select posterior quantities of interest, such as the posterior mean or quantiles of ``f(t)`` for some ``t \in \mathbb{R}``.
 The plotting API of this package is documented on a [separate page](plotting_api.md)
 
@@ -68,7 +68,7 @@ std(::PosteriorSamples, ::AbstractVector{<:Real})
 ```
 
 ## Variational inference
-To compute the variational approximation to the posterior, we use the `varinf` method
+The `varinf` method can be used to compute a variational approximation to the posterior distribution:
 ```@docs
 varinf(::AbstractBayesDensityModel)
 ```
@@ -76,9 +76,10 @@ varinf(::AbstractBayesDensityModel)
 Any call to `varinf` will return a subtype of the abstract type `AbstractVIPosterior`:
 ```@docs
 AbstractVIPosterior
+model(::AbstractVIPosterior)
 ```
 
-The `sample` method makes it possible to generate i.i.d. samples from the variational posterior:
+The `sample` method makes it possible to generate independent samples from the variational posterior. This is particularly useful in cases where inference for multiple posterior quantities (e.g. medians, quantiles) is desired.
 ```@docs
 sample(::AbstractVIPosterior, ::Int)
 ```
@@ -95,5 +96,5 @@ std(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
 ```
 
 !!! note
-    Note that each call to any of the above functions will in most cases first simulate a random sample from the posterior distribution, and then approximate the quantity of interest using these samples.
+    Note that each call to `mean`, `quantile`, `median`, `var` or `std` in most cases will first simulate a random sample from the posterior distribution, and then uses this sample to compute a Monte Carlo approximation of the quantity of interest using these samples.
     If posterior inference for multiple quantities is desired, then it is recommended to first use [`sample`](@ref), and call these functions on this object as only a single batch of posterior samples is generated in this case.

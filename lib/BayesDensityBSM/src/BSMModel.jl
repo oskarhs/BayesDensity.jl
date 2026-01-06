@@ -15,9 +15,7 @@ The BSMModel struct is used to generate quantities that are needed for the model
 
 # Arguments
 * `x`: The data vector.
-* `basis`: The B-spline basis in the model. Defaults to a regular (augmented) spline basis covering [minimum(x) - 0.05*R, maximum(x) + 0.05*R] where `R` is the sample range. 
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
-* `bounds`: A tuple specifying the range of the `K`-dimensional B-spline basis. Defaults to [minimum(x) - 0.05*R, maximum(x) + 0.05*R] where `R` is the sample range. 
 
 # Keyword arguments
 * `bounds`: A tuple giving the support of the B-spline mixture model.
@@ -121,7 +119,7 @@ end
 BSMModel(args...; kwargs...) = BSMModel{Float64}(args...; kwargs...)
 
 function Base.:(==)(bsm1::BSMModel, bsm2::BSMModel)
-    return basis(bsm1) == basis(bsm2) && bsm1.data == bsm2.data && params(bsm1) == params(bsm2)
+    return basis(bsm1) == basis(bsm2) && bsm1.data == bsm2.data && hyperparams(bsm1) == hyperparams(bsm2)
 end
 
 BSplineKit.basis(bsm::B) where {B<:BSMModel} = bsm.basis

@@ -9,7 +9,8 @@ makedocs(;
     modules=[
         BayesDensity,
         BayesDensityCore,
-        BayesDensityBSM
+        BayesDensityBSM,
+        BayesDensitySHS
     ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
@@ -22,6 +23,7 @@ makedocs(;
         ],
         "Methods" => [
             "methods/BSMM.md"
+            "methods/SHS.md"
         ],
         "Tutorials" => [
             "tutorials/add_new_models.md"

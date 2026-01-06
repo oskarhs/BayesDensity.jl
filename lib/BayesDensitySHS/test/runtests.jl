@@ -15,6 +15,9 @@ const rng = Random.Xoshiro(1)
     # Check that we can retrieve hyerparameter defaults
     @test hyperparams(shs) == (σ_β = 1e3, s_σ = 1e3)
 
+    # Test equality method
+    @test SHSModel(x) == shs
+
 #=     for model in (SHSModel(x), SHSModel(x))
         io = IOBuffer() # just checks that we can call the show method
         show(io, BSMModel(x))

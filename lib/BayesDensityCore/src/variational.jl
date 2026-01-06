@@ -39,10 +39,10 @@ abstract type AbstractVIPosterior end
     sample(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        n_samples::Int,
+        n_samples::Int
     ) -> PosteriorSamples
 
-Generate `n_samples` i.i.d. samples from the variationonal posterior distribution `vip`.
+Generate `n_samples` independent samples from the variationonal posterior distribution `vip`.
 
 # Examples
 ```julia-repl
@@ -61,6 +61,13 @@ Using 5001 binned observations on a regular grid consisting of 1187 bins.
 ```
 """
 StatsBase.sample(vip::AbstractVIPosterior, n_samples::Int) = sample(Random.default_rng(), vip, n_samples)
+
+"""
+    model(vip::AbstractVIPosterior)
+
+Get the model object to which the variational posterior `vip` was fitted.
+"""
+function model(::AbstractVIPosterior) end
 
 """
     quantile(

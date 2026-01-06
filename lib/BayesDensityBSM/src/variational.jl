@@ -1,5 +1,5 @@
 """
-    BSMVIPosterior{T<:Real, A<:AbstractMatrix, M<:BSMModel} <: AbstractVIPosterior
+    BSMVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSMModel} <: AbstractVIPosterior
 
 Struct representing the variational posterior distribution of a [`BSMModel`](@ref).
 
@@ -50,7 +50,7 @@ Base.eltype(::BSMVIPosterior{T, A, B, M}) where {T, A, B, M} = T
 BayesDensityCore.model(vip::BSMVIPosterior) = vip.bsm
 
 function Base.show(io::IO, ::MIME"text/plain", vip::BSMVIPosterior{T, A, B, M}) where {T, A, B, M}
-    println(io, "BSMVIPosterior{", T, "} vith variational densities:")
+    println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
     println(io, " q_β <: ", A, ",")
     println(io, " q_τ <: ", B, ",")
     println(io, " q_δ <: " , Vector{B}, ".")
@@ -61,7 +61,6 @@ end
 
 Base.show(io::IO, vip::BSMVIPosterior) = show(io, MIME("text/plain"), vip)
 
-StatsBase.sample(vip::BSMVIPosterior, n_samples::Int) = sample(Random.default_rng(), vip, n_samples)
 function StatsBase.sample(rng::AbstractRNG, vip::BSMVIPosterior{T, A, B, M}, n_samples::Int) where {T<:Real, A, B, M}
     (; q_β, q_τ, q_δ, bsm) = vip
     K = length(basis(bsm))
@@ -83,7 +82,25 @@ function StatsBase.sample(rng::AbstractRNG, vip::BSMVIPosterior{T, A, B, M}, n_s
     return PosteriorSamples{T}(samples, bsm, n_samples, 0)
 end
 
+"""
+    varinf(
+        bsm::BSMModel;
+        init_params=get_default_initparams(bsm),
+        max_iter::Int=1000
+    ) -> BSMVIPosterior{<:Real}
 
+Find a variational approximation to the posterior distribution of a [`BSMModel`](@ref) using mean-field variational inference.
+
+# Arguments
+* `bsm`: The `BSMModel` whose posterior we want to approximate.
+
+# Keyword arguments
+* `init_params`: Initial values of the VI parameters.
+* `max_iter`: Maximal number of VI iterations. Defaults to `1000`.
+
+# Returns
+* `vip`: A [`BSMVIPosterior`](@ref) object representing the variational posterior.
+"""
 function BayesDensityCore.varinf(bsm::BSMModel; init_params=get_default_initparams(bsm), max_iter::Int=1000) # Also: tolerance parameters
     return _variational_inference(bsm, init_params, max_iter)
 end

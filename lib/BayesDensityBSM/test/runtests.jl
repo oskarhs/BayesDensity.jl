@@ -18,6 +18,8 @@ include("aqua.jl")
 
     @test Distributions.support(BSMModel(LinRange(-0.5, 0.5, 11); bounds = (-1.0, 1.0))) == (-1.0, 1.0)
 
+    @test BSMModel(x) == BSMModel(x)
+
     for model in (BSMModel(x), BSMModel(x, n_bins=nothing))
         io = IOBuffer() # just checks that we can call the show method
         show(io, model)
