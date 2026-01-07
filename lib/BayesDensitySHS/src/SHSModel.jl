@@ -113,7 +113,7 @@ end
 
 """
     hyperparams(
-        bsm::SHSModel{T}
+        shs::SHSModel{T}
     ) where {T} -> @NamedTuple{σ_β::T, s_σ::T}
 
 Returns the hyperparameters of the spline histogram smoother `shs` as a `NamedTuple`.

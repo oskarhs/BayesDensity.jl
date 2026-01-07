@@ -15,9 +15,9 @@ julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
 julia> vip = varinf(BSMModel(x))
 BSMVIPosterior{Float64} vith variational densities:
- q_β <: Distributions.MvNormalCanon{Float64},
- q_τ <: Distributions.InverseGamma{Float64},
- q_δ <: Vector{Distributions.InverseGamma{Float64}}.
+ q_β::Distributions.MvNormalCanon{Float64},
+ q_τ::Distributions.InverseGamma{Float64},
+ q_δ::Vector{Distributions.InverseGamma{Float64}}.
 Model:
 200-dimensional BSMModel{Float64}:
 Using 5001 binned observations on a regular grid consisting of 1187 bins.
@@ -51,9 +51,9 @@ BayesDensityCore.model(vip::BSMVIPosterior) = vip.bsm
 
 function Base.show(io::IO, ::MIME"text/plain", vip::BSMVIPosterior{T, A, B, M}) where {T, A, B, M}
     println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
-    println(io, " q_β <: ", A, ",")
-    println(io, " q_τ <: ", B, ",")
-    println(io, " q_δ <: " , Vector{B}, ".")
+    println(io, " q_β::", A, ",")
+    println(io, " q_τ::", B, ",")
+    println(io, " q_δ::", Vector{B}, ".")
     println(io, "Model:")
     println(io, model(vip))
     nothing

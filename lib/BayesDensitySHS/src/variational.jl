@@ -28,8 +28,8 @@ BayesDensityCore.model(vip::SHSVIPosterior) = vip.shs
 
 function Base.show(io::IO, ::MIME"text/plain", vip::SHSVIPosterior{T, A, B, M}) where {T, A, B, M}
     println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
-    println(io, " q_β <: ", A, ",")
-    println(io, " q_σ <: ", B, ",")
+    println(io, " q_β::", A, ",")
+    println(io, " q_σ::", B, ",")
     println(io, "Model:")
     println(io, model(vip))
     nothing
@@ -78,18 +78,20 @@ function get_default_initparams(shs::SHSModel{T, A, D}) where {T, A, D}
     end
 
     # Extract Point estimate
-    μ_opt::Vector{T} = vcat(fixef(mixedmodel), vec(ranef(mixedmodel)[1]))
+    μ_opt = Vector{Float64}(undef, K)
+    μ_opt[1:2] = fixef(mixedmodel)
+    μ_opt[3:end] = vec(ranef(mixedmodel)[1])
 
+    # Extract covariance estimates
     ranef_std_nt = VarCorr(mixedmodel).σρ.obs_ind.σ
     variance_component_names = [Symbol("z$k") for k in 1:K-2]
     Σ_opt = zeros(T, (K, K))
-
     Σ_opt[1:2, 1:2] = vcov(mixedmodel)
-
     for k in eachindex(variance_component_names)
         Σ_opt[k+2, k+2] = ranef_std_nt[Symbol("z$k")]^2
     end
 
+    # Initialize q(σ²)
     b_σ_opt = T(1) * s_σ + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ[3:end])) / 2
     
     return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt)
@@ -117,9 +119,9 @@ function _variational_inference(shs::SHSModel{T, A, D}, init_params::NamedTuple,
         # Update q(β)
         w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
         Λ = Diagonal(vcat(fill(1/σ_β^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
-        inv_Σ_opt =  + Λ
-        Σ_opt = inv()
-        μ_opt = μ_opt + Σ_opt * ()
+        inv_Σ_opt = transpose(C) * w .* C + Λ
+        Σ_opt = inv(inv_Σ_opt)
+        μ_opt = μ_opt + Σ_opt * (tranpose(C) * (y - w) - Λ * μ_opt) 
 
         # Check convergence criterion
         b_σ_opt = b_σ_new
