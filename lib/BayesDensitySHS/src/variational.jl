@@ -60,14 +60,45 @@ end
 function get_default_initparams(shs::SHSModel{T, A, D}) where {T, A, D}
     (; data, bs, σ_β, s_σ) = shs
     (; x, n, N, C, LZ, bounds) = data
-    # Use Optim.jl MAP estimate to find initial values for μ_opt, inv_Σ_opt
+    # Use MixedModels.jl to find initial parameter estimate:
+
+    Z = C[:, 3:end]
+    df = DataFrame(obs_ind = 1, x = x, N = N)
+    df = hcat(df, DataFrame(z, Symbol.("z", 1:size(z, 2))))
+
+    terms = "-1 +" * join(["z$i" for i in 1:K-2], " + ")
+    fstr = "N ~ 1 + x + zerocorr($terms | obs_ind)"
+    formula = eval(Meta.parse("@formula($fstr)"))
+
+    # Perform a few PIRLS iterations to find reasonable starting values for β:
+    Logging.with_logger(ConsoleLogger(stderr, Logging.Error)) do
+        mixedmodel = GeneralizedLinearMixedModel(formula, df, Poisson());
+        mixedmodel.optsum.maxtime = 0.5;
+        fit!(mixedmodel; fast=true, verbose=false);
+    end
+
+    # Extract Point estimate
+    μ_opt::Vector{T} = vcat(fixef(mixedmodel), vec(ranef(mixedmodel)[1]))
+
+    ranef_std_nt = VarCorr(mixedmodel).σρ.obs_ind.σ
+    variance_component_names = [Symbol("z$k") for k in 1:K-2]
+    Σ_opt = zeros(T, (K, K))
+
+    Σ_opt[1:2, 1:2] = vcov(mixedmodel)
+
+    for k in eachindex(variance_component_names)
+        Σ_opt[k+2, k+2] = ranef_std_nt[Symbol("z$k")]^2
+    end
+
+    b_σ_opt = T(1) * s_σ + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ[3:end])) / 2
     
-    return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt, b_a_opt = b_a_opt)
+    return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt)
 end
 
 function _variational_inference(shs::SHSModel{T, A, D}, init_params::NamedTuple, max_iter::Int, rtol::Real) where {T, A, D}
     (; data, bs, σ_β, s_σ) = shs
     (; x, n, N, C, LZ, bounds) = data
+    (; μ_opt, Σ_opt, b_σ_opt) = init_params
 
     K = length(bs)
     # These stay constant throughout the optimization procedure
@@ -75,20 +106,20 @@ function _variational_inference(shs::SHSModel{T, A, D}, init_params::NamedTuple,
     a_σ_opt = T(K - 1) / 2
 
     for _ in 1:max_iter
+        # Update q(a)
+        b_a_opt = a_σ_opt / b_σ_opt + 1/s_σ^2
+
+        # Update q(σ²)
+        b_σ_new = a_a_opt / b_a_opt + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ[3:end])) / 2
+
+        relative_change = abs(b_σ_opt/b_σ_new - 1)
+
         # Update q(β)
         w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
         Λ = Diagonal(vcat(fill(1/σ_β^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
         inv_Σ_opt =  + Λ
         Σ_opt = inv()
         μ_opt = μ_opt + Σ_opt * ()
-
-        # Update q(a)
-        b_a_opt = a_σ_opt / b_σ_opt + 1/s_σ^2
-
-        # Update q(σ²)
-        b_σ_new = a_a_opt / b_σ_opt + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ[3:end])) / 2
-
-        relative_change = abs(b_σ_opt/b_σ_new - 1) 
 
         # Check convergence criterion
         b_σ_opt = b_σ_new

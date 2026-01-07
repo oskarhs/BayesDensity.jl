@@ -9,6 +9,7 @@ projects = ["test"]
 [deps]
 BSplineKit = "093aae92-e908-43d7-9660-e50ee39d5a0a"
 BayesDensityCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MixedModels = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
@@ -20,6 +21,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 BSplineKit = "0.19.1"
 BayesDensityCore = "0.1.0"
+DataFrames = "1.8.1"
 Distributions = "0.25.0"
 LinearAlgebra = "1.0.0"
 MixedModels = "5.1.0"
