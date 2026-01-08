@@ -11,10 +11,10 @@ The first step to estimating a density with this package is to create a model ob
 AbstractBayesDensityModel
 ```
 
-In order to create a model object, we call the corresponding contructor with the data and other positional- and keyword arguments. For example, we can create a [`BSMModel`](@ref) object with default hyperparameters as follows:
+In order to create a model object, we call the corresponding contructor with the data and other positional- and keyword arguments. For example, we can create a [`BSplineMixture`](@ref) object with default hyperparameters as follows:
 ```@repl
 using BayesDensity
-bsm = BSMModel(randn(1000))
+bsm = BSplineMixture(randn(1000))
 ```
 For more detailed information on the arguments supported by each specific Bayesian density model we refer the reader to the METHODS DOCUMENTATION.
 
@@ -26,7 +26,7 @@ In order to calculate ``f(\cdot)`` for a given ``\boldsymbol{\eta}``, each Bayes
 pdf(::AbstractBayesDensityModel, ::Any, ::Real)
 ```
 
-For Models that only implement the signature `pdf(::BayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
+For Models that only implement the signature `pdf(::AbstractBayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
 
 ### Evaluating the cdf
 

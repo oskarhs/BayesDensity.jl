@@ -17,9 +17,9 @@ After installation, `using BayesDensity` will load all of the estimators impleme
 
 Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
 ```julia
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSM.jl")
+Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSplineMixture.jl")
 ```
-Each of the density estimators can then be accessed separately via e.g. `using BayesDensityBSM`.
+Each of the density estimators can then be accessed separately via e.g. `using BayesDensityBSplineMixture`.
 
 ## Quick start
 To illustarte the basic use of the package, we show one can fit a B-spline mixture model to a simulated dataset.
@@ -33,7 +33,7 @@ d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
 x = rand(rng, d_true, 1000)
 
 # Create a B-Spline mixture model object:
-bsm = BSMModel(x)
+bsm = BSplineMixture(x)
 ```
 
 Having specified a model for the data, we can perform posterior inference through Markov chain Monte Carlo methods or variational inference:

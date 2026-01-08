@@ -29,11 +29,13 @@ Using 5001 binned observations on a regular grid consisting of 1187 bins.
 function varinf(::AbstractBayesDensityModel) end
 
 """
-    AbstractVIPosterior
+    AbstractVIPosterior{T<:Real}
 
 Abstract super type representing the variational posterior distribution of `AbstractBayesDensityModel`
 """
-abstract type AbstractVIPosterior end
+abstract type AbstractVIPosterior{T<:Real} end
+
+Base.eltype(::AbstractVIPosterior{T}) where {T} = T
 
 """
     sample(

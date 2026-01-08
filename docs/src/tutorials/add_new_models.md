@@ -48,10 +48,38 @@ p(\boldsymbol{z}\, |\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \prod_{i=1}^
 ```
 Hence, we see that ``z_1, \ldots, z_n`` are independent given ``\boldsymbol{\theta}, \boldsymbol{x}``, with ``p(z_i = k \,|\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \theta_k\, \varphi_k(x_i)``.
 
+### Variational inference
+For the Bernstein density , it is relatively straightforward to implement a mean-field variational inference scheme. Here, we approximate the joint posterior ``p(\boldsymbol{\theta}, \boldsymbol{z}\,|\, \boldsymbol{x})`` via a distribution ``q`` which satisfies
+```math
+q(\boldsymbol{\theta}, \boldsymbol{z}) = q(\boldsymbol{\theta})\, q(\boldsymbol{z}).
+```
+It can be shown (see e.g. [Ormerod2010explaining](@citet)) that the optimal ``q`` densities are given by
+```math
+\begin{aligned}
+  q(\boldsymbol{\theta}) &\propto \exp\big\{\mathbb{E}_{\boldsymbol{z}}\big[\log p(\boldsymbol{\theta}, \boldsymbol{z})\big]\big\},\\
+  q(\boldsymbol{z}) &\propto \exp\big\{\mathbb{E}_{\boldsymbol{\theta}}\big[\log p(\boldsymbol{\theta}, \boldsymbol{z})\big]\big\},
+\end{aligned}
+```
+where the expectations are taken with respect to ``q(\boldsymbol{\theta})`` and ``q(\boldsymbol{z})``, respectively. This result leads to the iterative coordinate-wise ascent variational inference algorithm (CAVI) for finding the optimal ``q`` densities, where we cyclically update ``q(\boldsymbol{\theta})`` and ``q(\boldsymbol{z})`` until some convergence criterion has been met. An oft-used convergence criterion for this purpose is the evidence lower bound, (ELBO):
+```math
+\mathrm{ELBO}(q) = \exp \Big\{\mathbb{E}_{\boldsymbol{\theta}, \boldsymbol{z}}\Big(\log \frac{p(\boldsymbol{x}, \boldsymbol{\theta}, \boldsymbol{z})}{q(\boldsymbol{\theta}, \boldsymbol{z})}\Big)\Big\}.
+```
+
+For our particular example it can be shown that the optimal ``q`` densities are:
+- ``q(\boldsymbol{\theta})`` is the ``\mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{r})``-density, where ``r_k = \sum_{i=1}^n q(z_i = k)``.
+- ``q(\boldsymbol{z})`` is the pmf of a categorical distribution on ``\{1,2,\ldots, K\}`` with ``q(z_i = k) \propto \varphi_k(x_i)\, \exp\big\{\psi(a_k + r_k)\big\}``, where ``\psi(\cdot)`` denotes the [digamma function](https://en.wikipedia.org/wiki/Digamma_function).
+
+An expression for the ELBO of this model is as follows:
+```math
+\begin{aligned}
+  \mathrm{ELBO}(q) &= \sum_{i=1}^n \sum_{k=1}^K q(z_i = k) \big\{\log b_k(x_i) - \log q(z_i = k)\big\} \\ &+ \sum_{k=1}^K \big\{\log \Gamma(a + r_k) - \log \Gamma(a)\big\} \\ &- \log \Gamma(aK+n) + \log \Gamma(aK)
+\end{aligned}
+```
+
 ## Implementation
 We start by importing the required packages:
 ```@example Bernstein; continued = true
-using BayesDensityCore, Random, Distributions, StatsBase
+using BayesDensityCore, Distributions, Random, StatsBase
 ```
 
 ### Model struct and pdf
@@ -59,16 +87,16 @@ using BayesDensityCore, Random, Distributions, StatsBase
 The first step to implementing the Bernstein density model in a `BayesDensity`-compatible way is to define a model struct which is a subtype of [`AbstractBayesDensityModel`](@ref): 
 
 ```@example Bernstein; continued = true
-struct BDModel{T<:Real, D} <: AbstractBayesDensityModel{T}
+struct BernsteinDensity{T<:Real, D<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::D # NamedTuple holding data
     K::Int  # Basis dimension
-    a::T    # Dirichlet prior concentration parameter.
-    function BDModel{T}(x::AbstractVector{<:Real}, K::Int; a::Real=1.0) where {T<:Real}
+    a::T    # Symmetric Dirichlet parameter.
+    function BernsteinDensity{T}(x::AbstractVector{<:Real}, K::Int; a::Real=1.0) where {T<:Real}
         data = (x = x, n = length(x))
         return new{T, typeof(data)}(data, K, T(a))
     end
 end
-BDModel(args...; kwargs...) = BDModel{Float64}(args...; kwargs...) # For convenience
+BernsteinDensity(args...; kwargs...) = BernsteinDensity{Float64}(args...; kwargs...) # For convenience
 ```
 
 Next, we implement a method that calculates the pdf of the model when the parameters of the model are given.
@@ -76,7 +104,7 @@ The [`pdf`](@ref) method should always receive the model object as the first arg
 In the implementation presented below, we take in a NamedTuple with a single field named `θ` which represents the mixture probabilities.
 
 ```@example Bernstein; continued = true
-function Distributions.pdf(bdm::BDModel{T, D}, params::NamedTuple, t::S) where {T<:Real, D, S<:Real}
+function Distributions.pdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S) where {T<:Real, D, S<:Real}
     K = bdm.K
     (; θ) = params
     f = zero(promote_type(T, S))
@@ -88,14 +116,15 @@ end
 ```
 
 The `BayesDensityCore` module provides generic fallback methods for the cases where `params` is given as a Vector of NamedTuples and when `t` is a vector.
-However, as noted in the general API, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
+However, as noted in the general API, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points,
+as it is often possible to implement batch evaluation more efficiently, e.g. by leveraging BLAS calls instead of loops, when the parameters and the evaluation grid are provided in batches.
 
 In general, it is good practice to also implement the [`support`](@ref) and [`hyperparams`](@ref) methods for new models.
 Note that for the Bernstein density model, the support is always equal to the unit interval, and the only hyperparameter is the scalar value `a` (here, we treat `K` as fixed).
 Hence, the following provides appropriate implementations of the aforementioned methods:
 ```@example Bernstein; continued = true
-BayesDensityCore.support(::BDModel{T, D}) where {T, D} = (T(0.0), T(1.0))
-BayesDensityCore.hyperparams(bdm::BDModel) = (a = bdm.a,)
+BayesDensityCore.support(::BernsteinDensity{T, D}) where {T, D} = (T(0.0), T(1.0))
+BayesDensityCore.hyperparams(bdm::BernsteinDensity) = (a = bdm.a,)
 ```
 
 ### Gibbs sampler
@@ -110,7 +139,7 @@ The samples generated during the MCMC routine should be stored in a subtype of `
 Since our implementation of the `pdf` method takes in a NamedTuple as the `parameters` argument, we store the generated samples in a vector of NamedTuples in the implementation shown below:
 
 ```@example Bernstein; continued = true
-function StatsBase.sample(rng::AbstractRNG, bdm::BDModel{T, D}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000)) where {T, D}
+function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T, D}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000)) where {T, D}
     (; K, data, a) = bdm
     (; x, n) = data
 
@@ -149,7 +178,7 @@ rng = Xoshiro(1) # for reproducibility
 x = rand(rng, d_true, 3_000)
 
 K = 25
-bdm = BDModel(x, K) # Create Bernstein density model object (a = 1)
+bdm = BernsteinDensity(x, K) # Create Bernstein density model object (a = 1)
 ps = sample(rng, bdm, 3_000; n_burnin=500) # Run MCMC
 
 median(ps, 0.5) # Compute the posterior median of f(0.5)
@@ -162,7 +191,146 @@ t = LinRange(0, 1, 1001) # Grid for plotting
 
 fig = Figure()
 ax = Axis(fig[1,1], xlabel="x", ylabel="Density")
-plot!(ax, ps, t, label="Bernstein estimate") # Plot the posterior mean and credible bands:
+plot!(ax, ps, t, label="MCMC: Bernstein estimate") # Plot the posterior mean and credible bands:
+lines!(ax, t, pdf(d_true, t), label="True density", color=:black)
+axislegend(ax, framevisible=false)
+fig
+```
+
+### Mean-field variational inference
+Before getting started on implementing a variational inference algorithm, we first need to define a new struct that represents the variational posterior distribution.
+To make the resulting variational posterior compatible with the `BayesDensityCore` interface, the new struct should be a subtype of [`AbstractVIPosterior`](@ref).
+
+Although not strictly required in order to make the variational posterior struct `BayesDensity`-compatible,
+it is customary to have the variational posterior distribution store the variational densities as `Distributions`-objects,
+in addition to storing the original model object.
+
+The implementation below stores the variational density ``q(\boldsymbol{\theta})``, along with the Bernstein-density model object.
+We also create a default constructor which takes in the vector ``\boldsymbol{r}`` resulting from the CAVI algorithm, along with the original model object:
+
+```@example Bernstein; continued=true
+struct BernsteinDensityVIPosterior{T<:Real, D<:Dirichlet{T}, M<:BernsteinDensity} <: AbstractVIPosterior{T}
+    q_θ::D
+    model::M
+    function BernsteinDensityVIPosterior{T}(r::AbstractVector{<:Real}, model::M) where {T<:Real, M<:BernsteinDensity}
+        a = hyperparams(model).a
+        K = model.K
+        q_θ = Dirichlet{T}(fill(a, K) + r)
+        return new{T, Dirichlet{T}, M}(q_θ, model)
+    end
+end
+```
+
+It is also recommended to implement the [`model`](@ref) method, so that the user can easily extract the model to which the variational posterior was fitted:
+```@example Bernstein; continued=true
+BayesDensityCore.model(vip::BernsteinDensityVIPosterior) = vip.model
+```
+
+Next, we need to implement a method for generating samples from the variational posterior distribution, i.e. sampling from ``q(\boldsymbol{\theta})``.
+This is achieved by implementing the [`sample`](@ref) method:
+```@example Bernstein; continued=true
+function StatsBase.sample(rng::AbstractRNG, vip::BernsteinDensityVIPosterior{T,D, M}, n_samples::Int) where {T, D, M}
+    q_θ = vip.q_θ
+    samples = Vector{NamedTuple{(:θ,), Tuple{Vector{Float64}}}}(undef, n_samples)
+    for m in 1:n_samples
+        θ = rand(rng, q_θ)
+        samples[m] = (θ = θ,)
+    end
+    return PosteriorSamples{T}(samples, model(vip), n_samples, 0)
+end
+```
+
+Having implemented a struct for storing the variational posterior, we can now turn our attention to the optimization procedure itself.
+To start, we implement the ELBO, which we will need to determine convergence later.
+Note that in the implementation below, we store the values of ``q(z_i = k)`` in a ``n \times K`` matrix ``\omega``.
+```@example Bernstein; continued=true
+function Bernstein_ELBO(model::BernsteinDensity{T, D}, r::AbstractVector{<:Real}, ω::AbstractMatrix{<:Real}) where {T, D}
+    (; data, K, a) = model
+    (; x, n) = data
+    ELBO = loggamma(a*K) - loggamma(a*K+n)
+    ELBO += sum(loggamma.(r .+ a)) - K*loggamma(a)
+    for k in 1:K
+        for i in 1:n
+            ELBO += ω[i,k]*(logpdf(Beta(k, K - k + 1), x[i]) - log(ω[i,k]))
+        end
+    end
+    return ELBO
+end
+```
+
+Finally, we are ready to implement the optimization procedure itself by overloading [`varinf`](@ref).
+```@example Bernstein; continued=true
+using SpecialFunctions # For the digamma-function
+
+function BayesDensityCore.varinf(model::BernsteinDensity{T, D}; max_iter::Int=1000, rtol::Real=1e-4) where {T, D}
+    (; data, K, a) = model
+    (; x, n) = data
+
+    # Initialize the latent variables ω[i,k] = q(z_i = k) to 1/K:
+    ω = fill(T(1/K), (n, K))
+    r = fill(a + n/K, K)
+
+    # CAVI optimization loop
+    ELBO_prev = T(0)
+    ELBO = T(0)
+    converged = false
+    iter = 1
+    while !converged && iter <= max_iter
+        # Update q(θ)
+        r = fill(a, K) + vec(sum(ω, dims=1))
+
+        # Update q(z)
+        for i in 1:n
+            # Compute q(z_i = k) up to proportionality
+            for k in 1:K
+               ω[i,k] = pdf(Beta(k, K - k + 1), x[i]) * exp(digamma(a + r[k])) 
+            end
+            # Normalize so that the rows of ω sum to 1:
+            ω[i,:] = ω[i,:] / sum(ω[i,:])
+        end
+
+        # Check if the procedure has converged:
+        ELBO = Bernstein_ELBO(model, r, ω)
+
+        # Run at least two iterations
+        converged = (abs(ELBO_prev - ELBO) / ELBO_prev <= rtol) && iter > 1
+        ELBO_prev = ELBO
+        iter += 1
+    end
+
+    # Print a warning if the procedure fails to converge within the maximum number of iterations
+    if !converged
+        @warn "Maximum number of iterations reached."
+    end
+
+    return BernsteinDensityVIPosterior{T}(r, model)
+end
+```
+
+Having implemented the `varinf` method, we can now perform variational inference for the `BernsteinDensity` model just as easily as for any other `BayesDensityCore`-compatible model.
+The example below shows how to fit a variational posterior to the Bernstein model for a simulated dataset:
+
+```@example Bernstein
+d_true = Kumaraswamy(2, 5) # Simulate some data from a density supported on [0, 1]
+rng = Xoshiro(1) # for reproducibility
+x = rand(rng, d_true, 3_000)
+
+K = 25
+bdm = BernsteinDensity(x, K) # Create Bernstein density model object (a = 1)
+vip = varinf(bdm) # Compute the variational posterior.
+
+mean(vip, 0.2) # Compute the posterior mean of f(0.2)
+```
+
+We can also vizualize the variational posterior distribution of ``f(t)`` by plotting the posterior mean and a 95 % pointwise credible interval:
+
+```@example Bernstein
+using CairoMakie
+t = LinRange(0, 1, 1001) # Grid for plotting
+
+fig = Figure()
+ax = Axis(fig[1,1], xlabel="x", ylabel="Density")
+plot!(ax, vip, t, label="VI: Bernstein estimate") # Plot the posterior mean and credible bands:
 lines!(ax, t, pdf(d_true, t), label="True density", color=:black)
 axislegend(ax, framevisible=false)
 fig
@@ -170,6 +338,4 @@ fig
 
 ### TODOs
 
-- TODO: Write down the  VI updates. Should probably also find the ELBO in the VI case.
 - TODO: Add plots where we show the fallback cdf method, once this has been implemented.
-- TODO: Write the actual tutorial. First as a separate script. Then just copy the contents here.

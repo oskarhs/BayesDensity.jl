@@ -1,4 +1,4 @@
-function StatsBase.sample(rng::AbstractRNG, shs::SHSModel, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100))
+function StatsBase.sample(rng::AbstractRNG, shs::HistSmoother, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100))
     if !(1 ≤ n_samples ≤ Inf)
         throw(ArgumentError("Number of samples must be a positive integer."))
     end
@@ -11,10 +11,10 @@ function StatsBase.sample(rng::AbstractRNG, shs::SHSModel, n_samples::Int; n_bur
     return _sample_posterior(rng, shs, n_samples, n_burnin)
 end
 
-function _sample_posterior(rng::AbstractRNG, shs::SHSModel{T, A, D}, n_samples::Int, n_burnin::Int) where {T<:Real, A, D}
+function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, n_samples::Int, n_burnin::Int) where {T<:Real, A, D}
     # Unpack model:
     (; data, bs, σ_β, s_σ) = shs
-    (; x, n, N, C, LZ, bounds) = data
+    (; x, n, x_grid, N, C, LZ, bounds) = data
     σ_β2 = σ_β^2
 
     n_bins = length(N)

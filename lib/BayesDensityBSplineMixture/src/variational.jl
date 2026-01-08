@@ -1,40 +1,41 @@
 """
-    BSMVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSMModel} <: AbstractVIPosterior
+    BSplineMixtureVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSplineMixture} <: AbstractVIPosterior{T}
 
-Struct representing the variational posterior distribution of a [`BSMModel`](@ref).
+Struct representing the variational posterior distribution of a [`BSplineMixture`](@ref).
 
 # Fields
 * `q_β`: Distribution representing the optimal variational density q*(β).
 * `q_τ`: Distribution representing the optimal variational density q*(τ²).
 * `q_δ`: Vector of distributions, with element `k` corresponding to the optimal variational density q*(δₖ²).
-* `bsm`: The `BSMModel` to which the variational posterior was fit.
+* `bsm`: The `BSplineMixture` to which the variational posterior was fit.
 
 # Examples
 ```julia
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> vip = varinf(BSMModel(x))
-BSMVIPosterior{Float64} vith variational densities:
+julia> vip = varinf(BSplineMixture(x))
+BSplineMixtureVIPosterior{Float64} vith variational densities:
  q_β::Distributions.MvNormalCanon{Float64},
  q_τ::Distributions.InverseGamma{Float64},
  q_δ::Vector{Distributions.InverseGamma{Float64}}.
 Model:
-200-dimensional BSMModel{Float64}:
+200-dimensional BSplineMixture{Float64}:
 Using 5001 binned observations on a regular grid consisting of 1187 bins.
- basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
- order:  4
- knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
+ support: (-0.05, 1.05)
+Hyperparameters:
+ a_τ = 1.0, b_τ = 0.001
+ a_δ = 0.5, b_δ = 0.5
 
 julia> mean(Random.Xoshiro(1), vip, 0.2)
 0.35127443392229263
 ```
 """
-struct BSMVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSMModel} <: AbstractVIPosterior
+struct BSplineMixtureVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSplineMixture} <: AbstractVIPosterior{T}
     q_β::A
     q_τ::B
     q_δ::Vector{B}
     bsm::M
-    function BSMVIPosterior{T}(μ_opt::Vector{T}, inv_Σ_opt::A, a_τ_opt::T, b_τ_opt::T, a_δ_opt::Vector{T}, b_δ_opt::Vector{T}, bsm::M) where {T<:Real, A<:AbstractMatrix{T}, M<:BSMModel}
+    function BSplineMixtureVIPosterior{T}(μ_opt::Vector{T}, inv_Σ_opt::A, a_τ_opt::T, b_τ_opt::T, a_δ_opt::Vector{T}, b_δ_opt::Vector{T}, bsm::M) where {T<:Real, A<:AbstractMatrix{T}, M<:BSplineMixture}
         K = length(basis(bsm))
         q_β = MvNormalCanon(inv_Σ_opt * μ_opt, inv_Σ_opt)
         q_τ = InverseGamma(a_τ_opt, b_τ_opt)
@@ -46,10 +47,10 @@ struct BSMVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSMMo
     end
 end
 
-Base.eltype(::BSMVIPosterior{T, A, B, M}) where {T, A, B, M} = T
-BayesDensityCore.model(vip::BSMVIPosterior) = vip.bsm
+Base.eltype(::BSplineMixtureVIPosterior{T, A, B, M}) where {T, A, B, M} = T
+BayesDensityCore.model(vip::BSplineMixtureVIPosterior) = vip.bsm
 
-function Base.show(io::IO, ::MIME"text/plain", vip::BSMVIPosterior{T, A, B, M}) where {T, A, B, M}
+function Base.show(io::IO, ::MIME"text/plain", vip::BSplineMixtureVIPosterior{T, A, B, M}) where {T, A, B, M}
     println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
     println(io, " q_β::", A, ",")
     println(io, " q_τ::", B, ",")
@@ -59,9 +60,9 @@ function Base.show(io::IO, ::MIME"text/plain", vip::BSMVIPosterior{T, A, B, M}) 
     nothing
 end
 
-Base.show(io::IO, vip::BSMVIPosterior) = show(io, MIME("text/plain"), vip)
+Base.show(io::IO, vip::BSplineMixtureVIPosterior) = show(io, MIME("text/plain"), vip)
 
-function StatsBase.sample(rng::AbstractRNG, vip::BSMVIPosterior{T, A, B, M}, n_samples::Int) where {T<:Real, A, B, M}
+function StatsBase.sample(rng::AbstractRNG, vip::BSplineMixtureVIPosterior{T, A, B, M}, n_samples::Int) where {T<:Real, A, B, M}
     (; q_β, q_τ, q_δ, bsm) = vip
     K = length(basis(bsm))
     samples = Vector{NamedTuple{(:spline_coefs, :θ, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
@@ -84,29 +85,29 @@ end
 
 """
     varinf(
-        bsm::BSMModel;
-        init_params=get_default_initparams(bsm),
+        bsm::BSplineMixture;
+        init_params::NamedTuple=get_default_initparams(bsm),
         max_iter::Int=1000
-    ) -> BSMVIPosterior{<:Real}
+    ) -> BSplineMixtureVIPosterior{<:Real}
 
-Find a variational approximation to the posterior distribution of a [`BSMModel`](@ref) using mean-field variational inference.
+Find a variational approximation to the posterior distribution of a [`BSplineMixture`](@ref) using mean-field variational inference.
 
 # Arguments
-* `bsm`: The `BSMModel` whose posterior we want to approximate.
+* `bsm`: The `BSplineMixture` whose posterior we want to approximate.
 
 # Keyword arguments
-* `init_params`: Initial values of the VI parameters.
+* `init_params`: Initial values of the VI parameters `μ_opt` `inv_Σ_opt`, `b_τ_opt` and `b_δ_opt`, supplied as a NamedTuple.
 * `max_iter`: Maximal number of VI iterations. Defaults to `1000`.
 
 # Returns
-* `vip`: A [`BSMVIPosterior`](@ref) object representing the variational posterior.
+* `vip`: A [`BSplineMixtureVIPosterior`](@ref) object representing the variational posterior.
 """
-function BayesDensityCore.varinf(bsm::BSMModel; init_params=get_default_initparams(bsm), max_iter::Int=1000) # Also: tolerance parameters
+function BayesDensityCore.varinf(bsm::BSplineMixture; init_params=get_default_initparams(bsm), max_iter::Int=1000) # Also: tolerance parameters
     return _variational_inference(bsm, init_params, max_iter)
 end
 
 # Can do something more sophisticated here at a later point in time if we get a good idea.
-function get_default_initparams(bsm::BSMModel{T, A, NT}) where {T, A, NT}
+function get_default_initparams(bsm::BSplineMixture{T, A, NT}) where {T, A, NT}
     K = length(basis(bsm))
     P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
     (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
@@ -122,7 +123,7 @@ function get_default_initparams(bsm::BSMModel{T, A, NT}) where {T, A, NT}
     return (μ_opt = μ_opt, inv_Σ_opt = inv_Σ_opt, b_τ_opt = b_τ_opt, b_δ_opt = b_δ_opt)
 end
 
-function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int) where {T, A, Vals, NT}
+function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int) where {T, A, Vals, NT}
     bs = basis(bsm)
     K = length(bs)
     (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
@@ -185,10 +186,10 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         inv_Σ_opt = Q + Diagonal(E_ω)
         μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
     end
-    return BSMVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
+    return BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end
 
-function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int) where {T, A, Vals, NT}
+function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int) where {T, A, Vals, NT}
     bs = basis(bsm)
     K = length(bs)
     (; x, log_B, b_ind, μ, P, n) = bsm.data
@@ -251,5 +252,5 @@ function _variational_inference(bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_i
         inv_Σ_opt = Q + Diagonal(E_ω)
         μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
     end
-    return BSMVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
+    return BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end

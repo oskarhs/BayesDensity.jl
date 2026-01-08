@@ -1,34 +1,33 @@
-name = "BayesDensityBSM"
-uuid = "dc1a60f9-7a32-4f65-8b9e-ee7db92abd95"
+name = "BayesDensityHistSmoother"
+uuid = "4ec5b509-5e49-418c-a128-3e7a20b6d93e"
 version = "0.1.0"
-authors = ["Oskar Høgberg Simensen"]
+authors = ["oskarhs <oskarhsimensen@gmail.com>"]
 
 [workspace]
 projects = ["test"]
 
 [deps]
 BSplineKit = "093aae92-e908-43d7-9660-e50ee39d5a0a"
-BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
 BayesDensityCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-PolyaGammaHybridSamplers = "c636ee4f-4591-4d8c-9fae-2dea21daa433"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+MixedModels = "ff71e718-51f3-5ec2-a782-8ffcbfa3c316"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-SelectedInversion = "043bf095-3f01-458a-9f1c-8cf4448fe908"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 BSplineKit = "0.19.0"
-BandedMatrices = "1.0.0"
 BayesDensityCore = "0.1.0"
+DataFrames = "1.0.0"
 Distributions = "0.25.0"
 LinearAlgebra = "1.0.0"
-PolyaGammaHybridSamplers = "1.0.0"
+Logging = "1.0.0"
+MixedModels = "5.0.0"
 Random = "1.0.0"
 Reexport = "1.0.0"
-SelectedInversion = "0.1.0"
 SparseArrays = "1.0.0"
 StatsBase = "0.34.0"
-julia = "1.12"

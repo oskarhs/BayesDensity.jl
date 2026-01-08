@@ -1,21 +1,17 @@
 """
-    SHSModel{T<:Real} <: AbstractBayesDensityModel{T}
+    HistSmoother{T<:Real} <: AbstractBayesDensityModel{T}
 
 Struct representing a spline histogram smoothing model.
 
 # Constructors
     
-    SHSModel(
-        x::AbstractVector{<:Real},
-        K::Int = get_default_splinedim(x);
-        kwargs...
-    ) 
+    HistSmoother(x::AbstractVector{<:Real}; kwargs...) 
 
 # Arguments
 * `x`: The data vector.
-* `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
 
 # Keyword arguments
+* `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to `52`.
 * `bounds`: A tuple giving the support of the B-spline mixture model.
 * `n_bins`: Number of bins used to construct the histogram likelihood. Defaults to `400`.
 * `σ_β`: Scale hyperparameter for 0th and 1st order (fixed effect) spline terms. Defaults to `1000.0`.
@@ -28,11 +24,11 @@ Struct representing a spline histogram smoothing model.
 ```julia
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
-julia> shs = SHSModel(x)
-52-dimensional SHSModel{Float64}:
+julia> shs = HistSmoother(x)
+52-dimensional HistSmoother{Float64}:
 Using 5000 binned observations with 400 bins.
 
-julia> shs = SHSModel(x, 80; σ_β = 1e5);
+julia> shs = HistSmoother(x; K = 80 σ_β = 1e5);
 ```
 
 # Extended help
@@ -46,12 +42,12 @@ Note that the number of bins only affects the model fitting process, and does ot
 The hyperparameter `s_β` contols the smoothness of the resulting density estimates.
 Setting this to a smaller value leads to smoother estimates.
 """
-struct SHSModel{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: AbstractBayesDensityModel{T}
+struct HistSmoother{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::D
     bs::A
     σ_β::T
     s_σ::T
-    function SHSModel{T}(x::AbstractVector{<:Real}, K::Int=52; n_bins::Int=400, bounds::Tuple{<:Real, <:Real}=get_default_bounds(x), σ_β::Real=1e3, s_σ::Real=1e3) where {T<:Real}
+    function HistSmoother{T}(x::AbstractVector{<:Real}; K::Int=52, n_bins::Int=400, bounds::Tuple{<:Real, <:Real}=get_default_bounds(x), σ_β::Real=1e3, s_σ::Real=1e3) where {T<:Real}
         check_shskwargs(x, n_bins, bounds, σ_β, s_σ)
         n = length(x)
         T_x = T.(x)
@@ -79,32 +75,38 @@ struct SHSModel{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: AbstractBaye
         x_grid = 0.5 * (bin_grid[1:end-1] .+ bin_grid[2:end]) # midpoints of bin edges
         Z = demmler_reinsch_basis_matrix(x_grid, bs, LZ)
         C = hcat(fill(T(1), n_bins), x_grid, Z)
-        data = (x = T_x, n = n, N = N, C = C, LZ = LZ, bounds = bounds)
+        data = (x = T_x, n = n, x_grid = x_grid, N = N, C = C, LZ = LZ, bounds = bounds)
         return new{T, typeof(bs), typeof(data)}(data, bs, T(σ_β), T(s_σ))
     end
 end
-SHSModel(args...; kwargs...) = SHSModel{Float64}(args...; kwargs...)
+HistSmoother(args...; kwargs...) = HistSmoother{Float64}(args...; kwargs...)
 
-Base.eltype(::SHSModel{T, A, D}) where {T, A, D} = T
+Base.eltype(::HistSmoother{T, A, D}) where {T, A, D} = T
 
-function Base.:(==)(shs1::SHSModel, shs2::SHSModel)
-    return shs1.bs == shs2.bs && shs1.data == shs2.data && hyperparams(bsm1) == hyperparams(bsm2)
+function Base.:(==)(shs1::HistSmoother, shs2::HistSmoother)
+    return shs1.bs == shs2.bs && shs1.data == shs2.data && hyperparams(shs1) == hyperparams(shs2)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", shs::SHSModel{T, A, D}) where {T, A, D}
+function Base.show(io::IO, ::MIME"text/plain", shs::HistSmoother{T, A, D}) where {T, A, D}
     println(io, length(shs.bs), "-dimensional ", nameof(typeof(shs)), '{', T, "}:")
     println(io, "Using ", shs.data.n, " binned observations with ", length(shs.data.N), " bins.")
+    let io = IOContext(io, :compact => true, :limit => true)
+        println(io, " support: ", BayesDensityCore.support(shs))
+        println(io, "Hyperparameters: ")
+        println(io, " σ_β = ", shs.σ_β)
+        print(io, " s_σ = ", shs.s_σ)
+    end
     nothing
 end
 
-Base.show(io::IO, shs::SHSModel) = show(io, MIME("text/plain"), shs)
+Base.show(io::IO, shs::HistSmoother) = show(io, MIME("text/plain"), shs)
 
 """
-    support(shs::SHSModel) -> NTuple{2, <:Real}
+    support(shs::HistSmoother) -> NTuple{2, <:Real}
 
 Get the support of the spline histogram smoother model `shs`.
 """
-function BayesDensityCore.support(shs::SHSModel)
+function BayesDensityCore.support(shs::HistSmoother)
     bounds = shs.data.bounds
     smin = bounds[1] - 0.05 * (bounds[2] - bounds[1])
     smax = bounds[2] + 0.05 * (bounds[2] - bounds[1])
@@ -113,47 +115,47 @@ end
 
 """
     hyperparams(
-        shs::SHSModel{T}
+        shs::HistSmoother{T}
     ) where {T} -> @NamedTuple{σ_β::T, s_σ::T}
 
 Returns the hyperparameters of the spline histogram smoother `shs` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(shs::SHSModel) = (σ_β = shs.σ_β, s_σ = shs.s_σ)
+BayesDensityCore.hyperparams(shs::HistSmoother) = (σ_β = shs.σ_β, s_σ = shs.s_σ)
 
 """
     pdf(
-        shs::SHSModel,
+        shs::HistSmoother,
         params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
     pdf(
-        shs::SHSModel,
+        shs::HistSmoother,
         params::AbstractVector{NamedTuple},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate f(t | η) for the SHSModel `shs` when the model parameters are equal to η.
+Evaluate f(t | η) for the HistSmoother `shs` when the model parameters are equal to η.
 
 The named tuple should contain a field named `:β`.
 If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
 Alternatively, if `parameters` contains the field `:norm`, then this value is used instead.
 """
-function Distributions.pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
+function Distributions.pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
     return _pdf(shs, params, [t], Val(:norm in Names))[1]
 end
-function Distributions.pdf(shs::SHSModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
+function Distributions.pdf(shs::HistSmoother, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
     return _pdf(shs, params, [t], Val(:norm in Names))
 end
-function Distributions.pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
+function Distributions.pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
     return _pdf(shs, params, t, Val(:norm in Names))
 end
-function Distributions.pdf(shs::SHSModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
+function Distributions.pdf(shs::HistSmoother, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
     return _pdf(shs, params, t, Val(:norm in Names))
 end
 
 # If normalization constant is provided, we do not have to compute it
-function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{true}) where {Names, Vals<:Tuple}
+function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{true}) where {Names, Vals<:Tuple}
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     bs_min, bs_max = boundaries(shs.bs)
@@ -165,7 +167,7 @@ function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{
     linpreds = C * params.β
     return exp.(linpreds) / (l1_norm*(bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
-function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
@@ -187,7 +189,7 @@ function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, V
 end
 
 # Normalization constant not provided, so it must be computed first.
-function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{false}) where {Names, Vals<:Tuple}
+function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{false}) where {Names, Vals<:Tuple}
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     bs_min, bs_max = boundaries(shs.bs)
@@ -199,7 +201,7 @@ function _pdf(shs::SHSModel, params::NamedTuple{Names, Vals}, t::AbstractVector{
     linpreds = C * params.β
     return exp.(linpreds) / (l1_norm * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
-function _pdf(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])

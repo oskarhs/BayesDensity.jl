@@ -1,25 +1,21 @@
 """
-    BSMModel{T<:Real} <: AbstractBayesDensityModel{T}
+    BSplineMixture{T<:Real} <: AbstractBayesDensityModel{T}
     
 Struct representing a B-spline mixture model.
 
-The BSMModel struct is used to generate quantities that are needed for the model fitting procedure.
+The BSplineMixture struct is used to generate quantities that are needed for the model fitting procedure.
 
 # Constructors
     
-    BSMModel(
-        x::AbstractVector{<:Real},
-        K::Int = get_default_splinedim(x);
-        kwargs...
-    ) 
+    BSplineMixture(x::AbstractVector{<:Real}, kwargs...) 
 
 # Arguments
 * `x`: The data vector.
-* `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
 
 # Keyword arguments
+* `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
 * `bounds`: A tuple giving the support of the B-spline mixture model.
-* `n_bins`: Lower bound on the number of bins used when fitting the `BSMModel` to data. Binned fitting can be disabled by setting this equal to `nothing`. Defaults to `1000`.
+* `n_bins`: Lower bound on the number of bins used when fitting the `BSplineMixture` to data. Binned fitting can be disabled by setting this equal to `nothing`. Defaults to `1000`.
 * `a_τ`: Shape hyperparameter for the global smoothing parameter τ². Defaults to `1.0`.
 * `b_τ`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
 * `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
@@ -29,17 +25,18 @@ The BSMModel struct is used to generate quantities that are needed for the model
 * `bsm`: A B-Spline mixture model object.
 
 # Examples
-```julia
+```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
-julia> model = BSMModel(x)
-200-dimensional BSMModel{Float64}:
+julia> model = BSplineMixture(x)
+200-dimensional BSplineMixture{Float64}:
 Using 5000 binned observations on a regular grid consisting of 1187 bins.
- basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
- order:  4
- knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
+ support: (-0.05, 1.05)
+Hyperparameters:
+ a_τ = 1.0, b_τ = 0.001
+ a_δ = 0.5, b_δ = 0.5
 
-julia> model = BSMModel(x, 150; bounds=(0, 1), n_bins=nothing, b_τ = 5e-3);
+julia> model = BSplineMixture(x; K = 150, bounds=(0, 1), n_bins=nothing, b_τ = 5e-3);
 
 julia> posterior_samples = sample(Random.Xoshiro(1), model, 5000; n_burnin = 1000);
 
@@ -74,14 +71,14 @@ To control the smoothness in the resulting density estimates, we recommend adjus
 Setting `b_τ` to a smaller value generally yields smoother curves.
 Similar priors for regression models suggest that values in the range [5e-5, 5e-3] are reasonable.
 """
-struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
+struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
     basis::A
     a_τ::T
     b_τ::T
     a_δ::T
     b_δ::T
-    function BSMModel{T}(x::AbstractVector{<:Real}, K::Int = get_default_splinedim(x); bounds::Tuple{<:Real,<:Real} = get_default_bounds(x), n_bins::Union{Nothing,Int}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5) where {T<:Real}
+    function BSplineMixture{T}(x::AbstractVector{<:Real}; K::Int = get_default_splinedim(x), bounds::Tuple{<:Real,<:Real} = get_default_bounds(x), n_bins::Union{Nothing,Int}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5) where {T<:Real}
         check_bsmkwargs(x, n_bins, bounds, a_τ, b_τ, a_δ, b_δ) # verify that supplied parameters make sense
 
         bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
@@ -113,74 +110,69 @@ struct BSMModel{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBay
             data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
         end
         return new{T,typeof(bs),typeof(data)}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ)
-    end # NB! Might remove this constructor in the future (if we want to enforce the use of regularly spaced cubic splines)
-    # In this cae, we will likely make bounds a keyword argument instead.
+    end
 end
-BSMModel(args...; kwargs...) = BSMModel{Float64}(args...; kwargs...)
+BSplineMixture(args...; kwargs...) = BSplineMixture{Float64}(args...; kwargs...)
 
-function Base.:(==)(bsm1::BSMModel, bsm2::BSMModel)
+function Base.:(==)(bsm1::BSplineMixture, bsm2::BSplineMixture)
     return basis(bsm1) == basis(bsm2) && bsm1.data == bsm2.data && hyperparams(bsm1) == hyperparams(bsm2)
 end
 
-BSplineKit.basis(bsm::B) where {B<:BSMModel} = bsm.basis
-BSplineKit.order(bsm::B) where {B<:BSMModel} = order(bsm.basis)
-BSplineKit.length(bsm::B) where {B<:BSMModel} = length(bsm.basis)
-BSplineKit.knots(bsm::B) where {B<:BSMModel} = knots(bsm.basis)
+BSplineKit.basis(bsm::BSplineMixture) = bsm.basis
+BSplineKit.order(bsm::BSplineMixture) = order(bsm.basis)
+BSplineKit.length(bsm::BSplineMixture) = length(bsm.basis)
+BSplineKit.knots(bsm::BSplineMixture) = knots(bsm.basis)
 
 """
-    support(bsm::BSMModel) -> NTuple{2, <:Real}
+    support(bsm::BSplineMixture) -> NTuple{2, <:Real}
 
 Get the support of the B-Spline mixture model `bsm`.
 """
-BayesDensityCore.support(bsm::BSMModel) = boundaries(bsm.basis)
+BayesDensityCore.support(bsm::BSplineMixture) = boundaries(bsm.basis)
 
 """
     hyperparams(
-        bsm::BSMModel{T}
+        bsm::BSplineMixture{T}
     ) where {T} -> @NamedTuple{a_τ::T, b_τ::T, a_δ::T, b_δ::T}
 
 Returns the hyperparameters of the B-Spline mixture model `bsm` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(bsm::BSMModel) = (a_τ=bsm.a_τ, b_τ=bsm.b_τ, a_δ=bsm.a_δ, b_δ=bsm.b_δ)
+BayesDensityCore.hyperparams(bsm::BSplineMixture) = (a_τ=bsm.a_τ, b_τ=bsm.b_τ, a_δ=bsm.a_δ, b_δ=bsm.b_δ)
 
-Base.eltype(::BSMModel{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
+Base.eltype(::BSplineMixture{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
 
 # Print method for binned data
-function Base.show(io::IO, ::MIME"text/plain", bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}) where {T, A, Vals}
+function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}) where {T, A, Vals}
     n_bins = length(bsm.data.b_ind)
     println(io, length(bsm), "-dimensional ", nameof(typeof(bsm)), '{', eltype(bsm), "}:")
     println(io, "Using ", bsm.data.n, " binned observations on a regular grid consisting of ", n_bins, " bins.")
-    print(io, " basis:  ")
     let io = IOContext(io, :compact => true, :limit => true)
-        summary(io, basis(bsm))
-    end
-    println(io, "\n order:  ", order(bsm))
-    let io = IOContext(io, :compact => true, :limit => true)
-        print(io, " knots:  ", knots(bsm))
+        println(io, " support: ", BayesDensityCore.support(bsm))
+        println(io, "Hyperparameters: ")
+        println(io, " a_τ = " , bsm.a_τ, ", b_τ = ", bsm.b_τ)
+        print(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
     end
     nothing
 end
 
 # Print method for unbinned data
-function Base.show(io::IO, ::MIME"text/plain", bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}) where {T, A, Vals}
+function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}) where {T, A, Vals}
     println(io, length(bsm), "-dimensional ", nameof(typeof(bsm)), '{', eltype(bsm), "}:")
     println(io, "Using ", bsm.data.n, " unbinned observations.")
-    print(io, " basis:  ")
     let io = IOContext(io, :compact => true, :limit => true)
-        summary(io, basis(bsm))
-    end
-    println(io, "\n order:  ", order(bsm))
-    let io = IOContext(io, :compact => true, :limit => true)
-        print(io, " knots:  ", knots(bsm))
+        println(io, " support: ", BayesDensityCore.support(bsm))
+        println(io, "Hyperparameters: ")
+        println(io, " a_τ = " , bsm.a_τ, ", b_τ = ", bsm.b_τ)
+        print(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
     end
     nothing
 end
 
-Base.show(io::IO, bsm::BSMModel) = show(io, MIME("text/plain"), bsm)
+Base.show(io::IO, bsm::BSplineMixture) = show(io, MIME("text/plain"), bsm)
 
 """
     pdf(
-        bsm::BSMModel,
+        bsm::BSplineMixture,
         params::Union{NamedTuple, AbstractVector{NamedTuple}},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}, Matrix{<:Real}}
@@ -189,32 +181,32 @@ Evaluate f(t | η) when the model parameters are equal to η.
 
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """
-function Distributions.pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
+function Distributions.pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
+function Distributions.pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
+function Distributions.pdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSMModel, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
+function Distributions.pdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
 
 # Compile-time dispatch
-function _pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t, ::Val{true}) where {Names, Vals}
+function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{true}) where {Names, Vals}
     # Coefs given, no need to compute them
     spline_coefs = params.spline_coefs
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSMModel, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
+function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
     # Coefs not given, compute them from β
     θ = logistic_stickbreaking(params.β)
     spline_coefs = theta_to_coef(θ, basis)
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSMModel{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
+function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs are given)
     # TODO allow for different types here
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
@@ -223,7 +215,7 @@ function _pdf(bsm::BSMModel{T, A, N}, params::AbstractVector{NamedTuple{Names, V
     end
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSMModel{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
+function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs not given)
     # TODO allow for different types here
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
@@ -235,26 +227,26 @@ function _pdf(bsm::BSMModel{T, A, N}, params::AbstractVector{NamedTuple{Names, V
 end
 
 # Batch evalutation (for mutiple samples, it is more efficient to reuse computation of spline basis terms)
-function _pdf(bsm::BSMModel, spline_coefs::AbstractMatrix{<:Real}, t::AbstractVector{<:Real})
+function _pdf(bsm::BSplineMixture, spline_coefs::AbstractMatrix{<:Real}, t::AbstractVector{<:Real})
     bs = basis(bsm)
     B_sparse = create_unnormalized_sparse_spline_basis_matrix(t, bs)
     f_samp = B_sparse * spline_coefs
     return f_samp
 end
-_pdf(bsm::BSMModel, spline_coefs::AbstractMatrix{<:Real}, t::Real) = _pdf(bsm, spline_coefs, [t])
+_pdf(bsm::BSplineMixture, spline_coefs::AbstractMatrix{<:Real}, t::Real) = _pdf(bsm, spline_coefs, [t])
 
 # Evaluate for single sample
-function _pdf(bsm::BSMModel, spline_coefs::AbstractVector{<:Real}, t::Union{Real, AbstractVector{<:Real}})
+function _pdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Union{Real, AbstractVector{<:Real}})
     f = Spline(basis(bsm), spline_coefs)
     return f.(t)
 end
 
 # More efficient version of the posterior mean (we only need to average the coefficients)
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSMModel, Names, Vals, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSMModel, Names, Vals, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names, Vals, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names, Vals, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
 
 
-function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{true}) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{true}) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))
     for i in eachindex(ps.samples)
         mean_spline_coefs += ps.samples[i].spline_coefs
@@ -262,7 +254,7 @@ function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{true}) 
     mean_spline_coefs /= length(ps.samples)
     return _mean(ps, mean_spline_coefs, t)
 end
-function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{false}) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{false}) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))
     bs = basis(model(ps))
     for i in eachindex(ps.samples)
@@ -272,7 +264,7 @@ function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{false})
     mean_spline_coefs /= length(ps.samples)
     return _mean(ps, mean_spline_coefs, t)
 end
-function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, M<:BSMModel, S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
     meanfunc = Spline(basis(model(ps)), mean_spline_coefs)
     return meanfunc.(t)
 end

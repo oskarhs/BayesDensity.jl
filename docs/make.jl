@@ -9,8 +9,8 @@ makedocs(;
     modules=[
         BayesDensity,
         BayesDensityCore,
-        BayesDensityBSM,
-        BayesDensitySHS
+        BayesDensityBSplineMixture,
+        BayesDensityHistSmoother
     ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
@@ -22,8 +22,8 @@ makedocs(;
             "api/plotting_api.md" # Also add a subpage here with methods api
         ],
         "Methods" => [
-            "methods/BSMM.md"
-            "methods/SHS.md"
+            "methods/BSplineMixture.md"
+            "methods/HistSmoother.md"
         ],
         "Tutorials" => [
             "tutorials/add_new_models.md"

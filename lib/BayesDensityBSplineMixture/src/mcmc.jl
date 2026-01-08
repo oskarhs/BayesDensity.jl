@@ -1,5 +1,5 @@
 
-function StatsBase.sample(rng::AbstractRNG, bsm::BSMModel, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)))
+function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)))
     if !(1 ≤ n_samples ≤ Inf)
         throw(ArgumentError("Number of samples must be a positive integer."))
     end
@@ -13,7 +13,7 @@ function StatsBase.sample(rng::AbstractRNG, bsm::BSMModel, n_samples::Int; n_bur
 end
 
 # To do: make a multithreaded version (also one for unbinned data)
-function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
     (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
@@ -104,7 +104,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x,
 end
 
 
-function _sample_posterior(rng::AbstractRNG, bsm::BSMModel{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
     (; x, log_B, b_ind, μ, P, n) = bsm.data

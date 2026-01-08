@@ -11,7 +11,7 @@ x = clamp.(x, -0.96, 0.96)
 
 R = maximum(x) - minimum(x)
 
-bsm = BSMModel(x, (-1.0, 1.0))
+bsm = BSplineMixture(x, (-1.0, 1.0))
 model_fit = sample(rng, bsm, 10000, n_burnin=1000)
 t = LinRange(-0.975, 0.975, 3001)
 

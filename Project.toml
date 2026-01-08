@@ -3,7 +3,7 @@ projects = [
     "test",
     "docs",
     "lib/BayesDensityCore",
-    "lib/BayesDensityBSM",
-    "lib/BayesDensitySHS",
+    "lib/BayesDensityBSplineMixture",
+    "lib/BayesDensityHistSmoother",
     "lib/BayesDensity"
 ]

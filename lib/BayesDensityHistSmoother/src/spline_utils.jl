@@ -1,6 +1,6 @@
 # Compute the normalization constant of `shs` for given parameters using Simpson's method
 # NB! Computes the normalization constant on [0, 1] and not on the original scale.
-function compute_norm_constants(shs::SHSModel{T, A, D}, params::NamedTuple{Names, Vals}) where {T<:Real, A, D, Names, Vals<:Tuple}
+function compute_norm_constants(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
     n = 2048
     # Evaluation grid for Simpson's method
@@ -11,7 +11,7 @@ function compute_norm_constants(shs::SHSModel{T, A, D}, params::NamedTuple{Names
     l1_norm = h / 3 * (y[1] + 4*sum(y[2:2:n]) + 2 * sum(y[3:2:n-1]) + y[n+1])
     return l1_norm
 end
-function compute_norm_constants(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}) where {T<:Real, A, D, Names, Vals<:Tuple}
+function compute_norm_constants(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
     n = 2048
     # Evaluation grid for Simpson's method
@@ -26,7 +26,7 @@ function compute_norm_constants(shs::SHSModel{T, A, D}, params::AbstractVector{N
     return l1_norms
 end
 
-function eval_linpred(shs::SHSModel{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}) where {T<:Real, A, D, Names, Vals, S<:Real}
+function eval_linpred(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}) where {T<:Real, A, D, Names, Vals, S<:Real}
     Z = demmler_reinsch_basis_matrix(t, shs.bs, shs.data.LZ)
     C = hcat(fill(1, length(t)), t, Z)
 
@@ -34,7 +34,7 @@ function eval_linpred(shs::SHSModel{T, A, D}, params::NamedTuple{Names, Vals}, t
     linpreds = C * params.β
     return linpreds
 end
-function eval_linpred(shs::SHSModel{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}) where {T<:Real, A, D, Names, Vals, S<:Real}
+function eval_linpred(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}) where {T<:Real, A, D, Names, Vals, S<:Real}
     R = promote_type(T, S)
     # Reshape beta parameters into a Matrix, l1 norms into a vector
     β_mat = Matrix{R}(undef, (length(shs.bs), length(params)))

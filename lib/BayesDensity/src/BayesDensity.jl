@@ -3,7 +3,7 @@ module BayesDensity
 using Reexport
 
 @reexport using BayesDensityCore
-@reexport using BayesDensityBSM
-@reexport using BayesDensitySHS
+@reexport using BayesDensityBSplineMixture
+@reexport using BayesDensityHistSmoother
 
 end # module

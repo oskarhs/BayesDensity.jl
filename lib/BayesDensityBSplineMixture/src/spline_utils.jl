@@ -97,18 +97,39 @@ function create_unnormalized_sparse_spline_basis_matrix(x::AbstractVector{T}, ba
 
     n = length(x)
 
-    I = Vector{Int}(undef, 4*n) # row indices
-    J = Vector{Int}(undef, 4*n) # column indices
-    V = Vector{promote_type(T, S)}(undef, 4*n)
+    I = Vector{Int}(undef, N*n) # row indices
+    J = Vector{Int}(undef, N*n) # column indices
+    V = Vector{promote_type(T, S)}(undef, N*n)
     # Note: BSplineKit returns the evaluated spline functions in "reverse" order
     for i in eachindex(x)
-        ind = (4*i-3):(4*i)
+        ind = (N*i-N+1):(N*i)
         j, basis_eval = basis(x[i])
         I[ind] .= i
-        j = max(4, j)
-        J[ind] .= (j-3):j
+        j = max(N, j)
+        J[ind] .= (j-N+1):j
         #V[ind] .= reverse(basis_eval) .* norm_fac[(j-3):j]
         V[ind] .= reverse(basis_eval)
     end
     return sparse(I, J, V, n, K)
+end
+
+# Get the B-spline basis corresponding to the integral of a B-spline
+# NB! BSplineKit has a function that does this but it is not exported/declared public API, so we keep our own version here.
+function integrate_spline_basis(B::BSplineBasis)
+    kn = knots(B)
+    m = order(B)
+    
+    # Create new spline knots (same internal knots as previously, with 2 new spline knots around the edges.)
+    kn_int = similar(kn, length(kn) + 2)
+    kn_int[(begin + 1):(end - 1)] .= kn
+    kn_int[begin] = kn_int[begin + 1]
+    kn_int[end] = kn_int[end - 1]
+    return BSplineBasis(BSplineOrder(m + 1), kn_int; augment = Val(false))
+end
+
+# Create basis matrix of the B-Spline basis corresponding to the integrated B-spline
+function create_integrated_sparse_spline_basis_matrix(x::AbstractVector{<:Real}, basis::AbstractBSplineBasis)
+    basis_int = integrate_spline_basis(basis)
+    B_int = create_unnormalized_sparse_spline_basis_matrix(x, basis_int)
+    return B_int
 end
