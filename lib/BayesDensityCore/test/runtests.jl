@@ -4,7 +4,7 @@ using Test
 
 const rng = Random.Xoshiro(1)
 
-include("aqua.jl")
+# include("aqua.jl")
 
 # Random Histogram model on [0, 1] with K-dimensional Dir(fill(a, K))-prior.
 struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
@@ -21,6 +21,7 @@ struct RandomHistogramModel{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityMode
     end
 end
 
+# Define pdf method for Random Histogram:
 function Distributions.pdf(rhm::RandomHistogramModel, params::NT, t::Real) where {NT<:NamedTuple}
     (; data, K, a) = rhm
     (; θ) = params
@@ -30,6 +31,20 @@ function Distributions.pdf(rhm::RandomHistogramModel, params::NT, t::Real) where
     if (breaks[1] ≤ t ≤ breaks[end])
         idx = max(1, searchsortedfirst(breaks, t) - 1)
         val = K*θ[idx]
+    end
+    return val
+end
+
+# Define cdf method for Random Histogram:
+function Distributions.cdf(rhm::RandomHistogramModel, params::NT, t::Real) where {NT<:NamedTuple}
+    (; data, K, a) = rhm
+    (; θ) = params
+    breaks = data.binedges
+
+    val = 0.0
+    if (breaks[1] ≤ t ≤ breaks[end])
+        idx = max(1, searchsortedfirst(breaks, t) - 1)
+        val = sum(θ[1:idx-1]) + θ[idx] * (t-breaks[idx]) * K
     end
     return val
 end
@@ -45,7 +60,7 @@ function StatsBase.sample(rng::Random.AbstractRNG, rhm::RandomHistogramModel{T, 
 end
 
 # This is actually the true posterior in this case
-struct RHPosterior{T<:Real, S<:RandomHistogramModel} <: AbstractVIPosterior
+struct RHPosterior{T<:Real, S<:RandomHistogramModel} <: AbstractVIPosterior{T}
     α::Vector{T}
     model::S
     function RHPosterior{T}(rhm::RandomHistogramModel) where {T<:Real}
@@ -65,7 +80,7 @@ function StatsBase.sample(rng::Random.AbstractRNG, rhp::RHPosterior{T, S}, n_sam
     return PosteriorSamples{T}(samples, model, n_samples, 0)
 end
 
-@testset "Core: pdf fallback methods" begin
+@testset "Core: pdf and cdf fallback methods" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -77,8 +92,6 @@ end
     params = (θ = fill(1/K, K),) # Uniform parameter
     params_vec = fill(params, n_rep)
 
-    #@test pdf(rhm, params, t) == 1/K
-
     # Test evaluation for single params, a collection of t's
     @test pdf(rhm, params, LinRange(0, 1, L)) == fill(1.0, L)
 
@@ -87,6 +100,15 @@ end
 
     # Test evaluation for vector of params, vector of t's
     @test pdf(rhm, params_vec, LinRange(0, 1, L)) == fill(1.0, (L, length(params_vec)))
+
+    # Test evaluation for single params, a collection of t's
+    @test cdf(rhm, params, LinRange(0, 1, L)) ≈ [j/(L-1) for j in 0:(L-1)]
+
+    # Test evaluation for vector of params, single t
+    @test cdf(rhm, params_vec, 0.2) ≈ fill(0.2, (1, length(params_vec)))
+
+    # Test evaluation for vector of params, vector of t's
+    @test cdf(rhm, params_vec, LinRange(0, 1, L)) ≈ [j/(L-1) for j in 0:(L-1), i in eachindex(params_vec)]
 end
 
 @testset "Core: MC sample" begin

@@ -8,23 +8,6 @@
 Compute a variational approximation to the posterior distribution.
 
 The positional arguments and keyword arguments supported by this function, as well as the type of the returned variational posterior object differs between different subtypes of [`AbstractBayesDensityModel`](@ref).
-
-# Examples
-```julia-repl
-julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5001)) .^(1/3)).^(1/3);
-
-julia> vip = varinf(BSMModel(x))
-BSMVIPosterior{Float64} vith variational densities:
- q_β <: Distributions.MvNormalCanon{Float64},
- q_τ <: Distributions.InverseGamma{Float64},
- q_δ <: Vector{Distributions.InverseGamma{Float64}}.
-Model:
-200-dimensional BSMModel{Float64}:
-Using 5001 binned observations on a regular grid consisting of 1187 bins.
- basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
- order:  4
- knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
-```
 """
 function varinf(::AbstractBayesDensityModel) end
 
@@ -50,16 +33,9 @@ Generate `n_samples` independent samples from the variationonal posterior distri
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> vip = varinf(BSMModel(x));
+julia> vip = varinf(BSplineMixture(x));
 
-julia> vps = sample(Random.Xoshiro(1812), vip, 5000)
-PosteriorSamples{Float64} object holding 5000 posterior samples, of which 0 are burn-in samples.
-Model:
-200-dimensional BSMModel{Float64}:
-Using 5001 binned observations on a regular grid consisting of 1187 bins.
- basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
- order:  4
- knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
+julia> vps = sample(Random.Xoshiro(1812), vip, 5000);
 ```
 """
 StatsBase.sample(vip::AbstractVIPosterior, n_samples::Int) = sample(Random.default_rng(), vip, n_samples)
@@ -92,7 +68,7 @@ If `q` is supplied as a Vector, then this function returns a Matrix of dimension
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> vip = varinf(BSMModel(x));
+julia> vip = varinf(BSplineMixture(x));
 
 julia> quantile(Random.Xoshiro(1), vip, 0.9, 0.5)
 0.537450082172813
@@ -140,7 +116,7 @@ If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this fun
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> vip = varinf(BSMModel(x));
+julia> vip = varinf(BSplineMixture(x));
 
 julia> mean(Random.Xoshiro(1), vip, 0.1)
 0.08615412808594237
@@ -170,7 +146,7 @@ If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this fun
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> vip = varinf(BSMModel(x));
+julia> vip = varinf(BSplineMixture(x));
 
 julia> var(Random.Xoshiro(1), vip, 0.1)
 3.2895012264929507e-6

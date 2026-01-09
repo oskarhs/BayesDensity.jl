@@ -19,18 +19,20 @@ bsm = BSplineMixture(randn(1000))
 For more detailed information on the arguments supported by each specific Bayesian density model we refer the reader to the METHODS DOCUMENTATION.
 
 
-### Evaluating the density
+### Evaluating the density and the cumulative distribution function
 The density estimators implemented in this package all specify a model ``f(t\,|\, \boldsymbol{\eta})`` for the density of the data, which depends on a parameter ``\boldsymbol{\eta}``.
 In order to calculate ``f(\cdot)`` for a given ``\boldsymbol{\eta}``, each Bayesian density model implements the `pdf` method.
 ```@docs
 pdf(::AbstractBayesDensityModel, ::Any, ::Real)
 ```
 
-For Models that only implement the signature `pdf(::AbstractBayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
+For models that only implement the signature `pdf(::AbstractBayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
 
-### Evaluating the cdf
-
-TODO: Write this section once we have provided a generic fallback method...
+The cumulative distribution function of a model can be computed in a similar way by using the `cdf` method:
+```@docs
+cdf(::AbstractBayesDensityModel, ::Any, ::Real)
+```
+Generic fallback methods for computing the cdf for vectors of parameters and vector evaluation grids are also provided for models that implement the signature `cdf(::AbstractBayesDensityModel, ::Any, ::Real)`.
 
 ### Other methods
 All of the density models implemented in this package depend on the choice of various hyperparameters, which can be retrieved by utilizing the following method:

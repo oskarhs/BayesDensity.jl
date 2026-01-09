@@ -62,31 +62,63 @@ If a vector of NamedTuples is passed to the second positional argument, then thi
 """
 function Distributions.pdf(::AbstractBayesDensityModel, ::Any, ::Real) end
 
-function Distributions.pdf(bdm::AbstractBayesDensityModel{S}, parameters::NamedTuple, t::AbstractVector{T}) where {S<:Real, T<:Real}
-    f_samp = Vector{promote_type(T, S)}(undef, length(t))
-    for i in eachindex(t)
-        f_samp[i] = pdf(bdm, parameters, t[i])
-    end
-    return f_samp
-end
-
-function Distributions.pdf(bdm::AbstractBayesDensityModel{S}, parameters::AbstractVector{<:NamedTuple}, t::T) where {S<:Real, T<:Real}
-    f_samp = Matrix{promote_type(T, S)}(undef, (length(t), length(parameters)))
-    for j in eachindex(parameters)
-        f_samp[:, j] .= pdf(bdm, parameters[j], t)
-    end
-    return f_samp
-end
-
-function Distributions.pdf(bdm::AbstractBayesDensityModel{S}, parameters::AbstractVector{<:NamedTuple}, t::AbstractVector{T}) where {S<:Real, T<:Real}
-    f_samp = Matrix{promote_type(T, S)}(undef, (length(t), length(parameters)))
-    for j in eachindex(parameters)
-        f_samp[:, j] .= pdf(bdm, parameters[j], t)
-    end
-    return f_samp
-end
-
 export pdf
+
+"""
+    cdf(
+        bdm::AbstractBayesDensityModel,
+        parameters::NamedTuple,
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+    
+    cdf(
+        bdm::AbstractBayesDensityModel,
+        parameters::AbstractVector{<:NamedTuple},
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate the cumulative distribution function ``F(t\\,|\\, \\eta) = \\int_{-\\infty}^t f(s\\,|\\,\\eta)\\,\\text{d}s`` of the Bayesian density model `bdm` for every ``\\eta`` in `parameters` and every element in the collection `t`.
+
+If a single NamedTuple is passed to the parameters argument, this function outputs either a scalar or a vector depending on the input type of the third argument `t`.
+
+If a vector of NamedTuples is passed to the second positional argument, then this function returns a Matrix of size `(length(t), length(parameters))`.
+"""
+function Distributions.cdf(::AbstractBayesDensityModel, ::Any, ::Real) end
+
+export cdf
+
+# Generate fallback methods for pdf and cdf:
+for func in (:pdf, :cdf)
+    @eval begin
+        function Distributions.$func(bdm::AbstractBayesDensityModel{S}, parameters::NamedTuple, t::AbstractVector{T}) where {S<:Real, T<:Real}
+            f_samp = Vector{promote_type(T, S)}(undef, length(t))
+            for i in eachindex(t)
+                f_samp[i] = Distributions.$func(bdm, parameters, t[i])
+            end
+            return f_samp
+        end
+    end
+
+    @eval begin
+        function Distributions.$func(bdm::AbstractBayesDensityModel{S}, parameters::AbstractVector{<:NamedTuple}, t::T) where {S<:Real, T<:Real}
+            f_samp = Matrix{promote_type(T, S)}(undef, (length(t), length(parameters)))
+            for j in eachindex(parameters)
+                f_samp[:, j] .= Distributions.$func(bdm, parameters[j], t)
+            end
+            return f_samp
+        end
+    end
+
+    @eval begin
+        function Distributions.$func(bdm::AbstractBayesDensityModel{S}, parameters::AbstractVector{<:NamedTuple}, t::AbstractVector{T}) where {S<:Real, T<:Real}
+            f_samp = Matrix{promote_type(T, S)}(undef, (length(t), length(parameters)))
+            for j in eachindex(parameters)
+                f_samp[:, j] .= Distributions.$func(bdm, parameters[j], t)
+            end
+            return f_samp
+        end
+    end
+end
 
 include("utils.jl")
 public softplus, sigmoid, logit, softmax, logistic_stickbreaking, countint, bin_regular, unitvector

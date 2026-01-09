@@ -114,10 +114,10 @@ function create_unnormalized_sparse_spline_basis_matrix(x::AbstractVector{T}, ba
 end
 
 # Get the B-spline basis corresponding to the integral of a B-spline
-# NB! BSplineKit has a function that does this but it is not exported/declared public API, so we keep our own version here.
-function integrate_spline_basis(B::BSplineBasis)
-    kn = knots(B)
-    m = order(B)
+# NB! BSplineKit has a function that does this but it is not exported/declared public API, so we maintain our own version here.
+function integrate_spline_basis(basis::BSplineBasis)
+    kn = knots(basis)
+    m = order(basis)
     
     # Create new spline knots (same internal knots as previously, with 2 new spline knots around the edges.)
     kn_int = similar(kn, length(kn) + 2)
@@ -128,8 +128,38 @@ function integrate_spline_basis(B::BSplineBasis)
 end
 
 # Create basis matrix of the B-Spline basis corresponding to the integrated B-spline
-function create_integrated_sparse_spline_basis_matrix(x::AbstractVector{<:Real}, basis::AbstractBSplineBasis)
+function _create_integrated_sparse_spline_basis_matrix(x::AbstractVector{<:Real}, basis::AbstractBSplineBasis)
     basis_int = integrate_spline_basis(basis)
     B_int = create_unnormalized_sparse_spline_basis_matrix(x, basis_int)
     return B_int
+end
+
+# Get the coefficients of ∫ ∑ₖ θₖ bₖ(s) ds in terms of the integrated spline basis.
+function _get_integrated_spline_coefs(basis::AbstractBSplineBasis{N, T}, spline_coefs::AbstractMatrix{S}) where {N, T, S}
+    kn = knots(basis)
+    K = length(basis)
+    R = promote_type(T, S)
+
+    # Get the dimension of the integrated spline coefficients
+    new_dims = size(spline_coefs, 1)+1, size(spline_coefs, 2)
+    spline_coefs_int = similar(spline_coefs, R, new_dims)
+    for i in axes(spline_coefs_int, 2)
+        spline_coefs_int[1,i] = zero(R)
+        spline_coefs_int[2:end,i] = cumsum(spline_coefs[:,i] .* (view(kn, N+1:N+K) - view(kn, 1:K)) / N)
+    end
+
+    return spline_coefs_int
+end
+
+function _get_integrated_spline_coefs(basis::AbstractBSplineBasis{N, T}, spline_coefs::AbstractVector{S}) where {N, T, S}
+    kn = knots(basis)
+    K = length(basis)
+    R = promote_type(T, S)
+
+    # Get the dimension of the integrated spline coefficients
+    spline_coefs_int = similar(spline_coefs, R, length(spline_coefs)+1)
+    spline_coefs_int[1] = zero(R)
+    spline_coefs_int[2:end] = cumsum(spline_coefs .* (view(kn, N+1:N+K) - view(kn, 1:K)) / N)
+
+    return spline_coefs_int
 end

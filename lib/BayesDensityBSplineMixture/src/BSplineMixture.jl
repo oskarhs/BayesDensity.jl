@@ -173,9 +173,15 @@ Base.show(io::IO, bsm::BSplineMixture) = show(io, MIME("text/plain"), bsm)
 """
     pdf(
         bsm::BSplineMixture,
-        params::Union{NamedTuple, AbstractVector{NamedTuple}},
+        params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
-    ) -> Union{Real, Vector{<:Real}, Matrix{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    pdf(
+        bsm::BSplineMixture,
+        params::AbstractVector{NamedTuple},
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
 
 Evaluate f(t | η) when the model parameters are equal to η.
 
@@ -217,7 +223,6 @@ function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Na
 end
 function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs not given)
-    # TODO allow for different types here
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
         θ = logistic_stickbreaking(params[i].β)
@@ -241,10 +246,87 @@ function _pdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Unio
     return f.(t)
 end
 
+# Cdf evaluation:
+"""
+    cdf(
+        bsm::BSplineMixture,
+        params::NamedTuple,
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    cdf(
+        bsm::BSplineMixture,
+        params::AbstractVector{NamedTuple},
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate f(t | η) when the model parameters are equal to η.
+
+The named tuple should contain a field named `:spline_coefs` or `:β`.
+"""
+function Distributions.cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
+    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+end
+function Distributions.cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
+    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+end
+function Distributions.cdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
+    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+end
+function Distributions.cdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
+    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+end
+
+# Compile-time dispatch
+function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{true}) where {Names, Vals}
+    # Coefs given, no need to compute them
+    spline_coefs = params.spline_coefs
+    return _cdf(bsm, spline_coefs, t)
+end
+function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
+    # Coefs not given, compute them from β
+    θ = logistic_stickbreaking(params.β)
+    spline_coefs = theta_to_coef(θ, basis)
+    return _cdf(bsm, spline_coefs, t)
+end
+function _cdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
+    # Build coefficient matrix (coefs are given)
+    # TODO allow for different types here
+    spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
+    for i in eachindex(params)
+        spline_coefs[:, i] = params[i].spline_coefs
+    end
+    return _cdf(bsm, spline_coefs, t)
+end
+function _cdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
+    # Build coefficient matrix (coefs not given)
+    spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
+    for i in eachindex(params)
+        θ = logistic_stickbreaking(params[i].β)
+        spline_coefs[:, i] = theta_to_coef(θ, basis(bsm))
+    end
+    return _cdf(bsm, spline_coefs, t)
+end
+
+# Batch evalutation (for mutiple samples, it is more efficient to reuse computation of spline basis terms)
+function _cdf(bsm::BSplineMixture, spline_coefs::AbstractMatrix{<:Real}, t::AbstractVector{<:Real})
+    bs = basis(bsm)
+    B_int = _create_integrated_sparse_spline_basis_matrix(t, bs)
+    spline_coefs_int = _get_integrated_spline_coefs(bs, spline_coefs)
+    F_samp = B_int * spline_coefs_int
+    return F_samp
+end
+_cdf(bsm::BSplineMixture, spline_coefs::AbstractMatrix{<:Real}, t::Real) = _cdf(bsm, spline_coefs, [t])
+
+# Evaluate for single sample
+function _cdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Union{Real, AbstractVector{<:Real}})
+    F = integral(Spline(basis(bsm), spline_coefs))
+    return F.(t)
+end
+
 # More efficient version of the posterior mean (we only need to average the coefficients)
 Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names, Vals, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
 Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names, Vals, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
-
 
 function _mean(ps::PosteriorSamples{T, M, <:AbstractVector}, t::S, ::Val{true}) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))

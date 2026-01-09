@@ -60,20 +60,6 @@ This functions returns a [`PosteriorSamples`](@ref) object which can be used to 
 
 # Returns
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
-
-# Examples
-```julia-repl
-julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
-
-julia> ps = sample(Random.Xoshiro(1), BSMModel(x), 5000; n_burnin = 500)
-PosteriorSamples{Float64} object holding 5000 posterior samples, of which 500 are burn-in samples.
-Model:
-200-dimensional BSMModel{Float64}:
-Using 5001 binned observations on a regular grid consisting of 1187 bins.
- basis:  200-element BSplineBasis of order 4, domain [-0.05, 1.05]
- order:  4
- knots:  [-0.05, -0.05, -0.05, -0.05, -0.0444162, -0.0388325, -0.0332487, -0.027665, -0.0220812, -0.0164975  …  1.0165, 1.02208, 1.02766, 1.03325, 1.03883, 1.04442, 1.05, 1.05, 1.05, 1.05]
-```
 """
 function StatsBase.sample(::AbstractBayesDensityModel, ::Int) end # Perhaps the user should have the option to discard burn-in samples?
 
@@ -96,7 +82,7 @@ If `q` is supplied as a Vector, then this function returns a Matrix of dimension
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> ps = sample(Random.Xoshiro(1), BSMModel(x), 5000);
+julia> ps = sample(Random.Xoshiro(1), BSplineMixture(x), 5000);
 
 julia> quantile(ps, 0.1, 0.5)
 0.08936091272819188
@@ -160,7 +146,7 @@ If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this fun
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> ps = sample(Random.Xoshiro(1), BSMModel(x), 5000);
+julia> ps = sample(Random.Xoshiro(1), BSplineMixture(x), 5000);
 
 julia> mean(ps, 0.1)
 0.0969450407517681
@@ -199,7 +185,7 @@ If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this fun
 ```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
-julia> ps = sample(Random.Xoshiro(1), BSMModel(x), 5000);
+julia> ps = sample(Random.Xoshiro(1), BSplineMixture(x), 5000);
 
 julia> var(ps, 0.1)
 0.00027756364767372627

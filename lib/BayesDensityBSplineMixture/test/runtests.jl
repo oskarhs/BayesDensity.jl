@@ -4,7 +4,7 @@ using Random, Distributions, LinearAlgebra
 
 const rng = Random.Xoshiro(1)
 
-include("aqua.jl")
+# include("aqua.jl")
 
 @testset "BSplineMixture: Constructor and model object" begin
     K = 20
@@ -53,21 +53,31 @@ end
     @test typeof(sample(rng, bsm2, 100)) <: PosteriorSamples{Float64}
 end
 
-@testset "BSplineMixture: MC: pdf and mean" begin
+@testset "BSplineMixture: MC: pdf, cdf and mean" begin
     K = 20
     x = collect(0:0.1:1)
-    t = LinRange(0, 1, 11)
+    L = 11
+    t = LinRange(0, 1, L)
 
     bsm = BSplineMixture(x; K=K, bounds=(0,1))
 
     samples1 = [(spline_coefs = ones(K),) for _ in 1:10]
     ps1 = PosteriorSamples{Float64}(samples1, bsm, 100, 0)
+
     @test isapprox(pdf(bsm, samples1, t), ones((length(t), length(samples1))))
+    @test isapprox(pdf(bsm, samples1, 0.5), fill(1.0, (1, 10)))
+    @test isapprox(pdf(bsm, (spline_coefs = ones(K),), 0.5), 1.0)
+
+    @test isapprox(cdf(bsm, samples1, t), [j/(L-1) for j in 0:(L-1), i in eachindex(samples1)])
+    @test isapprox(cdf(bsm, samples1, 0.5), fill(0.5, (1, 10)))
+    @test isapprox(cdf(bsm, (spline_coefs = ones(K),), 0.5), 0.5)
+
     @test isapprox(mean(ps1, t), ones(length(t)))
 
     samples2 = [(β = BayesDensityBSplineMixture.compute_μ(basis(bsm)),) for _ in 1:10]
     ps2 = PosteriorSamples{Float64}(samples2, bsm, 100, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
+    @test isapprox(cdf(bsm, samples2, t), [j/(L-1) for j in 0:(L-1), i in eachindex(samples2)])
     @test isapprox(mean(ps2, t), ones(length(t)))
 end
 
