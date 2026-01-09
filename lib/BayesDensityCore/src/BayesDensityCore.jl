@@ -21,6 +21,11 @@ abstract type AbstractBayesDensityModel{T<:Real} end
 
 export AbstractBayesDensityModel
 
+"""
+    eltype(::AbstractBayesDensityModel{T}) where {T}
+
+Return the element type of a Bayesian density model.
+"""
 Base.eltype(::AbstractBayesDensityModel{T}) where {T} = T
 
 """
@@ -54,7 +59,7 @@ export support
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate f(t | η) of the Bayesian density model `bdm` for every η in `parameters` and every element in the collection `t`.
+Evaluate ``f(t \\,|\\,\\boldsymbol{\\eta})`` of the Bayesian density model `bdm` for every ``\\boldsymbol{\\eta}`` in `parameters` and every element in the collection `t`.
 
 If a single NamedTuple is passed to the parameters argument, this function outputs either a scalar or a vector depending on the input type of the third argument `t`.
 
@@ -77,7 +82,7 @@ export pdf
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate the cumulative distribution function ``F(t\\,|\\, \\eta) = \\int_{-\\infty}^t f(s\\,|\\,\\eta)\\,\\text{d}s`` of the Bayesian density model `bdm` for every ``\\eta`` in `parameters` and every element in the collection `t`.
+Evaluate the cumulative distribution function ``F(t\\,|\\, \\boldsymbol{\\eta}) = \\int_{-\\infty}^t f(s\\,|\\,\\boldsymbol{\\eta})\\,\\text{d}s`` of the Bayesian density model `bdm` for every ``\\boldsymbol{\\eta}`` in `parameters` and every element in the collection `t`.
 
 If a single NamedTuple is passed to the parameters argument, this function outputs either a scalar or a vector depending on the input type of the third argument `t`.
 

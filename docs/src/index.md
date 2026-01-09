@@ -7,25 +7,33 @@ CurrentModule = BayesDensity
 [BayesDensity.jl](https://github.com/oskarhs/BayesianDensityEstimation.jl) is a Julia package for univariate nonparametric Bayesian density estimation. The package provides access to several density estimators from the Bayesian nonparametrics literature. For most of the implemented methods, posterior inference is possible through both Markov chain Monte Carlo (MCMC) methods and variational inference (VI).
 
 ## Installation
+We note that each of the models implemented in `BayesDensity` can be installed independently from all the by downloading the corresponding module. For instance, if we would like to use the [`HistSmoother`](@ref) model we need to install the `BayesDensityHistSmoother` package:
+```julia
+using Pkg
+Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityHistSmoother.jl")
+```
 
-The BayesDensity.jl package is currently not part of any package repository, but can be installed from its GitHub repository as follows:
+We can now use the model by importing the downloaded package:
+```julia
+using BayesDensityHistSmoother
+```
+
+Alternatively, if one wants to have access to more models, one can install the `BayesDensity` package instead:
 ```julia
 using Pkg
 Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
 ```
-After installation, `using BayesDensity` will load all of the estimators implemented by this package.
 
-Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
+We can now import all the models implemented in this package by running the following code snippet:
 ```julia
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSplineMixture.jl")
+using BayesDensity
 ```
-Each of the density estimators can then be accessed separately via e.g. `using BayesDensityBSplineMixture`.
 
 ## Quick start
 To illustarte the basic use of the package, we show one can fit a B-spline mixture model to a simulated dataset.
 
 ```julia
-using BayesDensity, Distributions, Random
+using BayesDensityBSplineMixture, Distributions, Random
 rng = Random.Xoshiro(1) # for reproducibility
 
 # Simulate some data:
@@ -43,7 +51,7 @@ mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
 vi_fit = varinf(bsm) # VI
 ```
 
-The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Make as follows:
+The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Makie as follows:
 ```julia
 using CairoMakie
 plot(mcmc_fit)

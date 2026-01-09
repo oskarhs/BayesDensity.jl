@@ -2,17 +2,9 @@
 
 Documentation for the histogram smoother of [Wand2022engines](@citet).
 
-This model is available through the `BayesDensityHistSmoother` module, which can be installed as a separate Julia package as follows:
-```julia
-using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityHistSmoother.jl")
-```
+This model is available through the `BayesDensityHistSmoother` module.
 
-To use the functionality of the module, one can import either of the following packages:
-```julia
-using BayesDensityHistSmoother
-using BayesDensity # Requires a working BayesDensity installation
-```
+## Module API
 
 The first step to fitting a histogram smoother is to create a `HistSmoother` model object:
 ```@docs

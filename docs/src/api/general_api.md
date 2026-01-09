@@ -1,8 +1,13 @@
 # General API
 
-This page explains how to fit the Bayesian density models implemented in BayesDensity.jl.
+```@setup general_api
+using BayesDensityBSplineMixture
+```
+
+This page explains how to fit the Bayesian density models implemented in `BayesDensity.jl.`
 Most of the methods implemented in this package support two modes of posterior inference: simulation consistent inference through Markov chain Monte Carlo (MCMC) and approximate through variational inference (VI).
 We also document most of the convenience methods available for computing select posterior quantities of interest, such as the posterior mean or quantiles of ``f(t)`` for some ``t \in \mathbb{R}``.
+
 The plotting API of this package is documented on a [separate page](plotting_api.md)
 
 ## Defining models
@@ -12,11 +17,11 @@ AbstractBayesDensityModel
 ```
 
 In order to create a model object, we call the corresponding contructor with the data and other positional- and keyword arguments. For example, we can create a [`BSplineMixture`](@ref) object with default hyperparameters as follows:
-```@repl
-using BayesDensity
+```@example general_api
 bsm = BSplineMixture(randn(1000))
+nothing # hide
 ```
-For more detailed information on the arguments supported by each specific Bayesian density model we refer the reader to the METHODS DOCUMENTATION.
+For more detailed information on the arguments supported by each specific Bayesian density model we refer the reader to the [methods documentation](../methods/index.md).
 
 
 ### Evaluating the density and the cumulative distribution function
@@ -46,6 +51,10 @@ To compute the support of a given model, the `support` method is provided.
 support(::AbstractBayesDensityModel)
 ```
 
+The element type of the model object can be determined via the `eltype` method:
+```@docs
+eltype(::AbstractBayesDensityModel)
+```
 
 ## Markov chain Monte Carlo
 The main workhorse of MCMC-based inference is the `sample` method, which takes a Bayesian density model object as input and generates posterior samples through a specialized MCMC routine.
@@ -58,16 +67,43 @@ All of the implemented MCMC methods return an object of type `PosteriorSamples`:
 PosteriorSamples
 ```
 
-The following methods can be used to extract useful information about the model object, such as
+The following methods can be used to extract useful information about the model object, such as the underlying model object or the element type.
 ```@docs
 model(::PosteriorSamples)
 eltype(::PosteriorSamples)
 ```
 
-#### Computing posterior quantities of interest:
-The following methods can be used to compute different posterior quantities of interest:
+#### Computing posterior summary statistics
+When using Bayesian density estimators, we are often interested in computing various summary statistics of the posterior draws from an MCMC procedure. For instance, we may be interested in providing an estimate of the density ``f`` (e.g. the posterior mean) and to quantify the uncertainty in this estimate (e.g. via credible bands).
+
+To this end, `BayesDensityCore` provides methods for `PosteriorSamples` objects that let us easily compute relevant summary statistics for the density ``f``, as shown in the short example below:
+
+```@example general_api
+bsm = BSplineMixture(randn(1000))
+posterior = sample(bsm, 2000; n_burnin=400)
+
+# Compute the posterior mean of f(0.5)
+mean(posterior, pdf, 0.5)
+
+# Compute the posterior 0.05 and 0.95-quantiles of f(0.5)
+# Note that supplying pdf as the second argument is optional here
+quantile(posterior, 0.5, [0.05, 0.95]) == quantile(posterior, pdf, 0.5, [0.05, 0.95]) 
+```
+
+In some cases it may also be of interest to carry out posterior inference for the cumulative distribution function ``F(t) = \int_{-\infty}^t f(s)\, \text{d}s``. Computing posterior summary statistics for the cdf instead of the pdf is easily achieved by replacing the `pdf` in the second argument with `cdf` instead:
+```@example general_api
+# Compute the posterior mean of F(0.5)
+mean(posterior, cdf, 0.5)
+
+# Compute the posterior 0.05 and 0.95-quantiles of F(0.5)
+# Note that supplying cdf as the second argument is necessary here
+quantile(posterior, cdf, 0.5, [0.05, 0.95])
+nothing # hide
+```
+
+The posterior summary statistics available through `BayesDensityCore` are the following:
 ```@docs
-mean(::PosteriorSamples, ::AbstractVector{<:Real})
+mean(::PosteriorSamples)
 quantile(::PosteriorSamples)
 median(::PosteriorSamples)
 var(::PosteriorSamples)
@@ -83,17 +119,40 @@ varinf(::AbstractBayesDensityModel)
 Any call to `varinf` will return a subtype of the abstract type `AbstractVIPosterior`:
 ```@docs
 AbstractVIPosterior
-model(::AbstractVIPosterior)
 ```
 
-The `sample` method makes it possible to generate independent samples from the variational posterior. This is particularly useful in cases where inference for multiple posterior quantities (e.g. medians, quantiles) is desired.
+The following convenience methods are also part of the public API:
+```@docs
+model(::AbstractVIPosterior)
+eltype(::AbstractVIPosterior)
+```
+
+#### Generating samples from the variational posterior
+The `sample` method makes it possible to generate independent samples from the variational posterior. This is particularly useful in cases where inference for multiple posterior quantities (e.g. medians, variances) is desired.
 ```@docs
 sample(::AbstractVIPosterior, ::Int)
 ```
 As shown in the above docstring, using the `sample` method on a `AbstractVIPosterior` object returns an object of type [`PosteriorSamples`](@ref). As such, all of the convenience methods showcased in the previous subsection will also work for the object returned by `sample`.
 
-#### Computing posterior quantities of interest:
-Alternatively, various posterior quantities of interest can be computed directly as follows:
+#### Computing posterior summary statistics
+`BayesDensityCore` also provides convenience methods for `AbstractVIPosterior` objects that let us easily compute relevant summary statistics for the density ``f`` and the cdf ``F`` directly from the variational posterior object:
+
+```@example general_api
+bsm = BSplineMixture(randn(1000))
+viposterior = varinf(bsm)
+
+# Compute the (variational) posterior mean of f(0.5)
+mean(viposterior, pdf, 0.5)
+
+# Compute the (variational) posterior median of F(0.5)
+median(viposterior, cdf, 0.5)
+
+# Compute the (variational) posterior 0.05 and 0.95-quantiles of f(0.5)
+# Note that supplying pdf as the second argument is optional here
+quantile(viposterior, 0.5, [0.05, 0.95]) == quantile(viposterior, pdf, 0.5, [0.05, 0.95])
+```
+
+The full list of available summary statistics is the same as that for `PosteriorSamples` objects:
 ```@docs
 mean(::AbstractVIPosterior)
 quantile(::AbstractVIPosterior)

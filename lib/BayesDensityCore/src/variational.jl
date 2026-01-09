@@ -18,6 +18,11 @@ Abstract super type representing the variational posterior distribution of `Abst
 """
 abstract type AbstractVIPosterior{T<:Real} end
 
+"""
+    Base.eltype(::AbstractVIPosterior{T}) where {T}
+
+Get the element type of a variational posterior object.
+"""
 Base.eltype(::AbstractVIPosterior{T}) where {T} = T
 
 """
@@ -51,7 +56,7 @@ function model(::AbstractVIPosterior) end
     quantile(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         q::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
@@ -66,9 +71,9 @@ function model(::AbstractVIPosterior) end
         [n_samples::Int=1000]
     ) -> Matrix{<:Real}
 
-Compute the posterior `q`-quantiles of ``f(t)`` for each element in the collection `t`.
+Compute the posterior `q`-quantile(s) of the pdf ``f(t)`` or the cdf ``F(t)`` for each element in the collection `t`.
 
-By default this function falls back to `quantile(sample(rng, vip, n_samples), t, q)`
+By default this function falls back to `quantile(sample(rng, vip, n_samples), func, t, q)`
 
 In the case where both `t` and `q` are scalars, the output is a real number.
 When `t` is a vector and `q` a scalar, this function returns a vector of the same length as `t`.
@@ -107,12 +112,12 @@ Distributions.quantile(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real
     median(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the posterior median of ``f(t)`` for each element in the collection `t`.
+Compute the posterior median of the pdf ``f(t)`` or the cdf ``F(t)`` for each element in the collection `t`.
 
 Equivalent to `quantile(rng, vip, t, 0.5, n_samples)`.
 
@@ -125,7 +130,7 @@ Distributions.median(vip::AbstractVIPosterior) = throw(MethodError(median, (vip)
     mean(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -155,12 +160,12 @@ Distributions.mean(vip::AbstractVIPosterior) = throw(MethodError(mean, (vip)))
     var(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior variance of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the posterior variance of the pdf ``f(t)`` or the cdf ``F(t)`` for each element in the collection `t`.
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 
@@ -185,12 +190,12 @@ Distributions.var(vip::AbstractVIPosterior) = throw(MethodError(var, (vip)))
     std(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior standard deviation of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the posterior standard deviation of the pdf ``f(t)`` or the cdf ``F(t)`` for each element in the collection `t`.
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 This method is equivalent to `sqrt.(var(rng, vip, t, n_samples))`.

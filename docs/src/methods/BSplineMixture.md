@@ -2,17 +2,9 @@
 
 Documentation for B-Spline Mixture Models.
 
-This model is available through the `BayesDensityBSplineMixture` module, which can be installed as a separate Julia package as follows:
-```julia
-using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSplineMixture.jl")
-```
+This model is available through the `BayesDensityBSplineMixture` module.
 
-To use the functionality of the module, one can import either of the following packages:
-```julia
-using BayesDensityBSplineMixture
-using BayesDensity # Requires a working BayesDensity installation
-```
+## Module API
 
 The first step to fitting a B-spline mixture model to a given dataset is to construct a [`BSplineMixture`](@ref) model object:
 ```@docs

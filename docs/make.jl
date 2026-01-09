@@ -22,7 +22,8 @@ makedocs(;
             "api/plotting_api.md" # Also add a subpage here with methods api
         ],
         "Methods" => [
-            "methods/BSplineMixture.md"
+            "methods/index.md",
+            "methods/BSplineMixture.md",
             "methods/HistSmoother.md"
         ],
         "Tutorials" => [

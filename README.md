@@ -61,7 +61,10 @@ For a more thorough introduction to the API and the capabilities of the package,
 TODO list:
 - Implement check for proper posterior (BSM)
 - Make StatsBase.sample take in initial values as a kwarg.
-- Split up general docs into three parts (with an index page to start)
+- Split up general docs into three parts (with an index page to start) (maybe this is overkill)
+- Write cdf methods for HistSmoother
+- Implement variational inference for HistSmoother
+- Finish writing tests for HistSmoother (sample, varinf)
 - Finish example on how to implement new models.
 - Implement more methods.
 - 

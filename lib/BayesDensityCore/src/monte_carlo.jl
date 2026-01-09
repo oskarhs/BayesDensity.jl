@@ -26,6 +26,11 @@ Return the model object of `ps`.
 """
 model(ps::PosteriorSamples) = ps.model
 
+"""
+    Base.eltype(::PosteriorSamples{T}) where {T}
+
+Get the element type of a `PosteriorSamples` object.
+"""
 Base.eltype(::PosteriorSamples{T,M,V}) where {T, M, V} = T
 
 function Base.show(io::IO, ::MIME"text/plain", ps::PosteriorSamples{T, M, V}) where {T, M, V}
@@ -65,21 +70,21 @@ StatsBase.sample(bdm::AbstractBayesDensityModel, args...; kwargs...) = StatsBase
 """
     quantile(
         ps::PosteriorSamples,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         q::RealAbstractVector{<:Real,
     ) -> Union{Real, Vector{<:Real}}
 
     quantile(
         ps::PosteriorSamples,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)]
         t::Union{Real, AbstractVector{<:Real}},
         q::AbstractVector{<:Real},
     ) -> Matrix{<:Real}
 
-Compute the approximate posterior quantiles of a functional of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the approximate posterior quantile(s) of a functional of ``f`` for every element in the collection `t` using Monte Carlo samples.
 
-The target functional can be either ``f`` itself or the cdf ``F(t)``, and is controlled by adjusting the `func` argument.
+The target functional can be either be the pdf ``f`` or the cdf ``F``, and is controlled by adjusting the `func` argument.
 By default, the posterior quantiles of ``f`` are computed.
 
 In the case where both `t` and `q` are scalars, the output is a real number.
@@ -92,13 +97,11 @@ julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
 julia> ps = sample(Random.Xoshiro(1), BSplineMixture(x), 5000);
 
-julia> quantile(ps, 0.1, 0.5) # Get the posterior median of f(0.5)
-0.08936091272819188
+julia> quantile(ps, 0.1, 0.5); # Get the posterior median of f(0.5)
 
-julia> quantile(ps, [0.1, 0.8], [0.05, 0.95]) # Get the posterior 0.05, 0.95-quantiles of f(0.1) and f(0.8)
-2×2 Matrix{Float64}:
- 0.0661715  0.120343
- 1.2408     1.49437
+julia> quantile(ps, cdf, 0.1, 0.5); # Get the posterior median of F(0.5)
+
+julia> quantile(ps, [0.1, 0.8], [0.05, 0.95]); # Get the posterior 0.05, 0.95-quantiles of f(0.1) and f(0.8)
 ```
 """
 Distributions.quantile(ps::PosteriorSamples) = throw(MethodError(quantile, (ps)))
@@ -140,11 +143,14 @@ Distributions.quantile(ps::PosteriorSamples, t::Union{Real, AbstractVector{<:Rea
 """
     median(
         ps::PosteriorSamples,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)]
         t::Union{Real, AbstractVector{<:Real}},
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior median of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the approximate posterior median of a functional of ``f`` for every element in the collection `t` using Monte Carlo samples.
+
+The target functional can be either be the pdf ``f`` or the cdf ``F``, and is controlled by adjusting the `func` argument.
+By default, the posterior median of ``f`` is computed.
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 """
@@ -153,11 +159,14 @@ Distributions.median(ps::PosteriorSamples) = throw(MethodError(median, (ps)))
 """
     mean(
         ps::PosteriorSamples,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior mean of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the approximate posterior mean of a functional of ``f`` for every element in the collection `t` using Monte Carlo samples.
+
+The target functional can be either be the pdf ``f`` or the cdf ``F``, and is controlled by adjusting the `func` argument.
+By default, the posterior mean of ``f`` is computed.
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 
@@ -181,11 +190,14 @@ Distributions.mean(ps::PosteriorSamples) = throw(MethodError(mean, (ps)))
 """
     var(
         ps::PosteriorSamples,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior variance of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the approximate posterior variance of a functional of ``f`` for every element in the collection `t` using Monte Carlo samples.
+
+The target functional can be either be the pdf ``f`` or the cdf ``F``, and is controlled by adjusting the `func` argument.
+By default, the posterior variance of ``f`` is computed.
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 
@@ -209,11 +221,14 @@ Distributions.var(ps::PosteriorSamples) = throw(MethodError(var, (ps)))
 """
     std(
         ps::PosteriorSamples,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior standard deviation of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+Compute the approximate posterior standard deviation of a functional of ``f`` for every element in the collection `t` using Monte Carlo samples.
+
+The target functional can be either be the pdf ``f`` or the cdf ``F``, and is controlled by adjusting the `func` argument.
+By default, the posterior standard deviation of ``f`` is computed.
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 This method is equivalent to `sqrt.(var(rng, vip, t, n_samples))`.

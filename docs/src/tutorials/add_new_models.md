@@ -335,7 +335,3 @@ lines!(ax, t, pdf(d_true, t), label="True density", color=:black)
 axislegend(ax, framevisible=false)
 fig
 ```
-
-### TODOs
-
-- TODO: Add plots where we show the fallback cdf method, once this has been implemented.
