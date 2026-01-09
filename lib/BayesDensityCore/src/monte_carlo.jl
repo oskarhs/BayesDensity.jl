@@ -31,12 +31,11 @@ Base.eltype(::PosteriorSamples{T,M,V}) where {T, M, V} = T
 function Base.show(io::IO, ::MIME"text/plain", ps::PosteriorSamples{T, M, V}) where {T, M, V}
     println(io, "PosteriorSamples{", T, "} object holding ", ps.n_samples, " posterior samples, of which ", ps.n_burnin, " are burn-in samples.")
     println(io, "Model:")
-    println(io, model(ps))
+    print(io, model(ps))
     nothing
 end
 
 Base.show(io::IO, bsm::PosteriorSamples) = show(io, MIME("text/plain"), bsm)
-
 
 """
     sample(
@@ -61,22 +60,31 @@ This functions returns a [`PosteriorSamples`](@ref) object which can be used to 
 # Returns
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
 """
-function StatsBase.sample(::AbstractBayesDensityModel, ::Int) end # Perhaps the user should have the option to discard burn-in samples?
-
 StatsBase.sample(bdm::AbstractBayesDensityModel, args...; kwargs...) = StatsBase.sample(Random.default_rng(), bdm, args...; kwargs...)
 
 """
     quantile(
         ps::PosteriorSamples,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
-        q::Union{Real, AbstractVector{<:Real}},
-    ) -> Union{Real, Vector{<:Real}, Matrix{<:Real}}
+        q::RealAbstractVector{<:Real,
+    ) -> Union{Real, Vector{<:Real}}
 
-Compute the approximate posterior quantiles of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+    quantile(
+        ps::PosteriorSamples,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        t::Union{Real, AbstractVector{<:Real}},
+        q::AbstractVector{<:Real},
+    ) -> Matrix{<:Real}
+
+Compute the approximate posterior quantiles of a functional of ``f(t)`` for every element in the collection `t` using Monte Carlo samples.
+
+The target functional can be either ``f`` itself or the cdf ``F(t)``, and is controlled by adjusting the `func` argument.
+By default, the posterior quantiles of ``f`` are computed.
 
 In the case where both `t` and `q` are scalars, the output is a real number.
-When `t` is a vector and `q` a scalar, this functions returns a vector of the same length as `t`.
-If `q` is supplied as a Vector, then this function returns a Matrix of dimension `(length(t), length(q))`, where each column corresponds to a given quantile. This is also the case when `t` is supplied as a scalar.
+When `t` is a vector and `q` a scalar, this function returns a vector of the same length as `t`.
+If `q` is supplied as a Vector, then this method returns a Matrix of dimension `(length(t), length(q))`, where each column corresponds to a given quantile. This is also the case when `t` is supplied as a scalar.
 
 # Examples
 ```julia-repl
@@ -84,45 +92,55 @@ julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
 julia> ps = sample(Random.Xoshiro(1), BSplineMixture(x), 5000);
 
-julia> quantile(ps, 0.1, 0.5)
+julia> quantile(ps, 0.1, 0.5) # Get the posterior median of f(0.5)
 0.08936091272819188
 
-julia> quantile(ps, [0.1, 0.8], [0.05, 0.95])
+julia> quantile(ps, [0.1, 0.8], [0.05, 0.95]) # Get the posterior 0.05, 0.95-quantiles of f(0.1) and f(0.8)
 2×2 Matrix{Float64}:
  0.0661715  0.120343
  1.2408     1.49437
 ```
 """
-function Distributions.quantile(ps::PosteriorSamples, t, q::Real)
-    if !(0 ≤ q ≤ 1)
-        throws(DomainError("Requested quantile level is not in [0,1]."))
-    end
-    f_samp = pdf(ps.model, ps.samples[ps.n_burnin+1:end], t)
+Distributions.quantile(ps::PosteriorSamples) = throw(MethodError(quantile, (ps)))
 
-    return mapslices(x -> quantile(x, q), f_samp; dims=2)[:]
-end
+# Get posterior samples of pdf/cdf evaluated on a grid/single point.
+# Use the samples to compute the desired quantiles.
+for func in (:pdf, :cdf)
+    @eval begin
+        function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t, q::Real)
+            if !(0 ≤ q ≤ 1)
+                throws(DomainError("Requested quantile level is not in [0,1]."))
+            end
+            func_samp = $func(ps.model, ps.samples[ps.n_burnin+1:end], t)
 
-function Distributions.quantile(ps::PosteriorSamples, t, q::AbstractVector{<:Real})
-    if !all(0 .≤ q .≤ 1)
-        throw(DomainError("All requested quantile levels must lie in the interval [0,1]."))
-    end
-    f_samp = pdf(ps.model, ps.samples[ps.n_burnin+1:end], t)
-    
-    result = mapslices(x -> quantile(x, q), f_samp; dims=2)
-    return result  # shape: (length(t), length(q))
-end
-function Distributions.quantile(ps::PosteriorSamples, t::Real, q::Real)
-    if !(0 ≤ q ≤ 1)
-        throws(DomainError("Requested quantile level is not in [0,1]."))
-    end
-    f_samp = pdf(ps.model, ps.samples[ps.n_burnin+1:end], t)
+            return mapslices(x -> quantile(x, q), func_samp; dims=2)[:]
+        end
+        function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t, q::AbstractVector{<:Real})
+            if !all(0 .≤ q .≤ 1)
+                throw(DomainError("All requested quantile levels must lie in the interval [0,1]."))
+            end
+            func_samp = $func(ps.model, ps.samples[ps.n_burnin+1:end], t)
+            
+            result = mapslices(x -> quantile(x, q), func_samp; dims=2)
+            return result  # shape: (length(t), length(q))
+        end
+        function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t::Real, q::Real)
+            if !(0 ≤ q ≤ 1)
+                throws(DomainError("Requested quantile level is not in [0,1]."))
+            end
+            func_samp = $func(ps.model, ps.samples[ps.n_burnin+1:end], t)
 
-    return mapslices(x -> quantile(x, q), f_samp; dims=2)[1]
+            return mapslices(x -> quantile(x, q), func_samp; dims=2)[1]
+        end
+    end
 end
+# Make pdf default:
+Distributions.quantile(ps::PosteriorSamples, t::Union{Real, AbstractVector{<:Real}}, q::Union{Real, AbstractVector{<:Real}}) = quantile(ps, pdf, t, q)
 
 """
     median(
         ps::PosteriorSamples,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
     ) -> Union{Real, Vector{<:Real}}
 
@@ -130,11 +148,12 @@ Compute the approximate posterior median of ``f(t)`` for every element in the co
 
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 """
-Distributions.median(ps::PosteriorSamples, t::Union{Real, AbstractVector{<:Real}}) = quantile(ps, t, 0.5)
+Distributions.median(ps::PosteriorSamples) = throw(MethodError(median, (ps)))
 
 """
     mean(
         ps::PosteriorSamples,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
@@ -157,23 +176,12 @@ julia> mean(ps, [0.1, 0.8])
  1.3662358915400654
 ```
 """
-function Distributions.mean(ps::PosteriorSamples, t::AbstractVector{<:Real})
-    f_samp = pdf(model(ps), ps.samples[ps.n_burnin+1:end], t)
-    
-    result = mapslices(x -> mean(x), f_samp; dims=2)[:]
-    return result
-end
-Base.Broadcast.broadcasted(::typeof(mean), ps::PosteriorSamples, t::AbstractVector{<:Real}) = Distributions.mean(ps, t)
-function Distributions.mean(ps::PosteriorSamples, t::Real)
-    f_samp = pdf(model(ps), ps.samples[ps.n_burnin+1:end], t)
-    
-    result = mapslices(x -> mean(x), f_samp; dims=2)[1]
-    return result
-end
+Distributions.mean(ps::PosteriorSamples) = throw(MethodError(mean, (ps)))
 
 """
     var(
         ps::PosteriorSamples,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
@@ -187,32 +195,21 @@ julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
 
 julia> ps = sample(Random.Xoshiro(1), BSplineMixture(x), 5000);
 
-julia> var(ps, 0.1)
+julia> var(ps, 0.1) # get the posterior variance of f(0.1)
 0.00027756364767372627
 
-julia> var(ps, [0.1, 0.8])
+julia> var(ps, [0.1, 0.8]) # get the posterior variance of f(0.1) and f(0.8)
 2-element Vector{Float64}:
  0.00027756364767372627
  0.005977674286240125
 ```
 """
-function Distributions.var(ps::PosteriorSamples, t::AbstractVector{<:Real})
-    f_samp = pdf(model(ps), ps.samples[ps.n_burnin+1:end], t)
-    
-    result = mapslices(x -> var(x), f_samp; dims=2)[:]
-    return result
-end
-Base.Broadcast.broadcasted(::typeof(var), ps::PosteriorSamples, t::AbstractVector{<:Real}) = Distributions.var(ps, t)
-function Distributions.var(ps::PosteriorSamples, t::Real)
-    f_samp = pdf(model(ps), ps.samples[ps.n_burnin+1:end], t)
-    
-    result = mapslices(x -> var(x), f_samp; dims=2)[1]
-    return result
-end
+Distributions.var(ps::PosteriorSamples) = throw(MethodError(var, (ps)))
 
 """
     std(
         ps::PosteriorSamples,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
@@ -221,5 +218,30 @@ Compute the approximate posterior standard deviation of ``f(t)`` for every eleme
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 This method is equivalent to `sqrt.(var(rng, vip, t, n_samples))`.
 """
-Distributions.std(ps::PosteriorSamples, t::Union{<:Real, <:AbstractVector{<:Real}}) = sqrt.(var(ps, t))
-Base.Broadcast.broadcasted(::typeof(std), ps::PosteriorSamples, t::AbstractVector{<:Real}) = Distributions.std(ps, t)
+Distributions.std(ps::PosteriorSamples) = throw(MethodError(std, (ps)))
+
+# Use the PosteriorSamples object to evaluate func(t) on a grid/single point.
+# Then, use these samples to approximate the desired statistic.
+for statistic in (:median, :mean, :var, :std)
+    for func in (:pdf, :cdf)
+        @eval begin
+            function Distributions.$statistic(ps::PosteriorSamples, ::typeof($func), t::AbstractVector{<:Real})
+                func_samp = $func(model(ps), ps.samples[ps.n_burnin+1:end], t)
+                
+                result = mapslices(x -> $statistic(x), func_samp; dims=2)[:]
+                return result
+            end
+            function Distributions.$statistic(ps::PosteriorSamples, ::typeof($func), t::Real)
+                func_samp = $func(model(ps), ps.samples[ps.n_burnin+1:end], t)
+                
+                result = mapslices(x -> $statistic(x), func_samp; dims=2)[1]
+                return result
+            end
+        end
+    end
+    # Make pdf the default:
+    @eval begin 
+        Distributions.$statistic(ps::PosteriorSamples, t::AbstractVector{<:Real}) = $statistic(ps, pdf, t)
+        Distributions.$statistic(ps::PosteriorSamples, t::Real) = $statistic(ps, pdf, t)
+    end
+end

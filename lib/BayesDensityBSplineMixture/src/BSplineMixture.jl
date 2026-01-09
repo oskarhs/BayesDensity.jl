@@ -265,16 +265,19 @@ Evaluate f(t | η) when the model parameters are equal to η.
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """
 function Distributions.cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
-    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+    bounds = BayesDensityCore.support(bsm)
+    _cdf(bsm, params, clamp.(t, bounds[1], bounds[2]), Val(:spline_coefs in Names))
 end
 function Distributions.cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
-    _cdf(bsm, params, t, Val(:spline_coefs in Names))
-end
+    bounds = BayesDensityCore.support(bsm)
+    _cdf(bsm, params, clamp.(t, bounds[1], bounds[2]), Val(:spline_coefs in Names))end
 function Distributions.cdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
-    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+    bounds = BayesDensityCore.support(bsm)
+    _cdf(bsm, params, clamp.(t, bounds[1], bounds[2]), Val(:spline_coefs in Names))
 end
 function Distributions.cdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
-    _cdf(bsm, params, t, Val(:spline_coefs in Names))
+    bounds = BayesDensityCore.support(bsm)
+    _cdf(bsm, params, clamp.(t, bounds[1], bounds[2]), Val(:spline_coefs in Names))
 end
 
 # Compile-time dispatch

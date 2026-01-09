@@ -107,7 +107,6 @@ function create_unnormalized_sparse_spline_basis_matrix(x::AbstractVector{T}, ba
         I[ind] .= i
         j = max(N, j)
         J[ind] .= (j-N+1):j
-        #V[ind] .= reverse(basis_eval) .* norm_fac[(j-3):j]
         V[ind] .= reverse(basis_eval)
     end
     return sparse(I, J, V, n, K)

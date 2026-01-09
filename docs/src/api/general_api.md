@@ -56,17 +56,22 @@ sample(::AbstractBayesDensityModel, ::Int)
 All of the implemented MCMC methods return an object of type `PosteriorSamples`:
 ```@docs
 PosteriorSamples
+```
+
+The following methods can be used to extract useful information about the model object, such as
+```@docs
 model(::PosteriorSamples)
+eltype(::PosteriorSamples)
 ```
 
 #### Computing posterior quantities of interest:
 The following methods can be used to compute different posterior quantities of interest:
 ```@docs
 mean(::PosteriorSamples, ::AbstractVector{<:Real})
-quantile(::PosteriorSamples, ::Any, ::Real)
-median(::PosteriorSamples, ::Union{Real, AbstractVector{<:Real}})
-var(::PosteriorSamples, ::AbstractVector{<:Real})
-std(::PosteriorSamples, ::AbstractVector{<:Real})
+quantile(::PosteriorSamples)
+median(::PosteriorSamples)
+var(::PosteriorSamples)
+std(::PosteriorSamples)
 ```
 
 ## Variational inference
@@ -90,11 +95,11 @@ As shown in the above docstring, using the `sample` method on a `AbstractVIPoste
 #### Computing posterior quantities of interest:
 Alternatively, various posterior quantities of interest can be computed directly as follows:
 ```@docs
-mean(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
-quantile(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
-median(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
-var(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
-std(::AbstractVIPosterior, ::Union{Real, <:AbstractVector{<:Real}}, ::Int)
+mean(::AbstractVIPosterior)
+quantile(::AbstractVIPosterior)
+median(::AbstractVIPosterior)
+var(::AbstractVIPosterior)
+std(::AbstractVIPosterior)
 ```
 
 !!! note

@@ -51,10 +51,20 @@ function model(::AbstractVIPosterior) end
     quantile(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         q::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
-    ) -> Union{Real, Vector{<:Real}, Matrix{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    quantile(
+        [rng::Random.AbstractRNG],
+        vip::AbstractVIPosterior,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        t::Union{Real, AbstractVector{<:Real}},
+        q::AbstractVector{<:Real},
+        [n_samples::Int=1000]
+    ) -> Matrix{<:Real}
 
 Compute the posterior `q`-quantiles of ``f(t)`` for each element in the collection `t`.
 
@@ -79,13 +89,25 @@ julia> quantile(Random.Xoshiro(1), vip, [0.2, 0.8], [0.05, 0.95])
  1.3039   1.43599
 ```
 """
+Distributions.quantile(vip::AbstractVIPosterior) = throw(MethodError(quantile, (vip)))
+
+# We can just use the methods for PosteriorSamples as a fallback here.
+for func in (:pdf, :cdf)
+    @eval begin
+        Distributions.quantile(vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, q::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(sample(vip, n_samples), $func, t, q)
+        Distributions.quantile(rng::AbstractRNG, vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, q::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(sample(rng, vip, n_samples), $func, t, q)
+    end
+end
+# Make pdf the default
 Distributions.quantile(vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, q::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(sample(vip, n_samples), t, q)
 Distributions.quantile(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, q::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(sample(rng, vip, n_samples), t, q)
+
 
 """
     median(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -97,13 +119,13 @@ Equivalent to `quantile(rng, vip, t, 0.5, n_samples)`.
 In the case where both `t` and `q` are scalars, the output is a real number.
 When `t` is a vector, this function returns a vector of the same length as `t`.
 """
-Distributions.median(vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(vip, t, 0.5, n_samples)
-Distributions.median(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(rng, vip, t, 0.5, n_samples)
+Distributions.median(vip::AbstractVIPosterior) = throw(MethodError(median, (vip)))
 
 """
     mean(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -127,13 +149,13 @@ julia> mean(Random.Xoshiro(1), vip, [0.1, 0.8])
  1.3674886390998342
 ```
 """
-Distributions.mean(vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = mean(sample(vip, n_samples), t)
-Distributions.mean(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = mean(sample(rng, vip, n_samples), t)
+Distributions.mean(vip::AbstractVIPosterior) = throw(MethodError(mean, (vip)))
 
 """
     var(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -157,13 +179,13 @@ julia> var(Random.Xoshiro(1), vip, [0.1, 0.8])
  0.0014793006688108977
 ```
 """
-Distributions.var(vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = var(sample(vip, n_samples), t)
-Distributions.var(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = var(sample(rng, vip, n_samples), t)
+Distributions.var(vip::AbstractVIPosterior) = throw(MethodError(var, (vip)))
 
 """
     std(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
+        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -173,5 +195,20 @@ Compute the approximate posterior standard deviation of ``f(t)`` for every eleme
 If the input `t` is a scalar, a scalar is returned. If `t` is a vector, this function returns a vector the same length as `t`.
 This method is equivalent to `sqrt.(var(rng, vip, t, n_samples))`.
 """
-Distributions.std(vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = sqrt.(var(vip, t, n_samples))
-Distributions.std(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = sqrt.(var(rng, vip, t, n_samples))
+Distributions.std(vip::AbstractVIPosterior) = throw(MethodError(std, (vip)))
+
+# Just reuse the methods defined for PosteriorSamples.
+for statistic in (:median, :mean, :var, :std)
+    for func in (:pdf, :cdf)
+        @eval begin
+            Distributions.$statistic(vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(vip, n_samples), $func, t)
+            Distributions.$statistic(rng::AbstractRNG, vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(rng, vip, n_samples), $func, t)
+        end
+    end
+
+    # Make pdf the default
+    @eval begin
+        Distributions.$statistic(vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(vip, n_samples), pdf, t)
+        Distributions.$statistic(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(rng, vip, n_samples), pdf, t)
+    end
+end
