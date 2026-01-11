@@ -220,6 +220,103 @@ function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
 end
 
 
+"""
+    cdf(
+        shs::HistSmoother,
+        params::NamedTuple,
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    cdf(
+        shs::HistSmoother,
+        params::AbstractVector{NamedTuple},
+        t::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate ``F(t \\,|\\, \\boldsymbol{\\eta}) = \\int_{-\\infty}^t f(s \\,|\\, \\boldsymbol{\\eta})\\, \\text{d}s`` for the HistSmoother `shs` when the model parameters are equal to ``\\boldsymbol{\\eta}``.
+
+The named tuple should contain a field named `:β`.
+If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
+Alternatively, if `parameters` contains the field `:norm`, then this value is used instead.
+"""
+function Distributions.cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
+    return _cdf(shs, params, [t], Val(:norm in Names))[1]
+end
+function Distributions.cdf(shs::HistSmoother, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
+    return _cdf(shs, params, [t], Val(:norm in Names))
+end
+function Distributions.cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
+    return _cdf(shs, params, t, Val(:norm in Names))
+end
+function Distributions.cdf(shs::HistSmoother, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
+    return _cdf(shs, params, t, Val(:norm in Names))
+end
+
+# If normalization constant is provided, we do not have to compute it
+function _cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{true}) where {Names, Vals<:Tuple}
+    bounds = shs.data.bounds
+    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
+    bs_min, bs_max = boundaries(shs.bs)
+    Z = demmler_reinsch_basis_matrix(t_trans, shs.bs, shs.data.LZ)
+    C = hcat(fill(1, length(t_trans)), t_trans, Z)
+    l1_norm = params.norm
+
+    # Compute linear predictor, exponentiate and normalize:
+    linpreds = C * params.β
+    return exp.(linpreds) / (l1_norm*(bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+end
+function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+    R = promote_type(T, S)
+    bounds = shs.data.bounds
+    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
+    bs_min, bs_max = boundaries(shs.bs)
+
+    # Evaluate linear predictors for each value in t, params:
+    linpreds = eval_linpred(shs, params, t_trans)
+    l1_norm_vec = Vector{R}(undef, length(params))
+    for i in eachindex(params)
+        l1_norm_vec[i] = params[i].norm
+    end
+    
+    # Normalize:
+    f_samp = Matrix{R}(undef, (length(t), length(params)))
+    for i in eachindex(params)
+        f_samp[:,i] = exp.(linpreds[:,i]) / (l1_norm_vec[i] * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    end
+    return f_samp
+end
+
+# Normalization constant not provided, so it must be computed first.
+function _cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{false}) where {Names, Vals<:Tuple}
+    bounds = shs.data.bounds
+    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
+    bs_min, bs_max = boundaries(shs.bs)
+    Z = demmler_reinsch_basis_matrix(t_trans, shs.bs, shs.data.LZ)
+    C = hcat(fill(1, length(t)), t_trans, Z)
+    l1_norm = compute_norm_constants(shs, params)
+
+    # Compute linear predictor, exponentiate and normalize:
+    linpreds = C * params.β
+    return exp.(linpreds) / (l1_norm * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+end
+function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+    R = promote_type(T, S)
+    bounds = shs.data.bounds
+    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
+    bs_min, bs_max = boundaries(shs.bs)
+
+    # Evaluate linear predictors for each value in t, params:
+    linpreds = eval_linpred(shs, params, t_trans)
+    l1_norm_vec = compute_norm_constants(shs, params)
+    
+    # Normalize:
+    f_samp = Matrix{R}(undef, (length(t), length(params)))
+    for i in eachindex(params)
+        f_samp[:,i] = exp.(linpreds[:,i]) / (l1_norm_vec[i] * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    end
+    return f_samp
+end
+
 function get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin

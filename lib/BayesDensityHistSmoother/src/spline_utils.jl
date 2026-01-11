@@ -2,7 +2,7 @@
 # NB! Computes the normalization constant on [0, 1] and not on the original scale.
 function compute_norm_constants(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
-    n = 2048
+    n = 4002
     # Evaluation grid for Simpson's method
     t = LinRange{T}(kn[1], kn[end], n+1)
     h = step(t)
@@ -13,7 +13,7 @@ function compute_norm_constants(shs::HistSmoother{T, A, D}, params::NamedTuple{N
 end
 function compute_norm_constants(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
-    n = 2048
+    n = 4002
     # Evaluation grid for Simpson's method
     t = LinRange{T}(kn[1], kn[end], n+1)
     h = step(t)
@@ -84,7 +84,7 @@ function linear_binning(x::AbstractVector{T}, n_bins::Int, xmin::T, xmax::T) whe
     N = zeros(T, n_bins)
     delta = (xmax - xmin) / n_bins
 
-    for i = eachindex(x)
+    for i in eachindex(x)
         lxi = ((x[i] - xmin) / delta) + 1
         li = floor(Int, lxi)
         rem = lxi - li
