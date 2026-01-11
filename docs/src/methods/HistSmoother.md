@@ -10,7 +10,10 @@ The first step to fitting a histogram smoother is to create a `HistSmoother` mod
 ```@docs
 HistSmoother
 BayesDensityHistSmoother.pdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
+BayesDensityHistSmoother.cdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 ```
+
+### Markov chain Monte Carlo
 
 ### Variational inference
 TODO

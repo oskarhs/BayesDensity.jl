@@ -54,10 +54,12 @@ function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, n_sampl
     end
 
     # Compute normalization constants:
-    l1_norm_vec = compute_norm_constants(shs, samples_temp)
-    samples = Vector{NamedTuple{(:β, :σ2, :norm), Tuple{Vector{T}, T, T}}}(undef, n_samples)
+    eval_grid, val_cdf, l1_norm_vec = compute_norm_constants_cdf_grid(shs, samples_temp)
+    samples = Vector{NamedTuple{(:β, :σ2, :norm, :eval_grid, :val_cdf), Tuple{Vector{T}, T, T, LinRange{T}, Vector{T}}}}(undef, n_samples)
     for m in 1:n_samples
-        samples[m] = (β = samples_temp[m].β, σ2 = samples_temp[m].σ2, norm = l1_norm_vec[m])
+        samples[m] = (β = samples_temp[m].β, σ2 = samples_temp[m].σ2,
+                      norm = l1_norm_vec[m], eval_grid = eval_grid[m],
+                      val_cdf = val_cdf[m])
     end
     return PosteriorSamples{T}(samples, shs, n_samples, n_burnin)
 end

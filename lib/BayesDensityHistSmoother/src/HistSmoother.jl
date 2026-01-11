@@ -108,9 +108,9 @@ Get the support of the spline histogram smoother model `shs`.
 """
 function BayesDensityCore.support(shs::HistSmoother)
     bounds = shs.data.bounds
-    smin = bounds[1] - 0.05 * (bounds[2] - bounds[1])
-    smax = bounds[2] + 0.05 * (bounds[2] - bounds[1])
-    return smin, smax
+    bs_min = bounds[1] - 0.05 * (bounds[2] - bounds[1])
+    bs_max = bounds[2] + 0.05 * (bounds[2] - bounds[1])
+    return bs_min, bs_max
 end
 
 """
@@ -195,7 +195,7 @@ function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVec
     bs_min, bs_max = boundaries(shs.bs)
     Z = demmler_reinsch_basis_matrix(t_trans, shs.bs, shs.data.LZ)
     C = hcat(fill(1, length(t)), t_trans, Z)
-    l1_norm = compute_norm_constants(shs, params)
+    _, _, l1_norm = compute_norm_constants_cdf_grid(shs, params)
 
     # Compute linear predictor, exponentiate and normalize:
     linpreds = C * params.β
@@ -209,7 +209,7 @@ function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
 
     # Evaluate linear predictors for each value in t, params:
     linpreds = eval_linpred(shs, params, t_trans)
-    l1_norm_vec = compute_norm_constants(shs, params)
+    _, _, l1_norm_vec = compute_norm_constants_cdf_grid(shs, params)
     
     # Normalize:
     f_samp = Matrix{R}(undef, (length(t), length(params)))
@@ -218,7 +218,6 @@ function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
     end
     return f_samp
 end
-
 
 """
     cdf(
@@ -238,83 +237,87 @@ Evaluate ``F(t \\,|\\, \\boldsymbol{\\eta}) = \\int_{-\\infty}^t f(s \\,|\\, \\b
 The named tuple should contain a field named `:β`.
 If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
 Alternatively, if `parameters` contains the field `:norm`, then this value is used instead.
+
+Internally, this function computes the cdf on a regular grid, and uses linear interpolation to 
 """
 function Distributions.cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
-    return _cdf(shs, params, [t], Val(:norm in Names))[1]
+    return _cdf(shs, params, [t], Val(:eval_grid in Names && :val_cdf in Names))[1]
 end
 function Distributions.cdf(shs::HistSmoother, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
-    return _cdf(shs, params, [t], Val(:norm in Names))
+    return _cdf(shs, params, [t], Val(:eval_grid in Names && :val_cdf in Names))
 end
 function Distributions.cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
-    return _cdf(shs, params, t, Val(:norm in Names))
+    return _cdf(shs, params, t, Val(:eval_grid in Names && :val_cdf in Names))
 end
 function Distributions.cdf(shs::HistSmoother, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
-    return _cdf(shs, params, t, Val(:norm in Names))
+    return _cdf(shs, params, t, Val(:eval_grid in Names && :val_cdf in Names))
 end
 
-# If normalization constant is provided, we do not have to compute it
-function _cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{true}) where {Names, Vals<:Tuple}
+# If cdf has been evaluated on a grid, we use this to compute the linear interpolant:
+function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{true}) where {T, A, D, Names, Vals<:Tuple, S<:Real}
+    R = promote_type(T, S)
     bounds = shs.data.bounds
-    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     bs_min, bs_max = boundaries(shs.bs)
-    Z = demmler_reinsch_basis_matrix(t_trans, shs.bs, shs.data.LZ)
-    C = hcat(fill(1, length(t_trans)), t_trans, Z)
-    l1_norm = params.norm
+    t_trans = (t .- bs_min) / (bs_max - bs_min)
 
-    # Compute linear predictor, exponentiate and normalize:
-    linpreds = C * params.β
-    return exp.(linpreds) / (l1_norm*(bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    # Perform linear interpolation
+    n_intervals = length(params.eval_grid)-1
+    k = floor.(Int, n_intervals * t_trans) .+ 1
+    k_ind = 1 .≤ k .≤ n_intervals
+    k_ib = k[k_ind]
+    F_samp = zeros(R, length(t_trans))
+    F_samp[k .> n_intervals] .= one(R)
+    F_samp[k_ind] = n_intervals*(t_trans[k_ind] - params.eval_grid[k_ib])/ (bs_max - bs_min) .* params.val_cdf[k_ib .+ 1] + n_intervals * (params.eval_grid[k_ib .+ 1] - t_trans[k_ind]) / (bs_max - bs_min) .* params.val_cdf[k_ib]
+    return F_samp
 end
 function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
-    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     bs_min, bs_max = boundaries(shs.bs)
-
-    # Evaluate linear predictors for each value in t, params:
-    linpreds = eval_linpred(shs, params, t_trans)
-    l1_norm_vec = Vector{R}(undef, length(params))
-    for i in eachindex(params)
-        l1_norm_vec[i] = params[i].norm
-    end
+    t_trans = (t .- bs_min) / (bs_max - bs_min)
     
-    # Normalize:
-    f_samp = Matrix{R}(undef, (length(t), length(params)))
+    # Interpolate
+    F_samp = zeros(R, (length(t), length(params)))
+    n_intervals = length(params.eval_grid[1])-1
     for i in eachindex(params)
-        f_samp[:,i] = exp.(linpreds[:,i]) / (l1_norm_vec[i] * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+        k = floor.(Int, n_intervals * t_trans) .+ 1
+        k_ind = 1 .≤ k .≤ n_intervals
+        k_ib = k[k_ind]
+        F_samp[k .> n_intervals, i] .= one(R)
+        F_samp[k_ind, i] = n_intervals*(t_trans[k_ind] - params.eval_grid[k_ib])/(bs_max - bs_min) .* params.val_cdf[k_ib .+ 1] + n_intervals*(params.eval_grid[k_ib .+ 1] - t_trans[k_ind])/(bs_max - bs_min) .* params.val_cdf[k_ib]
     end
-    return f_samp
+    return F_samp
 end
 
-# Normalization constant not provided, so it must be computed first.
-function _cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{false}) where {Names, Vals<:Tuple}
+# If cdf has not been evaluated on a grid, we must evaluate it first:
+function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+    R = promote_type(T, S)
     bounds = shs.data.bounds
+    bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
-    bs_min, bs_max = boundaries(shs.bs)
-    Z = demmler_reinsch_basis_matrix(t_trans, shs.bs, shs.data.LZ)
-    C = hcat(fill(1, length(t)), t_trans, Z)
-    l1_norm = compute_norm_constants(shs, params)
+    eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
 
-    # Compute linear predictor, exponentiate and normalize:
-    linpreds = C * params.β
-    return exp.(linpreds) / (l1_norm * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+    # Intepolate
+    F_interp = interpolate(eval_grid, val_cdf, BSplineOrder(2))
+    F_samp = F_interp.(t_trans)
+    F_samp[t_trans .> bs_max] .= one(T)
+    return F_samp
 end
 function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
+    eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
+    bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
-    bs_min, bs_max = boundaries(shs.bs)
-
-    # Evaluate linear predictors for each value in t, params:
-    linpreds = eval_linpred(shs, params, t_trans)
-    l1_norm_vec = compute_norm_constants(shs, params)
     
-    # Normalize:
-    f_samp = Matrix{R}(undef, (length(t), length(params)))
+    # Interpolate
+    F_samp = zeros(R, (length(t), length(params)))
     for i in eachindex(params)
-        f_samp[:,i] = exp.(linpreds[:,i]) / (l1_norm_vec[i] * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
+        F_interp = interpolate(eval_grid, val_cdf[i], BSplineOrder(2))
+        F_samp[:, i] = F_interp.(t_trans)
+        F_samp[t_trans .> bs_max, i] .= one(T)
     end
-    return f_samp
+    return F_samp
 end
 
 function get_default_bounds(x::AbstractVector{<:Real})

@@ -10,7 +10,10 @@ The first step to fitting a B-spline mixture model to a given dataset is to cons
 ```@docs
 BSplineMixture
 BayesDensityBSplineMixture.pdf(::BSplineMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
+BayesDensityBSplineMixture.cdf(::BSplineMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 ```
+
+### Markov chain Monte Carlo
 
 ### Variational inference
 ```@docs

@@ -1,29 +1,42 @@
 # Compute the normalization constant of `shs` for given parameters using Simpson's method
 # NB! Computes the normalization constant on [0, 1] and not on the original scale.
-function compute_norm_constants(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}) where {T<:Real, A, D, Names, Vals<:Tuple}
+function compute_norm_constants_cdf_grid(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
-    n = 4002
+    n = 4000
     # Evaluation grid for Simpson's method
-    t = LinRange{T}(kn[1], kn[end], n+1)
-    h = step(t)
+    eval_grid = LinRange{T}(kn[1], kn[end], n+1)
+    h = step(eval_grid)
+    val_cdf = Vector{T}(undef, div(n, 2)+1)
 
-    y = exp.(eval_linpred(shs, params, t)) # (length(t), length(samples)) matrix
-    l1_norm = h / 3 * (y[1] + 4*sum(y[2:2:n]) + 2 * sum(y[3:2:n-1]) + y[n+1])
-    return l1_norm
-end
-function compute_norm_constants(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}) where {T<:Real, A, D, Names, Vals<:Tuple}
-    kn = knots(shs.bs)
-    n = 4002
-    # Evaluation grid for Simpson's method
-    t = LinRange{T}(kn[1], kn[end], n+1)
-    h = step(t)
-
-    y = exp.(eval_linpred(shs, params, t)) # (length(t), length(samples)) matrix
-    l1_norms = Vector{T}(undef, length(params))
-    for i in eachindex(params)
-        l1_norms[i] = h / 3 * (y[1, i] + 4*sum(y[2:2:n, i]) + 2 * sum(y[3:2:n-1, i]) + y[n+1, i])
+    val_cdf[1] = zero(T)
+    y = exp.(eval_linpred(shs, params, eval_grid))
+    for i in 2:length(val_cdf)
+        val_cdf[i] = h/3 * (y[2*(i-2)+1] + 4*y[2*(i-1)] + y[2*(i-1)+1]) + val_cdf[i-1]
     end
-    return l1_norms
+    l1_norm = val_cdf[end]
+    val_cdf = val_cdf / l1_norm
+    return eval_grid[1:2:end], val_cdf, l1_norm
+end
+function compute_norm_constants_cdf_grid(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}) where {T<:Real, A, D, Names, Vals<:Tuple}
+    kn = knots(shs.bs)
+    n = 4000
+    # Evaluation grid for Simpson's method
+    eval_grid = LinRange{T}(kn[1], kn[end], n+1)
+    h = step(eval_grid)
+    val_cdf = Vector{Vector{T}}(undef, length(params))
+
+    y = exp.(eval_linpred(shs, params, eval_grid)) # (length(t), length(samples)) matrix
+    l1_norms = Vector{T}(undef, length(params))
+    for j in eachindex(params)
+        val_cdf_j = Vector{T}(undef, div(n, 2)+1)
+        val_cdf_j[1] = zero(T)
+        for i in 2:length(val_cdf_j)
+            val_cdf_j[i] = h/3 * (y[2*(i-2)+1, j] + 4*y[2*(i-1), j] + y[2*(i-1)+1, j]) + val_cdf_j[i-1]
+        end
+        l1_norms[j] = val_cdf_j[end]
+        val_cdf[j] = val_cdf_j / l1_norms[j]
+    end
+    return eval_grid[1:2:end], val_cdf, l1_norms
 end
 
 function eval_linpred(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}) where {T<:Real, A, D, Names, Vals, S<:Real}

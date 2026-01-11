@@ -39,31 +39,42 @@ end
     @test_throws ArgumentError HistSmoother(x; n_bins=-10)
 end
 
-@testset "HistSmoother: pdf, support" begin
+@testset "HistSmoother: pdf, cdf, support" begin
     # Set all betas to 0. Then the pdf should equal the uniform density 
     x = collect(LinRange(0, 1, 51))
-    t = LinRange(0, 1, 11)
 
     K = 20
     shs = HistSmoother(x; K = K, bounds = (0, 1))
+    bs_min, bs_max = BayesDensityHistSmoother.support(shs)
+    t = LinRange(bs_min, bs_max, 11)
 
     # Test evaluation for single parameter sample, vector of evaluation points
     @test isapprox(pdf(shs, (β = zeros(K),), t), fill(1/1.10, length(t)))
+    @test isapprox(cdf(shs, (β = zeros(K),), t), collect(0:0.1:1))
 
     # Vector of parameter samples, vector of evaluation points
     n_fill = 20
     @test isapprox(pdf(shs, fill((β = zeros(K),), n_fill), t), fill(1/1.10, (length(t), n_fill)))
+    @test isapprox(cdf(shs, fill((β = zeros(K),), n_fill), t), reduce(hcat, [collect(0:0.1:1) for _ in 1:n_fill]))
 
     # Single parameter, single evaluation point
-    @test isapprox(pdf(shs, (β = zeros(K),), t[div(length(t), 2)]), 1/1.1)
+    @test isapprox(pdf(shs, (β = zeros(K),), 0.5), 1/1.1)
+    @test isapprox(cdf(shs, (β = zeros(K),), 0.5), 0.5)
 
     # Vector of parameter samples, single evaluation point
-    @test isapprox(pdf(shs, fill((β = zeros(K),), n_fill), t[div(length(t), 2)]), fill(1/1.10, (1, n_fill)))
+    @test isapprox(pdf(shs, fill((β = zeros(K),), n_fill), 0.5), fill(1/1.10, (1, n_fill)))
+    @test isapprox(cdf(shs, fill((β = zeros(K),), n_fill), 0.5), fill(0.5, (1, n_fill)))
 
     # Now test values not in the support of the model:
-    smin, smax = BayesDensityHistSmoother.support(shs)
-    @test pdf(shs, (β = zeros(K),), smin - 1e-4) == 0.0
-    @test isapprox(pdf(shs, (β = zeros(K),), smin + 1e-4), 1/1.1)
-    @test pdf(shs, (β = zeros(K),), smax + 1e-4) == 0.0
-    @test isapprox(pdf(shs, (β = zeros(K),), smax - 1e-4), 1/1.1)
+    @test pdf(shs, (β = zeros(K),), bs_min - 1e-10) == 0.0
+    @test cdf(shs, (β = zeros(K),), bs_min - 1e-10) == 0.0
+
+    @test isapprox(pdf(shs, (β = zeros(K),), bs_min + 1e-10), 1/1.1)
+    @test isapprox(cdf(shs, (β = zeros(K),), bs_min + 1e-10), 0.0; atol=1e-5)
+
+    @test pdf(shs, (β = zeros(K),), bs_max + 1e-4) == 0.0
+    @test isapprox(cdf(shs, (β = zeros(K),), bs_max + 1e-10), 1.0)
+
+    @test isapprox(pdf(shs, (β = zeros(K),), bs_max - 1e-10), 1/1.1)
+    @test isapprox(cdf(shs, (β = zeros(K),), bs_max - 1e-10), 1.0)
 end
