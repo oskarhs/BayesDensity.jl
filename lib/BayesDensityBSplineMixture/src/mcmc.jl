@@ -1,5 +1,5 @@
 
-function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)), initial_params::NamedTuple{Names, Vals}=get_default_initparams_mcmc(bsm)) where {Names, Vals}
+function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)), initial_params::NamedTuple=get_default_initparams_mcmc(bsm))
     if !(1 ≤ n_samples ≤ Inf)
         throw(ArgumentError("Number of samples must be a positive integer."))
     end
@@ -9,19 +9,24 @@ function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int;
     if n_samples < n_burnin
         @warn "Number of total samples is smaller than the number of burn-in samples."
     end
-    #check_initparams() # WRITE THIS METHOD
+    check_initparams(bsm, initial_params)
     return _sample_posterior(rng, bsm, initial_params, n_samples, n_burnin)
 end
 
+function check_initparams(bsm::BSplineMixture, initial_params::NamedTuple{N, V}) where {N, V}
+    (:β in N && :τ2 in N) || throw(ArgumentError("Expected a NamedTuple with fields β and τ2"))
+    K = length(BSplineKit.basis(bsm))
+    (; β, τ2) = initial_params
+
+    (β isa AbstractVector && length(β) == K-1) || throw(ArgumentError("Dimension of supplied initial β does not match that of the spline basis."))
+    (τ2 isa Real && τ2 > 0) || throw(ArgumentError("Supplied value of τ2 must be positive."))
+end
+
 # Lazy initialization
-function get_default_initparams_mcmc(bsm::BSplineMixture)
-    bs = BSplineKit.basis(bsm)
-    K = length(bs)
+function get_default_initparams_mcmc(bsm::BSplineMixture{T, A, D}) where {T, A, D}
     β = copy(bsm.data.μ)
     τ2 = one(T)                # Global smoothing parameter
-    δ2 = ones(T, K-3) # Local smoothing parameters
-    ω = ones(T, K-1)  # PolyaGamma variables
-    return (β = β, τ2 = τ2, δ2 = δ2, ω = ω)
+    return (β = β, τ2 = τ2)
 end
 
 # To do: make a multithreaded version (also one for unbinned data)
@@ -35,7 +40,11 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
 
     # Initial parameters
-    (; β, τ2, δ2, ω) = initial_params
+    (; β, τ2) = initial_params
+
+    # Initialize other params
+    δ2 = Vector{T}(undef, K-3)
+    ω = Vector{T}(undef, K-1)
     
     logprobs = Vector{T}(undef, 4)  # class label probabilities
 
@@ -46,10 +55,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     
     # Initialize vector of samples
     samples = Vector{NamedTuple{(:spline_coefs, :θ, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
-    spline_coefs = theta_to_coef(θ, basis)
-    samples[1] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
 
-    for m in 2:n_samples
+    for m in 1:n_samples
 
         # Update δ2: (some inefficiencies here, but okay for now)
         for k in 1:K-3
@@ -122,7 +129,11 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
     
     # Initial parameters
-    (; β, τ2, δ2, ω) = initial_params   
+    (; β, τ2) = initial_params
+
+    # Initialize other params
+    δ2 = Vector{T}(undef, K-3)
+    ω = Vector{T}(undef, K-1)
 
     logprobs = Vector{T}(undef, 4)  # class label probabilities
 

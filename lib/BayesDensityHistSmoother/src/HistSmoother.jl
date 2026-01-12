@@ -254,29 +254,24 @@ end
 # If cdf has been evaluated on a grid, we use this to compute the linear interpolant:
 function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{true}) where {T, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
-    bounds = shs.data.bounds
     bs_min, bs_max = boundaries(shs.bs)
-    t_trans = (t .- bs_min) / (bs_max - bs_min)
 
     # Perform linear interpolation
     F_interp = interpolate(params.eval_grid, params.val_cdf, BSplineOrder(2))
-    F_samp[:, i] = F_interp.(t_trans)
-    F_samp[t_trans .> bs_max, i] .= one(T)
+    F_samp[:, i] = F_interp.(t)
+    F_samp[t .> bs_max, i] .= one(T)
     return F_samp
 end
 function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
-    bounds = shs.data.bounds
     bs_min, bs_max = boundaries(shs.bs)
-    t_trans = (t .- bs_min) / (bs_max - bs_min)
     
     # Interpolate
     F_samp = zeros(R, (length(t), length(params)))
-    n_intervals = length(params[1].eval_grid)-1
     for i in eachindex(params)
         F_interp = interpolate(params[i].eval_grid, params[i].val_cdf, BSplineOrder(2))
-        F_samp[:, i] = F_interp.(t_trans)
-        F_samp[t_trans .> bs_max, i] .= one(T)
+        F_samp[:, i] = F_interp.(t)
+        F_samp[t .> bs_max, i] .= one(T)
     end
     return F_samp
 end
@@ -284,30 +279,26 @@ end
 # If cdf has not been evaluated on a grid, we must evaluate it first:
 function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
-    bounds = shs.data.bounds
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
-    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
 
     # Interpolate
     F_interp = interpolate(eval_grid, val_cdf, BSplineOrder(2))
-    F_samp = F_interp.(t_trans)
-    F_samp[t_trans .> bs_max] .= one(T)
+    F_samp = F_interp.(t)
+    F_samp[t .> bs_max] .= one(T)
     return F_samp
 end
 function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
-    bounds = shs.data.bounds
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
-    t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     
     # Interpolate
     F_samp = zeros(R, (length(t), length(params)))
     for i in eachindex(params)
         F_interp = interpolate(eval_grid, val_cdf[i], BSplineOrder(2))
-        F_samp[:, i] = F_interp.(t_trans)
-        F_samp[t_trans .> bs_max, i] .= one(T)
+        F_samp[:, i] = F_interp.(t)
+        F_samp[t .> bs_max, i] .= one(T)
     end
     return F_samp
 end

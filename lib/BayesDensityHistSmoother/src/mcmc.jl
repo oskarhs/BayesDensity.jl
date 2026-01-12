@@ -1,4 +1,4 @@
-function StatsBase.sample(rng::AbstractRNG, shs::HistSmoother, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100))
+function StatsBase.sample(rng::AbstractRNG, shs::HistSmoother, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100), initial_params::NamedTuple=get_default_initparams_mcmc(shs))
     if !(1 ≤ n_samples ≤ Inf)
         throw(ArgumentError("Number of samples must be a positive integer."))
     end
@@ -8,10 +8,27 @@ function StatsBase.sample(rng::AbstractRNG, shs::HistSmoother, n_samples::Int; n
     if n_samples < n_burnin
         @warn "Number of total samples is smaller than the number of burn-in samples."
     end
-    return _sample_posterior(rng, shs, n_samples, n_burnin)
+    return _sample_posterior(rng, shs, initial_params, n_samples, n_burnin)
 end
 
-function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, n_samples::Int, n_burnin::Int) where {T<:Real, A, D}
+function check_initparams(shs::HistSmoother, initial_params::NamedTuple{N, V}) where {N, V}
+    (:β in N && :σ2 in N) || throw(ArgumentError("Expected a NamedTuple with fields β and τ2"))
+    K = length(shs.bs)
+    (; β, σ2) = initial_params
+
+    (β isa AbstractVector && length(β) == K) || throw(ArgumentError("Dimension of supplied initial β does not match that of the spline basis."))
+    (σ2 isa Real && σ2 > 0) || throw(ArgumentError("Supplied value of τ2 must be positive."))
+end
+
+# Lazy initialization
+function get_default_initparams_mcmc(shs::HistSmoother{T, A, D}) where {T, A, D}
+    K = length(shs.bs)
+    β = zeros(T, K)
+    σ2 = shs.σ_β^2
+    return (β = β, σ2 = σ2)
+end
+
+function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real, A, D}
     # Unpack model:
     (; data, bs, σ_β, s_σ) = shs
     (; x, n, x_grid, N, C, LZ, bounds) = data

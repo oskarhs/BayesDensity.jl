@@ -50,13 +50,19 @@ ax2 = Axis(fig[1,2], xlabel="x", ylabel="Density")
 ax3 = Axis(fig[2,1], xlabel="x", ylabel="Cumulative density")
 ax4 = Axis(fig[2,2], xlabel="x", ylabel="Cumulative density")
 
-plot!(ax1, posterior_sample)
-plot!(ax2, vi_posterior, pdf, LinRange(0, 1, 4001); level=0.25, color=:red, estimate=:median) # NB! Supplying pdf is redundant
+plot!(ax1, posterior_sample, color=:red, strokecolor=:red)
+
+plot!(ax2, vi_posterior, pdf, LinRange(-3.5, 3.5, 4001); ci=false,
+      estimate=:median, label="Estimate") # NB! Supplying pdf is redundant
+plot!(ax2, d_true, colo=:black, label="True pdf")
+
 plot!(ax3, posterior_sample, cdf, level=0.99, color=:red)
 
 # Compare estimated cdf to the true cdf
-plot!(ax4, posterior_sample, cdf, ci=false, color=:red, label="Estimate")
-plot!(ax4, d_true, label="True cdf")
+plot!(ax4, posterior_sample, cdf, ci=false, label="Estimate")
+lines!(ax4, LinRange(-3.5, 3.5, 4001), cdf(d_true, LinRange(-3.5, 3.5, 4001)),
+      color = :black, label="True cdf")
+axislegend(ax4)
 
 fig
 ```
