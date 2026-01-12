@@ -109,5 +109,12 @@ end
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     L = 11
     t = LinRange(bs_min, bs_max, L)
+
+    # Vector
     @test isapprox(mean(vip, t), fill(1/(bs_max - bs_min), length(t)); rtol=1e-5)
+    @test isapprox(mean(vip, cdf, t), collect((t .- bs_min)/(bs_max - bs_min)); rtol=1e-5)
+
+    # Scalar
+    @test isapprox(mean(vip, t[1]), 1/(bs_max - bs_min); rtol=1e-5)
+    @test isapprox(mean(vip, cdf, 0.0), 0.5; rtol=1e-5)
 end

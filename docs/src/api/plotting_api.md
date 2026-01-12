@@ -43,6 +43,8 @@ To control the level of the drawn credible interval, set the `level` keyword arg
 The example shown below illustrates how 
 
 ```@example Makie
+t = LinRange(-3.5, 3.5, 4001)
+
 # Create figure, axes
 fig = Figure(size=(670, 670))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
@@ -52,17 +54,20 @@ ax4 = Axis(fig[2,2], xlabel="x", ylabel="Cumulative density")
 
 plot!(ax1, posterior_sample, color=:red, strokecolor=:red)
 
-plot!(ax2, vi_posterior, pdf, LinRange(-3.5, 3.5, 4001); ci=false,
+plot!(ax2, vi_posterior, pdf, t; ci=false,
       estimate=:median, label="Estimate") # NB! Supplying pdf is redundant
-plot!(ax2, d_true, colo=:black, label="True pdf")
+lines!(ax2, t, pdf(d_true, t), color=:black, label="True pdf",
+       linestyle=:dash)
+axislegend(ax2; position=:lt, framevisible=false)
 
-plot!(ax3, posterior_sample, cdf, level=0.99, color=:red)
+plot!(ax3, posterior_sample, cdf, level=0.99, color=:red, strokecolor=:red)
 
 # Compare estimated cdf to the true cdf
 plot!(ax4, posterior_sample, cdf, ci=false, label="Estimate")
-lines!(ax4, LinRange(-3.5, 3.5, 4001), cdf(d_true, LinRange(-3.5, 3.5, 4001)),
-      color = :black, label="True cdf")
-axislegend(ax4)
+lines!(ax4, t, cdf(d_true, t),
+      color = :black, label="True cdf", linestyle=:dash)
+axislegend(ax4; position=:lt, framevisible=false)
+xlims!(ax4, -2.2, 2.2)
 
 fig
 ```

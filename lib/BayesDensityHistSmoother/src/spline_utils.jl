@@ -4,7 +4,7 @@ function compute_norm_constants_cdf_grid(shs::HistSmoother{T, A, D}, params::Nam
     kn = knots(shs.bs)
     n = 4000
     # Evaluation grid for Simpson's method
-    eval_grid = LinRange{T}(kn[1], kn[end], n+1)
+    eval_grid = LinRange{T}(kn[begin], kn[end], n+1)
     h = step(eval_grid)
     val_cdf = Vector{T}(undef, div(n, 2)+1)
 
@@ -19,9 +19,10 @@ function compute_norm_constants_cdf_grid(shs::HistSmoother{T, A, D}, params::Nam
 end
 function compute_norm_constants_cdf_grid(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}) where {T<:Real, A, D, Names, Vals<:Tuple}
     kn = knots(shs.bs)
+    bounds = shs.data.bounds
     n = 4000
     # Evaluation grid for Simpson's method
-    eval_grid = LinRange{T}(kn[1], kn[end], n+1)
+    eval_grid = LinRange{T}(kn[begin], kn[end], n+1)
     h = step(eval_grid)
     val_cdf = Vector{Vector{T}}(undef, length(params))
 
