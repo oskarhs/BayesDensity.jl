@@ -22,7 +22,7 @@ posterior_sample = sample(rng, histsmoother, 1100)
 vi_posterior = varinf(histsmoother)
 ```
 
-In general, the available plot method for [`PosteriorSampels`](@ref) and [`AbstractVIPosterior`](@ref) objects has the following signature:
+In general, the available plot method for [`PosteriorSamples`](@ref) and [`AbstractVIPosterior`](@ref) objects has the following signature:
 ```julia
 plot(
     ps::Union{PosteriorSamples, AbstractVIPosterior},
@@ -48,7 +48,7 @@ fig = Figure(size=(670, 670))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
 ax2 = Axis(fig[1,2], xlabel="x", ylabel="Density")
 ax3 = Axis(fig[2,1], xlabel="x", ylabel="Cumulative density")
-ax3 = Axis(fig[2,2], xlabel="x", ylabel="Cumulative density")
+ax4 = Axis(fig[2,2], xlabel="x", ylabel="Cumulative density")
 
 plot!(ax1, posterior_sample)
 plot!(ax2, vi_posterior, pdf, LinRange(0, 1, 4001); level=0.25, color=:red, estimate=:median) # NB! Supplying pdf is redundant

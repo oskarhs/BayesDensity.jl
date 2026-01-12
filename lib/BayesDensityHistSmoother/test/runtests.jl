@@ -107,6 +107,7 @@ end
 
     # Now verify that the posterior looks reasonable
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
-    t = LinRange(bs_min, bs_max, 11)
+    L = 11
+    t = LinRange(bs_min, bs_max, L)
     @test isapprox(mean(vip, t), fill(1/(bs_max - bs_min), length(t)); rtol=1e-5)
 end

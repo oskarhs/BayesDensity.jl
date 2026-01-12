@@ -259,13 +259,9 @@ function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::Ab
     t_trans = (t .- bs_min) / (bs_max - bs_min)
 
     # Perform linear interpolation
-    n_intervals = length(params.eval_grid)-1
-    k = floor.(Int, n_intervals * t_trans) .+ 1
-    k_ind = 1 .≤ k .≤ n_intervals
-    k_ib = k[k_ind]
-    F_samp = zeros(R, length(t_trans))
-    F_samp[k .> n_intervals] .= one(R)
-    F_samp[k_ind] = n_intervals*(t_trans[k_ind] - params.eval_grid[k_ib])/ (bs_max - bs_min) .* params.val_cdf[k_ib .+ 1] + n_intervals * (params.eval_grid[k_ib .+ 1] - t_trans[k_ind]) / (bs_max - bs_min) .* params.val_cdf[k_ib]
+    F_interp = interpolate(params.eval_grid, params.val_cdf, BSplineOrder(2))
+    F_samp[:, i] = F_interp.(t_trans)
+    F_samp[t_trans .> bs_max, i] .= one(T)
     return F_samp
 end
 function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
@@ -278,11 +274,9 @@ function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
     F_samp = zeros(R, (length(t), length(params)))
     n_intervals = length(params[1].eval_grid)-1
     for i in eachindex(params)
-        k = floor.(Int, n_intervals * t_trans) .+ 1
-        k_ind = 1 .≤ k .≤ n_intervals
-        k_ib = k[k_ind]
-        F_samp[k .> n_intervals, i] .= one(R)
-        F_samp[k_ind, i] = n_intervals*(t_trans[k_ind] - params[i].eval_grid[k_ib])/(bs_max - bs_min) .* params.val_cdf[k_ib .+ 1] + n_intervals*(params[i].eval_grid[k_ib .+ 1] - t_trans[k_ind])/(bs_max - bs_min) .* params.val_cdf[k_ib]
+        F_interp = interpolate(params[i].eval_grid, params[i].val_cdf, BSplineOrder(2))
+        F_samp[:, i] = F_interp.(t_trans)
+        F_samp[t_trans .> bs_max, i] .= one(T)
     end
     return F_samp
 end
@@ -295,7 +289,7 @@ function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::Ab
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
 
-    # Intepolate
+    # Interpolate
     F_interp = interpolate(eval_grid, val_cdf, BSplineOrder(2))
     F_samp = F_interp.(t_trans)
     F_samp[t_trans .> bs_max] .= one(T)

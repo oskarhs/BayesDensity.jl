@@ -1,5 +1,5 @@
 
-function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)))
+function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int; n_burnin::Int = min(1000, div(n_samples, 5)), initial_params::NamedTuple{Names, Vals}=get_default_initparams_mcmc(bsm)) where {Names, Vals}
     if !(1 ≤ n_samples ≤ Inf)
         throw(ArgumentError("Number of samples must be a positive integer."))
     end
@@ -9,11 +9,23 @@ function StatsBase.sample(rng::AbstractRNG, bsm::BSplineMixture, n_samples::Int;
     if n_samples < n_burnin
         @warn "Number of total samples is smaller than the number of burn-in samples."
     end
-    return _sample_posterior(rng, bsm, n_samples, n_burnin)
+    #check_initparams() # WRITE THIS METHOD
+    return _sample_posterior(rng, bsm, initial_params, n_samples, n_burnin)
+end
+
+# Lazy initialization
+function get_default_initparams_mcmc(bsm::BSplineMixture)
+    bs = BSplineKit.basis(bsm)
+    K = length(bs)
+    β = copy(bsm.data.μ)
+    τ2 = one(T)                # Global smoothing parameter
+    δ2 = ones(T, K-3) # Local smoothing parameters
+    ω = ones(T, K-1)  # PolyaGamma variables
+    return (β = β, τ2 = τ2, δ2 = δ2, ω = ω)
 end
 
 # To do: make a multithreaded version (also one for unbinned data)
-function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
     (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
@@ -21,13 +33,10 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Prior Hyperparameters
     (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
-    
-    # Store draws
-    β = copy(μ)
-    τ2 = one(T)                # Global smoothing parameter
-    δ2 = Vector{T}(undef, K-3) # Local smoothing parameters
-    ω = Vector{T}(undef, K-1)  # PolyaGamma variables
 
+    # Initial parameters
+    (; β, τ2, δ2, ω) = initial_params
+    
     logprobs = Vector{T}(undef, 4)  # class label probabilities
 
     #θ = Vector{T}(undef, K) # Mixture probabilities
@@ -104,7 +113,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 end
 
 
-function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
     (; x, log_B, b_ind, μ, P, n) = bsm.data
@@ -112,11 +121,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     # Prior Hyperparameters
     (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
     
-    # Store draws
-    β = copy(μ)
-    τ2 = one(T)                # Global smoothing parameter
-    δ2 = Vector{T}(undef, K-3) # Local smoothing parameters
-    ω = Vector{T}(undef, K-1)  # PolyaGamma variables
+    # Initial parameters
+    (; β, τ2, δ2, ω) = initial_params   
 
     logprobs = Vector{T}(undef, 4)  # class label probabilities
 
