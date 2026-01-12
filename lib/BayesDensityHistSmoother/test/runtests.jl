@@ -1,6 +1,6 @@
 using BayesDensityHistSmoother
 using Test
-using Random, BSplineKit
+using Random, BSplineKit, Distributions, LinearAlgebra
 
 const rng = Random.Xoshiro(1)
 
@@ -77,4 +77,36 @@ end
 
     @test isapprox(pdf(shs, (β = zeros(K),), bs_max - 1e-10), 1/1.1)
     @test isapprox(cdf(shs, (β = zeros(K),), bs_max - 1e-10), 1.0)
+end
+
+@testset "HistSmoother: MC: sample" begin
+    K = 10
+    x = collect(-5:0.1:5)
+
+    shs = HistSmoother(x; K = K, n_bins = 20)
+    @test typeof(sample(rng, shs, 100)) <: PosteriorSamples{Float64}
+end
+
+@testset "HistSmoother: varinf" begin
+    K = 10
+    x = collect(-5:0.1:5)
+
+    shs = HistSmoother(x; K = K, n_bins = 20)
+    vip = varinf(shs)
+    @test typeof(vip) <: AbstractVIPosterior{Float64}
+    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
+end
+
+@testset "HistSmoother: HistSmootherVIPosterior" begin
+    # Create a dummy VI posterior object where the posterior for β
+    # is close to a point mass at 0. Then the posterior mean should be uniform...
+    K = 10
+    x = collect(-5:0.1:5)
+    shs = HistSmoother(x; K = K, n_bins = 20)
+    vip = HistSmootherVIPosterior{Float64}(zeros(K), 1e-12 * Diagonal(ones(K)), 1.0, 1.0, shs)
+
+    # Now verify that the posterior looks reasonable
+    bs_min, bs_max = BayesDensityHistSmoother.support(shs)
+    t = LinRange(bs_min, bs_max, 11)
+    @test isapprox(mean(vip, t), fill(1/(bs_max - bs_min), length(t)); rtol=1e-5)
 end

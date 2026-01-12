@@ -47,7 +47,6 @@ struct BSplineMixtureVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T
     end
 end
 
-Base.eltype(::BSplineMixtureVIPosterior{T, A, B, M}) where {T, A, B, M} = T
 BayesDensityCore.model(vip::BSplineMixtureVIPosterior) = vip.bsm
 
 function Base.show(io::IO, ::MIME"text/plain", vip::BSplineMixtureVIPosterior{T, A, B, M}) where {T, A, B, M}

@@ -58,7 +58,7 @@ function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, n_sampl
     samples = Vector{NamedTuple{(:β, :σ2, :norm, :eval_grid, :val_cdf), Tuple{Vector{T}, T, T, LinRange{T}, Vector{T}}}}(undef, n_samples)
     for m in 1:n_samples
         samples[m] = (β = samples_temp[m].β, σ2 = samples_temp[m].σ2,
-                      norm = l1_norm_vec[m], eval_grid = eval_grid[m],
+                      norm = l1_norm_vec[m], eval_grid = eval_grid,
                       val_cdf = val_cdf[m])
     end
     return PosteriorSamples{T}(samples, shs, n_samples, n_burnin)

@@ -19,7 +19,7 @@ struct HistSmootherVIPosterior{T<:Real, A<:MvNormal{T}, B<:InverseGamma{T}, M<:H
     function HistSmootherVIPosterior{T}(μ_opt::Vector{T}, Σ_opt::A, a_σ_opt::T, b_σ_opt::T, shs::M) where {T<:Real, A<:AbstractMatrix{T}, M<:HistSmoother}
         q_β = MvNormal(μ_opt, Σ_opt)
         q_σ = InverseGamma(a_σ_opt, b_σ_opt)
-        return new{T,MvNormal{T},InverseGamma{T},M}(q_β, q_σ, q_a, shs)
+        return new{T,MvNormal{T},InverseGamma{T},M}(q_β, q_σ, shs)
     end
 end
 
@@ -30,7 +30,7 @@ function Base.show(io::IO, ::MIME"text/plain", vip::HistSmootherVIPosterior{T, A
     println(io, " q_β::", A, ",")
     println(io, " q_σ::", B, ",")
     println(io, "Model:")
-    println(io, model(vip))
+    print(io, model(vip))
     nothing
 end
 
@@ -44,10 +44,12 @@ function StatsBase.sample(rng::AbstractRNG, vip::HistSmootherVIPosterior{T, A, B
         σ2 = rand(rng, q_σ)
         samples_temp[m] = (β = β, σ2 = σ2)
     end
-    l1_norm_vec = compute_norm_constants(shs, params)
-    samples = Vector{NamedTuple{(:β, :σ2, :norm), Tuple{Vector{T}, T, T}}}(undef, n_samples)
+    eval_grid, val_cdf, l1_norm_vec = compute_norm_constants_cdf_grid(shs, samples_temp)
+    samples = Vector{NamedTuple{(:β, :σ2, :norm, :eval_grid, :val_cdf), Tuple{Vector{T}, T, T, LinRange{T}, Vector{T}}}}(undef, n_samples)
     for m in 1:n_samples
-        samples[m] = (β = samples_temp[m].β, σ2 = samples_temp[m].σ2, norm = l1_norm_vec[m])
+        samples[m] = (β = samples_temp[m].β, σ2 = samples_temp[m].σ2,
+                      norm = l1_norm_vec[m], eval_grid = eval_grid,
+                      val_cdf = val_cdf[m])
     end
     return PosteriorSamples{T}(samples, shs, n_samples, 0)
 end
@@ -59,14 +61,14 @@ end
         max_iter::Int=500
     ) -> HistSmootherVIPosterior{<:Real}
 
-Find a variational approximation to the posterior distribution of a [`BSplineMixture`](@ref) using mean-field variational inference.
+Find a variational approximation to the posterior distribution of a [`HistSmoother`](@ref) using mean-field variational inference.
 
 # Arguments
 * `hs`: The `HistSmoother` whose posterior we want to approximate.
 
 # Keyword arguments
 * `init_params`: Initial values of the VI parameters `μ_opt`, `Σ_opt` and `b_σ_opt`.
-* `max_iter`: Maximal number of VI iterations. Defaults to `1000`.
+* `max_iter`: Maximal number of VI iterations. Defaults to `500`.
 * `rtol`: Relative tolerance used to determine convergence. Defaults to `1e-5`.
 
 # Returns
@@ -132,7 +134,10 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
     a_a_opt = T(1)
     a_σ_opt = T(K - 1) / 2
 
-    for _ in 1:max_iter
+    converged = false
+    iter = 1
+
+    while !converged && iter ≤ max_iter
         # Update q(a)
         b_a_opt = a_σ_opt / b_σ_opt + 1/s_σ^2
 
@@ -144,15 +149,18 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
         # Update q(β)
         w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
         Λ = Diagonal(vcat(fill(1/σ_β^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
-        inv_Σ_opt = transpose(C) * w .* C + Λ
+        inv_Σ_opt = transpose(C) * (C .* w) + Λ
         Σ_opt = inv(inv_Σ_opt)
-        μ_opt = μ_opt + Σ_opt * (tranpose(C) * (y - w) - Λ * μ_opt) 
+        μ_opt = μ_opt + Σ_opt * (transpose(C) * (N - w) - Λ * μ_opt) 
 
         # Check convergence criterion
         b_σ_opt = b_σ_new
-        if relative_change < rtol
-            break
-        end
+        converged = (relative_change < rtol)
+        
+        # Increment iteration counter
+        iter += 1
     end
-    return HistSmootherVIPosterior{T}(μ_opt, Σ_opt, a_σ_opt, b_σ_opt, shs)
+    
+    converged || @warn "Failed to meet convergence criterion in $iter iterations."
+    return HistSmootherVIPosterior{T}(μ_opt, Symmetric(Σ_opt), a_σ_opt, b_σ_opt, shs)
 end

@@ -129,7 +129,7 @@ include("utils.jl")
 public softplus, sigmoid, logit, softmax, logistic_stickbreaking, countint, bin_regular, unitvector
 
 include("monte_carlo.jl")
-export PosteriorSamples, sample, quantile, mean, median, var, std, model
+export PosteriorSamples, sample, quantile, mean, median, var, std, model, n_burnin, drop_burnin
 
 include("variational.jl")
 export AbstractVIPosterior, varinf

@@ -21,6 +21,10 @@ struct RandomHistogram{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     end
 end
 
+function Base.:(==)(rh1::RandomHistogram, rh2::RandomHistogram)
+    return rh1.data == rh2.data && rh1.a == rh2.a && rh1.K == rh2.K
+end
+
 # Define pdf method for Random Histogram:
 function Distributions.pdf(rhm::RandomHistogram, params::NT, t::Real) where {NT<:NamedTuple}
     (; data, K, a) = rhm
@@ -122,6 +126,26 @@ end
 
     @test typeof(model_fit) <: PosteriorSamples{Float64}
     @test length(model_fit.samples) == n_samples
+end
+
+@testset "Core: PosteriorSamples: drop_burnin, vcat" begin
+    K = 15
+    a = 1.0
+    x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
+    rhm = RandomHistogram{Float64}(x, K; a=a)
+
+    n_samples = 2000
+    model_fit1 = sample(rng, rhm, n_samples)
+    model_fit2 = sample(rng, rhm, n_samples)
+    model_fit3 = sample(rng, RandomHistogram{Float64}(LinRange(0, 1, 11), K), n_samples)
+
+    @test n_burnin(drop_burnin(model_fit1)) == 0
+
+    @test typeof(model_fit1) <: PosteriorSamples{Float64}
+    @test length(model_fit1.samples) == n_samples
+
+    @test_throws ArgumentError vcat(model_fit1, model_fit3)
+    @test typeof(vcat(model_fit1, model_fit2)) <: PosteriorSamples{Float64}
 end
 
 @testset "Core: MC mean, var, std and quantile fallback methods" begin

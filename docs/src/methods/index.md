@@ -10,6 +10,6 @@ The following table provides a complete list of all the models available in `Bay
 | Model    | MCMC   | VI    | Module         |
 | :---------- | :----: | :----: | :------------------------- |
 | [`BSplineMixture`](@ref) | ✅ | ✅ | `BayesDensityBSplineMixture` |
-| [`HistSmoother`](@ref) | ✅ | ❌ | `BayesDensityHistSmoother` |
+| [`HistSmoother`](@ref) | ✅ | ✅ | `BayesDensityHistSmoother` |
 
 ### TODO: Add link to modules once we are online.

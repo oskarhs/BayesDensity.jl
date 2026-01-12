@@ -84,7 +84,7 @@ using BayesDensityCore, Distributions, Random, StatsBase
 
 ### Model struct and pdf
 
-The first step to implementing the Bernstein density model in a `BayesDensity`-compatible way is to define a model struct which is a subtype of [`AbstractBayesDensityModel`](@ref): 
+The first step to implementing the Bernstein density model in a `BayesDensity`-compatible way is to define a model struct which is a subtype of [`AbstractBayesDensityModel`](@ref):
 
 ```@example Bernstein; continued = true
 struct BernsteinDensity{T<:Real, D<:NamedTuple} <: AbstractBayesDensityModel{T}
@@ -92,16 +92,23 @@ struct BernsteinDensity{T<:Real, D<:NamedTuple} <: AbstractBayesDensityModel{T}
     K::Int  # Basis dimension
     a::T    # Symmetric Dirichlet parameter.
     function BernsteinDensity{T}(x::AbstractVector{<:Real}, K::Int; a::Real=1.0) where {T<:Real}
-        data = (x = x, n = length(x))
+        ϕ_x = Matrix{T}(undef, (length(x), K))
+        for i in eachindex(x)
+            for k in 1:K
+                ϕ_x[i, k] = pdf(Beta(k, K - k + 1), x[i])
+            end
+        end
+        data = (x = x, n = length(x), ϕ_x = ϕ_x)
         return new{T, typeof(data)}(data, K, T(a))
     end
 end
 BernsteinDensity(args...; kwargs...) = BernsteinDensity{Float64}(args...; kwargs...) # For convenience
 ```
+In the above implementation, we store the values of ``\varphi_k(x_i)`` for ``1 \leq i \leq n`` and ``1 \leq k \leq K``, as these values are reused repeatedly in the model fitting processes later.
 
 Next, we implement a method that calculates the pdf of the model when the parameters of the model are given.
 The [`pdf`](@ref) method should always receive the model object as the first argument, the parameters as the second argument and the point(s) at which the density should be evaluated as the third.
-In the implementation presented below, we take in a NamedTuple with a single field named `θ` which represents the mixture probabilities.
+In the implementation presented below, we take in a `NamedTuple` with a single field named `θ` which represents the mixture probabilities.
 
 ```@example Bernstein; continued = true
 function Distributions.pdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S) where {T<:Real, D, S<:Real}
@@ -141,7 +148,7 @@ Since our implementation of the `pdf` method takes in a NamedTuple as the `param
 ```@example Bernstein; continued = true
 function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T, D}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000)) where {T, D}
     (; K, data, a) = bdm
-    (; x, n) = data
+    (; x, n, ϕ_x) = data
 
     a_vec = fill(a, K) # Dirichlet prior parameter
 
@@ -155,7 +162,7 @@ function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T, D}, n_sampl
         N = zeros(Int, K) # N[k] = number of z[i] equal to k.
         for i in 1:n
             for k in 1:K
-                probs[k] = θ[k] * pdf(Beta(k, K - k + 1), x[i])
+                probs[k] = θ[k] * ϕ_x[i, k]
             end
             probs = probs / sum(probs)
             N .+= rand(rng, Multinomial(1, probs)) # sample zᵢ ∼ p(zᵢ|θ, x)
@@ -236,22 +243,24 @@ function StatsBase.sample(rng::AbstractRNG, vip::BernsteinDensityVIPosterior{T,D
         θ = rand(rng, q_θ)
         samples[m] = (θ = θ,)
     end
+    # Note that we return independent samples here, so burn-in is not needed
     return PosteriorSamples{T}(samples, model(vip), n_samples, 0)
 end
 ```
 
 Having implemented a struct for storing the variational posterior, we can now turn our attention to the optimization procedure itself.
 To start, we implement the ELBO, which we will need to determine convergence later.
-Note that in the implementation below, we store the values of ``q(z_i = k)`` in a ``n \times K`` matrix ``\omega``.
+Note that in the implementation below, we assume that the values of ``q(z_i = k)`` are stored in a ``n \times K`` matrix ``\omega``, so that ``\omega_{i,k} = q(z_i = k)``.
 ```@example Bernstein; continued=true
 function Bernstein_ELBO(model::BernsteinDensity{T, D}, r::AbstractVector{<:Real}, ω::AbstractMatrix{<:Real}) where {T, D}
     (; data, K, a) = model
-    (; x, n) = data
+    (; x, n, ϕ_x) = data
+    logϕ_x = log.(ϕ_x)
     ELBO = loggamma(a*K) - loggamma(a*K+n)
     ELBO += sum(loggamma.(r .+ a)) - K*loggamma(a)
     for k in 1:K
         for i in 1:n
-            ELBO += ω[i,k]*(logpdf(Beta(k, K - k + 1), x[i]) - log(ω[i,k]))
+            ELBO += ω[i,k]*(logϕ_x[i,k] - log(ω[i,k]))
         end
     end
     return ELBO
@@ -264,7 +273,7 @@ using SpecialFunctions # For the digamma-function
 
 function BayesDensityCore.varinf(model::BernsteinDensity{T, D}; max_iter::Int=1000, rtol::Real=1e-4) where {T, D}
     (; data, K, a) = model
-    (; x, n) = data
+    (; x, n, ϕ_x) = data
 
     # Initialize the latent variables ω[i,k] = q(z_i = k) to 1/K:
     ω = fill(T(1/K), (n, K))
@@ -283,7 +292,7 @@ function BayesDensityCore.varinf(model::BernsteinDensity{T, D}; max_iter::Int=10
         for i in 1:n
             # Compute q(z_i = k) up to proportionality
             for k in 1:K
-               ω[i,k] = pdf(Beta(k, K - k + 1), x[i]) * exp(digamma(a + r[k])) 
+               ω[i,k] = ϕ_x[i,k] * exp(digamma(a + r[k])) 
             end
             # Normalize so that the rows of ω sum to 1:
             ω[i,:] = ω[i,:] / sum(ω[i,:])

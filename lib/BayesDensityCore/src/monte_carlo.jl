@@ -7,17 +7,26 @@ Struct holding posterior samples of the parameters of a Bayesian density model.
 * `samples`: Vector holding posterior samples of model parameters.
 * `model`: The model object to which samples were fit.
 * `n_samples`: Total number of Monte Carlo samples. 
-* `n_burnin`: Number of burn-in samples.
+* `non_burnin_ind`: Indices of non-burnin samples.
 """
-struct PosteriorSamples{T<:Real, M<:AbstractBayesDensityModel, V<:AbstractVector}
+struct PosteriorSamples{T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel, A<:AbstractVector}
     samples::V
     model::M
     n_samples::Int
-    n_burnin::Int
-    function PosteriorSamples{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T, M, V}
-        return new{T, M, V}(samples, model, n_samples, n_burnin) 
+    non_burnin_ind::A
+    function PosteriorSamples{T}(samples::V, model::M, n_samples::Int, non_burnin_ind::A) where {T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel, A<:AbstractVector{Int}}
+        return new{T,V,M,A}(samples, model, n_samples, non_burnin_ind)
     end
 end
+# Convenience constructor which makrs the first `n_burnin` samples as burn-in
+PosteriorSamples{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel} = PosteriorSamples{T}(samples, model, n_samples, collect(n_burnin+1:n_samples))
+
+"""
+    n_burnin(ps::PosteriorSamples) -> Int
+
+Get the number of burn-in samples of a `PosteriorSamples` object.
+"""
+n_burnin(ps::PosteriorSamples) = ps.n_samples - length(ps.non_burnin_ind)
 
 """
     model(ps::PosteriorSamples) -> AbstractBayesDensityModel
@@ -27,20 +36,50 @@ Return the model object of `ps`.
 model(ps::PosteriorSamples) = ps.model
 
 """
-    Base.eltype(::PosteriorSamples{T}) where {T}
+    eltype(::PosteriorSamples{T}) where {T}
 
 Get the element type of a `PosteriorSamples` object.
 """
-Base.eltype(::PosteriorSamples{T,M,V}) where {T, M, V} = T
+Base.eltype(::PosteriorSamples{T,V,M,A}) where {T, V, M, A} = T
 
-function Base.show(io::IO, ::MIME"text/plain", ps::PosteriorSamples{T, M, V}) where {T, M, V}
-    println(io, "PosteriorSamples{", T, "} object holding ", ps.n_samples, " posterior samples, of which ", ps.n_burnin, " are burn-in samples.")
+function Base.show(io::IO, ::MIME"text/plain", ps::PosteriorSamples{T, V, M, A}) where {T, V, M, A}
+    println(io, "PosteriorSamples{", T, "} object holding ", ps.n_samples, " posterior samples, of which ", n_burnin(ps), " are burn-in samples.")
     println(io, "Model:")
     print(io, model(ps))
     nothing
 end
 
-Base.show(io::IO, bsm::PosteriorSamples) = show(io, MIME("text/plain"), bsm)
+Base.show(io::IO, ps::PosteriorSamples) = show(io, MIME("text/plain"), ps)
+
+"""
+    drop_burnin(ps::PosteriorSamples) -> PosteriorSamples
+
+Create a new `PosteriorSamples` object where the burn-in samples have been discarded.
+"""
+drop_burnin(ps::PosteriorSamples{T,V,M,A}) where {T,V,M,A} = PosteriorSamples{T}(ps.samples[ps.non_burnin_ind], ps.model, ps.n_samples, 0)
+
+"""
+    vcat(ps::PosteriorSamples...) -> PosteriorSamples
+
+Concatenate the samples of multiple `PosteriorSamples` objects.
+"""
+function Base.vcat(ps::PosteriorSamples...)
+    # Check that the underlying models are the same. Else we do not allow the objects to be concatenated
+    if length(Set(model(ps_i) for ps_i in ps)) != 1
+        throw(ArgumentError("Cannot concatenate `PosteriorSamples` objects for which the underlying models are not identical."))
+    end
+
+    samples = similar(ps[1].samples, 0)
+    n_samples = 0
+    non_burnin_ind = Int[]
+    for ps_i in ps
+        append!(non_burnin_ind, ps_i.non_burnin_ind .+ length(samples))
+        append!(samples, ps_i.samples)
+        n_samples += ps_i.n_samples
+    end
+    
+    return PosteriorSamples{eltype(ps[1])}(samples, model(ps[1]), n_samples, non_burnin_ind)
+end
 
 """
     sample(
@@ -114,7 +153,7 @@ for func in (:pdf, :cdf)
             if !(0 ≤ q ≤ 1)
                 throws(DomainError("Requested quantile level is not in [0,1]."))
             end
-            func_samp = $func(ps.model, ps.samples[ps.n_burnin+1:end], t)
+            func_samp = $func(ps.model, ps.samples[ps.non_burnin_ind], t)
 
             return mapslices(x -> quantile(x, q), func_samp; dims=2)[:]
         end
@@ -122,7 +161,7 @@ for func in (:pdf, :cdf)
             if !all(0 .≤ q .≤ 1)
                 throw(DomainError("All requested quantile levels must lie in the interval [0,1]."))
             end
-            func_samp = $func(ps.model, ps.samples[ps.n_burnin+1:end], t)
+            func_samp = $func(ps.model, ps.samples[ps.non_burnin_ind], t)
             
             result = mapslices(x -> quantile(x, q), func_samp; dims=2)
             return result  # shape: (length(t), length(q))
@@ -131,7 +170,7 @@ for func in (:pdf, :cdf)
             if !(0 ≤ q ≤ 1)
                 throws(DomainError("Requested quantile level is not in [0,1]."))
             end
-            func_samp = $func(ps.model, ps.samples[ps.n_burnin+1:end], t)
+            func_samp = $func(ps.model, ps.samples[ps.non_burnin_ind], t)
 
             return mapslices(x -> quantile(x, q), func_samp; dims=2)[1]
         end
@@ -241,13 +280,13 @@ for statistic in (:median, :mean, :var, :std)
     for func in (:pdf, :cdf)
         @eval begin
             function Distributions.$statistic(ps::PosteriorSamples, ::typeof($func), t::AbstractVector{<:Real})
-                func_samp = $func(model(ps), ps.samples[ps.n_burnin+1:end], t)
+                func_samp = $func(model(ps), ps.samples[ps.non_burnin_ind], t)
                 
                 result = mapslices(x -> $statistic(x), func_samp; dims=2)[:]
                 return result
             end
             function Distributions.$statistic(ps::PosteriorSamples, ::typeof($func), t::Real)
-                func_samp = $func(model(ps), ps.samples[ps.n_burnin+1:end], t)
+                func_samp = $func(model(ps), ps.samples[ps.non_burnin_ind], t)
                 
                 result = mapslices(x -> $statistic(x), func_samp; dims=2)[1]
                 return result

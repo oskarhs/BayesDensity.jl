@@ -81,8 +81,6 @@ struct HistSmoother{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: Abstract
 end
 HistSmoother(args...; kwargs...) = HistSmoother{Float64}(args...; kwargs...)
 
-Base.eltype(::HistSmoother{T, A, D}) where {T, A, D} = T
-
 function Base.:(==)(shs1::HistSmoother, shs2::HistSmoother)
     return shs1.bs == shs2.bs && shs1.data == shs2.data && hyperparams(shs1) == hyperparams(shs2)
 end
@@ -278,13 +276,13 @@ function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
     
     # Interpolate
     F_samp = zeros(R, (length(t), length(params)))
-    n_intervals = length(params.eval_grid[1])-1
+    n_intervals = length(params[1].eval_grid)-1
     for i in eachindex(params)
         k = floor.(Int, n_intervals * t_trans) .+ 1
         k_ind = 1 .≤ k .≤ n_intervals
         k_ib = k[k_ind]
         F_samp[k .> n_intervals, i] .= one(R)
-        F_samp[k_ind, i] = n_intervals*(t_trans[k_ind] - params.eval_grid[k_ib])/(bs_max - bs_min) .* params.val_cdf[k_ib .+ 1] + n_intervals*(params.eval_grid[k_ib .+ 1] - t_trans[k_ind])/(bs_max - bs_min) .* params.val_cdf[k_ib]
+        F_samp[k_ind, i] = n_intervals*(t_trans[k_ind] - params[i].eval_grid[k_ib])/(bs_max - bs_min) .* params.val_cdf[k_ib .+ 1] + n_intervals*(params[i].eval_grid[k_ib .+ 1] - t_trans[k_ind])/(bs_max - bs_min) .* params.val_cdf[k_ib]
     end
     return F_samp
 end

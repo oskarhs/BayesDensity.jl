@@ -67,6 +67,7 @@ TODO list:
 - Finish writing tests for HistSmoother (sample, varinf)
 - Finish example on how to implement new models.
 - Implement more methods.
+- Add concatenation method for PosteriorSamples (needs a rework of burn-in storage)
 - 
 - Add (basic) tutorial illustrating the basic use of the package.
 - Add a primer on Bayesian nonparametric density estimation.

@@ -70,8 +70,14 @@ PosteriorSamples
 The following methods can be used to extract useful information about the model object, such as the underlying model object or the element type.
 ```@docs
 model(::PosteriorSamples)
-eltype(::PosteriorSamples)
 ```
+
+By default, `PosteriorSamples` objects also store the burn-in samples from the MCMC routine. These can be discarded via the following method:
+```@docs
+drop_burnin(::PosteriorSamples)
+```
+
+Multiple `PosteriorSamples` objects can be concatenated to 
 
 #### Computing posterior summary statistics
 When using Bayesian density estimators, we are often interested in computing various summary statistics of the posterior draws from an MCMC procedure. For instance, we may be interested in providing an estimate of the density ``f`` (e.g. the posterior mean) and to quantify the uncertainty in this estimate (e.g. via credible bands).
@@ -87,7 +93,8 @@ mean(posterior, pdf, 0.5)
 
 # Compute the posterior 0.05 and 0.95-quantiles of f(0.5)
 # Note that supplying pdf as the second argument is optional here
-quantile(posterior, 0.5, [0.05, 0.95]) == quantile(posterior, pdf, 0.5, [0.05, 0.95]) 
+quantile(posterior, 0.5, [0.05, 0.95]) == quantile(posterior, pdf, 0.5, [0.05, 0.95])
+nothing # hide
 ```
 
 In some cases it may also be of interest to carry out posterior inference for the cumulative distribution function ``F(t) = \int_{-\infty}^t f(s)\, \text{d}s``. Computing posterior summary statistics for the cdf instead of the pdf is easily achieved by replacing the `pdf` in the second argument with `cdf` instead:
@@ -124,7 +131,7 @@ AbstractVIPosterior
 The following convenience methods are also part of the public API:
 ```@docs
 model(::AbstractVIPosterior)
-eltype(::AbstractVIPosterior)
+BayesDensity.eltype(::AbstractVIPosterior)
 ```
 
 #### Generating samples from the variational posterior
@@ -149,7 +156,8 @@ median(viposterior, cdf, 0.5)
 
 # Compute the (variational) posterior 0.05 and 0.95-quantiles of f(0.5)
 # Note that supplying pdf as the second argument is optional here
-quantile(viposterior, 0.5, [0.05, 0.95]) == quantile(viposterior, pdf, 0.5, [0.05, 0.95])
+quantile(viposterior, 0.5, [0.05, 0.95]) ≈ quantile(viposterior, pdf, 0.5, [0.05, 0.95])
+nothing # hide
 ```
 
 The full list of available summary statistics is the same as that for `PosteriorSamples` objects:

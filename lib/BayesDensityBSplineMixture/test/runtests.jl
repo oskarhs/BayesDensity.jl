@@ -62,7 +62,7 @@ end
     bsm = BSplineMixture(x; K=K, bounds=(0,1))
 
     samples1 = [(spline_coefs = ones(K),) for _ in 1:10]
-    ps1 = PosteriorSamples{Float64}(samples1, bsm, 100, 0)
+    ps1 = PosteriorSamples{Float64}(samples1, bsm, 10, 0)
 
     @test isapprox(pdf(bsm, samples1, t), ones((length(t), length(samples1))))
     @test isapprox(pdf(bsm, samples1, 0.5), fill(1.0, (1, 10)))
@@ -75,7 +75,7 @@ end
     @test isapprox(mean(ps1, t), ones(length(t)))
 
     samples2 = [(β = BayesDensityBSplineMixture.compute_μ(basis(bsm)),) for _ in 1:10]
-    ps2 = PosteriorSamples{Float64}(samples2, bsm, 100, 0)
+    ps2 = PosteriorSamples{Float64}(samples2, bsm, 10, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
     @test isapprox(cdf(bsm, samples2, t), [j/(L-1) for j in 0:(L-1), i in eachindex(samples2)])
     @test isapprox(mean(ps2, t), ones(length(t)))

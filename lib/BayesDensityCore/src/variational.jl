@@ -19,7 +19,7 @@ Abstract super type representing the variational posterior distribution of `Abst
 abstract type AbstractVIPosterior{T<:Real} end
 
 """
-    Base.eltype(::AbstractVIPosterior{T}) where {T}
+    eltype(::AbstractVIPosterior{T}) where {T}
 
 Get the element type of a variational posterior object.
 """
@@ -217,3 +217,32 @@ for statistic in (:median, :mean, :var, :std)
         Distributions.$statistic(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(rng, vip, n_samples), pdf, t)
     end
 end
+
+"""
+    VariationalOptimizationInfo{T<:Real}
+
+Struct holding the result of a variational inference procedure
+
+# Fields
+* `ELBO`: The value of the evidence lower bound.
+* `converged`: Boolean flag indicating whether the optimization was succesfull or not.
+* `n_iter`: Number of iterations before termination.
+* `variational_posterior`: The fitted variational posterior distribution.
+"""
+struct VariationalOptimizationInfo{T<:Real, V<:AbstractVector, A<:AbstractVIPosterior}
+    ELBO::V
+    converged::Bool
+    n_iter::Int
+    variational_posterior::A
+end
+
+# Print method:
+function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizationInfo{T, V}) where {T, V}
+    println(io, nameof(typeof(varoptinf)), "{", T, "} object.")
+    println(io, " Converged: ", varoptinf.converged)
+    println(io, " Number of iterations: ", varoptinf.n_iter)
+    println(io, varoptinf.variational_posterior)
+    nothing
+end
+
+Base.show(io::IO, varoptinf::VariationalOptimizationInfo) = show(io, MIME("text/plain"), varoptinf)
