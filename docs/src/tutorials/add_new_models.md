@@ -228,12 +228,12 @@ t = LinRange(0, 1, 1001) # Grid for plotting
 
 fig = Figure(size=(670, 320))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
-plot!(ax1, ps, t, label="MCMC: Bernstein estimate") # Plot the posterior mean and credible bands:
-lines!(ax1, t, pdf(d_true, t), label="True density", color=:black) # Also plot truth for comparison
+plot!(ax1, ps, t, label="MCMC") # Plot the posterior mean and credible bands:
+lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
 
 ax2 = Axis(fig[1,2], xlabel="x", ylabel="Cumulative distribution")
-plot!(ax2, ps, cdf, label="MCMC: Bernstein estimate")
-lines!(ax2, t, cdf(d_true, t), label="True cdf", color=:black)
+plot!(ax2, ps, cdf, label="MCMC")
+lines!(ax2, t, cdf(d_true, t), label="Truth", color=:black)
 
 Legend(fig[1,3], ax1, framevisible=false)
 
@@ -376,12 +376,12 @@ t = LinRange(0, 1, 1001) # Grid for plotting
 
 fig = Figure(size=(670, 320))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
-plot!(ax1, vip, t, label="VI: Bernstein estimate") # Plot the posterior mean and credible bands:
-lines!(ax1, t, pdf(d_true, t), label="True density", color=:black) # Also plot truth for comparison
+plot!(ax1, vip, t, label="VI") # Plot the posterior mean and credible bands:
+lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
 
 ax2 = Axis(fig[1,2], xlabel="x", ylabel="Cumulative distribution")
-plot!(ax2, vip, cdf, label="VI: Bernstein estimate")
-lines!(ax2, t, cdf(d_true, t), label="True cdf", color=:black)
+plot!(ax2, vip, cdf, label="VI")
+lines!(ax2, t, cdf(d_true, t), label="Truth", color=:black)
 
 Legend(fig[1,3], ax1, framevisible=false)
 
