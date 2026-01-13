@@ -7,10 +7,6 @@ Struct representing the variational posterior distribution of a [`HistSmoother`]
 * `q_β`: Distribution representing the optimal variational density q*(β).
 * `q_σ`: Distribution representing the optimal variational density q*(σ²).
 * `shs`: The `HistSmoother` to which the variational posterior was fit.
-
-# Examples
-```julia
-```
 """
 struct HistSmootherVIPosterior{T<:Real, A<:MvNormal{T}, B<:InverseGamma{T}, M<:HistSmoother} <: AbstractVIPosterior{T}
     q_β::A
@@ -58,7 +54,8 @@ end
     varinf(
         hs::HistSmoother;
         init_params::NamedTuple=get_default_initparams(hs),
-        max_iter::Int=500
+        max_iter::Int=500,
+        rtol::Real=1e-5
     ) -> HistSmootherVIPosterior{<:Real}
 
 Find a variational approximation to the posterior distribution of a [`HistSmoother`](@ref) using mean-field variational inference.

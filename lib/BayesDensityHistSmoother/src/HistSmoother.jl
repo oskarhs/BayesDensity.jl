@@ -236,7 +236,7 @@ The named tuple should contain a field named `:β`.
 If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
 Alternatively, if `parameters` contains the field `:norm`, then this value is used instead.
 
-Internally, this function computes the cdf on a regular grid, and uses linear interpolation to 
+Internally, this function computes the cdf on a predefined regular grid, and uses linear interpolation to approximate the cdf.
 """
 function Distributions.cdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
     return _cdf(shs, params, [t], Val(:eval_grid in Names && :val_cdf in Names))[1]

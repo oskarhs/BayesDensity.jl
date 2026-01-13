@@ -146,13 +146,13 @@ The samples generated during the MCMC routine should be stored in a subtype of `
 Since our implementation of the `pdf` method takes in a NamedTuple as the `parameters` argument, we store the generated samples in a vector of NamedTuples in the implementation shown below:
 
 ```@example Bernstein; continued = true
-function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T, D}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000), init_params::NamedTuple=(θ = fill(1/K, K))) where {T, D}
+function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T, D}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000), init_params::NamedTuple=(θ = fill(1/K, K),)) where {T, D}
     (; K, data, a) = bdm
     (; x, n, ϕ_x) = data
 
     a_vec = fill(a, K) # Dirichlet prior parameter
 
-    θ = T.(θ) # Initialize θ as the uniform vector
+    θ = T.(init_params.θ) # Initialize θ as the uniform vector
     probs = Vector{T}(undef, K) # Vector used to store intermediate calculations of p(zᵢ|θ, x)
 
     # Store samples as a vector of NamedTuples

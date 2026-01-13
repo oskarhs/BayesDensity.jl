@@ -30,10 +30,10 @@ using BayesDensity
 ```
 
 ## Quick start
-To illustarte the basic use of the package, we show one can fit a B-spline mixture model to a simulated dataset.
+To illustarte the basic use of the package, we show one can fit a histogram smoother to a simulated dataset.
 
 ```julia
-using BayesDensityBSplineMixture, Distributions, Random
+using BayesDensityHistSmoother, Distributions, Random
 rng = Random.Xoshiro(1) # for reproducibility
 
 # Simulate some data:
@@ -41,14 +41,14 @@ d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
 x = rand(rng, d_true, 1000)
 
 # Create a B-Spline mixture model object:
-bsm = BSplineMixture(x)
+smoother = HistSmoother(x)
 ```
 
 Having specified a model for the data, we can perform posterior inference through Markov chain Monte Carlo methods or variational inference:
 
 ```julia
-mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
-vi_fit = varinf(bsm) # VI
+mcmc_fit = sample(rng, smoother, 2100; n_burnin=100) # MCMC
+vi_fit = varinf(smoother) # VI
 ```
 
 The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Makie as follows:

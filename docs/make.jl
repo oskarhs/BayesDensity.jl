@@ -1,5 +1,6 @@
 using BayesDensity
 using Documenter, DocumenterCitations
+using Random
 
 bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:authoryear)
 

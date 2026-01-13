@@ -8,27 +8,6 @@ Struct representing the variational posterior distribution of a [`BSplineMixture
 * `q_τ`: Distribution representing the optimal variational density q*(τ²).
 * `q_δ`: Vector of distributions, with element `k` corresponding to the optimal variational density q*(δₖ²).
 * `bsm`: The `BSplineMixture` to which the variational posterior was fit.
-
-# Examples
-```julia
-julia> x = (1.0 .- (1.0 .- LinRange(0, 1, 5001)) .^(1/3)).^(1/3);
-
-julia> vip = varinf(BSplineMixture(x))
-BSplineMixtureVIPosterior{Float64} vith variational densities:
- q_β::Distributions.MvNormalCanon{Float64},
- q_τ::Distributions.InverseGamma{Float64},
- q_δ::Vector{Distributions.InverseGamma{Float64}}.
-Model:
-200-dimensional BSplineMixture{Float64}:
-Using 5001 binned observations on a regular grid consisting of 1187 bins.
- support: (-0.05, 1.05)
-Hyperparameters:
- a_τ = 1.0, b_τ = 0.001
- a_δ = 0.5, b_δ = 0.5
-
-julia> mean(Random.Xoshiro(1), vip, 0.2)
-0.35127443392229263
-```
 """
 struct BSplineMixtureVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSplineMixture} <: AbstractVIPosterior{T}
     q_β::A

@@ -1,13 +1,31 @@
+"""
+    sample(
+        [rng::Random.AbstractRNG],
+        bsm::HistSmoother,
+        n_samples::Int;
+        n_burnin::Int = min(1000, div(n_samples, 5)),
+        initial_params::NamedTuple = get_default_initparams_mcmc(bsm)
+    )
+
+Generate `n_samples` posterior samples from a `HistSmoother` using an augmented Gibbs sampler.
+
+# Arguments
+* `rng`: Optional random seed used for random variate generation.
+* `bsm`: The `HistSmoother` object for which posterior samples are generated.
+* `n_samples`: The total number of samples (including burn-in).
+
+# Keyword arguments
+* `n_burnin`: Number of burn-in samples.
+* `initial_params`: Initial values used in the MCMC algorithm. Should be supplied as a `NamedTuple` with fields `:β` and `:σ2`, where `:β` is a `K`-dimensional vector and `σ2` is a positive scalar.
+
+# Returns
+* `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
+"""
 function StatsBase.sample(rng::AbstractRNG, shs::HistSmoother, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100), initial_params::NamedTuple=get_default_initparams_mcmc(shs))
-    if !(1 ≤ n_samples ≤ Inf)
-        throw(ArgumentError("Number of samples must be a positive integer."))
-    end
-    if !(0 ≤ n_burnin ≤ Inf)
-        throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
-    end
-    if n_samples < n_burnin
-        @warn "Number of total samples is smaller than the number of burn-in samples."
-    end
+    (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
+    (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
+    n_samples ≥ n_burnin || @warn "Number of total samples is smaller than the number of burn-in samples."
+    check_initparams(shs, initial_params)
     return _sample_posterior(rng, shs, initial_params, n_samples, n_burnin)
 end
 

@@ -38,7 +38,7 @@ function hyperparams(::AbstractBayesDensityModel) end
 export hyperparams
 
 """
-    support(bdm::AbstractBayesDensityModel) -> NTuple{2, <:Real}
+    support(bdm::AbstractBayesDensityModel{T}) where {T} -> NTuple{2, T}
 
 Return the support of the model `bdm` as an 2-dimensional tuple.
 """

@@ -77,7 +77,11 @@ By default, `PosteriorSamples` objects also store the burn-in samples from the M
 drop_burnin(::PosteriorSamples)
 ```
 
-Multiple `PosteriorSamples` objects can be concatenated to 
+Multiple `PosteriorSamples` objects can also be concatenated to create a single `PosteriorSamples` object.
+This is particularly useful when a preliminary MCMC run is deemed to be too short, and one wants to pool the original samples with the samples from a new MCMC run.
+```@docs
+vcat(::PosteriorSamples...)
+```
 
 #### Computing posterior summary statistics
 When using Bayesian density estimators, we are often interested in computing various summary statistics of the posterior draws from an MCMC procedure. For instance, we may be interested in providing an estimate of the density ``f`` (e.g. the posterior mean) and to quantify the uncertainty in this estimate (e.g. via credible bands).

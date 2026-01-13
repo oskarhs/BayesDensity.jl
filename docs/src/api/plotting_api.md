@@ -1,4 +1,4 @@
-# Plotting
+# Plotting API
 
 Graphical displays are a powerful tool for providing informative vizual summaries of the result of a given Bayesian inference procedure for a univariate density. `BayesDensity` makes it easy to plot posterior summaries for ``f`` using the results from Markov chain Monte Carlo sampling or variational inference through its extensions for the [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) packages.
 
@@ -7,20 +7,6 @@ In addition to documenting the plotting-related public API, this page also showc
 The following sections are structured so that the `Makie`- and the `Plots`-portions of the tutorial can be read independently of one another. As such, there is no need for a `Makie` power-user to read the `Plots` sections of this page.
 
 ## Plotting with Makie.jl
-To show the plotting-capabilities of the Makie extension, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
-```@example Makie; continued = true
-using BayesDensityHistSmoother, CairoMakie, Distributions, Random
-rng = Random.Xoshiro(1)
-
-# Simulate some data from the "Claw" density
-d_true = MixtureModel(vcat(Normal(0, 1) ,[Normal(0.5*j, 0.1) for j in -2:2]), [0.5, 0.1, 0.1, 0.1, 0.1, 0.1])
-x = rand(rng, d_true, 5000)
-
-# Fit the model via MCMC and VI
-histsmoother = HistSmoother(x)
-posterior_sample = sample(rng, histsmoother, 1100)
-vi_posterior = varinf(histsmoother)
-```
 
 In general, the available plot method for [`PosteriorSamples`](@ref) and [`AbstractVIPosterior`](@ref) objects has the following signature:
 ```julia
@@ -40,7 +26,32 @@ The third (optional) positional argument is the grid at which the `pdf` or `cdf`
 The `ci` keyword is a boolean, controlling whether or not a credible interval should be drawn (enabled by default).
 To control the level of the drawn credible interval, set the `level` keyword argument to the desired confidence level.
 
-The example shown below illustrates how 
+Other keyword arguments mostly control the appearance of the drawn lines and credible bands.
+Of particular note are `:strokecolor`, which controls the color of the density estimate, and `:color`, which controls the color of the credible bands. 
+The `alpha` keyword argument controls the transparency of the credible bands.
+
+### Example
+
+To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
+```@example Makie; continued = true
+using BayesDensityHistSmoother, CairoMakie, Distributions, Random
+rng = Random.Xoshiro(1)
+
+# Simulate some data from the "Claw" density
+d_true = MixtureModel(
+    vcat(Normal(0, 1), [Normal(0.5*j, 0.1) for j in -2:2]),
+    [0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
+)
+x = rand(rng, d_true, 1000)
+
+# Fit the model via MCMC and VI
+histsmoother = HistSmoother(x)
+posterior_sample = sample(rng, histsmoother, 1100)
+vi_posterior = varinf(histsmoother)
+```
+
+Having fitted the model, we can use the extended plot function to generate various plots from the fitted model objects, be it the variational posterior or the MCMC samples.
+The usage of the plot function is illutrated below:
 
 ```@example Makie
 t = LinRange(-3.5, 3.5, 4001)
@@ -52,22 +63,29 @@ ax2 = Axis(fig[1,2], xlabel="x", ylabel="Density")
 ax3 = Axis(fig[2,1], xlabel="x", ylabel="Cumulative density")
 ax4 = Axis(fig[2,2], xlabel="x", ylabel="Cumulative density")
 
-plot!(ax1, posterior_sample, color=:red, strokecolor=:red)
+# Plot estimated density and CI from MCMC samples
+plot!(ax1, posterior_sample, color=:red, strokecolor=:red, label="Estimate (CI)", alpha=0.15)
 
+# Compare the posterior median of the VI fit to the true density (without CI)
 plot!(ax2, vi_posterior, pdf, t; ci=false,
-      estimate=:median, label="Estimate") # NB! Supplying pdf is redundant
+      estimate=:median, label="Estimate") # NB! Supplying pdf is redundant here
 lines!(ax2, t, pdf(d_true, t), color=:black, label="True pdf",
        linestyle=:dash)
-axislegend(ax2; position=:lt, framevisible=false)
+xlims!(ax2, -2.5, 2.5)
+ylims!(ax2, 0.0, 0.7)
 
-plot!(ax3, posterior_sample, cdf, level=0.99, color=:red, strokecolor=:red)
+# Plot the estimated cdf and the CI
+plot!(ax3, posterior_sample, cdf, level=0.99, color=:red, strokecolor=:red, label="Estimate (CI)")
 
-# Compare estimated cdf to the true cdf
-plot!(ax4, posterior_sample, cdf, ci=false, label="Estimate")
+# Compare estimated cdf of the VI fit to the true cdf (without CI)
+plot!(ax4, vi_posterior, cdf, ci=false, label="Estimate")
 lines!(ax4, t, cdf(d_true, t),
       color = :black, label="True cdf", linestyle=:dash)
-axislegend(ax4; position=:lt, framevisible=false)
 xlims!(ax4, -2.2, 2.2)
+
+for ax in (ax1, ax2, ax3, ax4)
+    axislegend(ax; position=:lt, framevisible=false)
+end
 
 fig
 ```

@@ -61,7 +61,7 @@ drop_burnin(ps::PosteriorSamples{T,V,M,A}) where {T,V,M,A} = PosteriorSamples{T}
 """
     vcat(ps::PosteriorSamples...) -> PosteriorSamples
 
-Concatenate the samples of multiple `PosteriorSamples` objects.
+Concatenate the samples of multiple `PosteriorSamples` objects to form a single object.
 """
 function Base.vcat(ps::PosteriorSamples...)
     # Check that the underlying models are the same. Else we do not allow the objects to be concatenated
