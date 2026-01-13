@@ -67,8 +67,8 @@ To be able to use the latest features of the package, make sure that you current
 In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
 
 - Add ELBO convergence criterion and posterior propriety check to BSplineMixture
-- Finish writing the general documentation, including a primer on Bayesian nonparametric density estimation. The Plots.jl extension is as of now not documented.
-- Implement stick-breaking processes
+- Finish writing the general documentation, including a primer on Bayesian nonparametric density estimation.
+- Implement stick-breaking processes (DPMM, PYMM)
 - Implement Bernstein polynomial model (variable K)
 - Implement mixture of finite mixtures model
 - Consider adding a Optimization result type return value for varinf. Also add a plot method for objects of this type.

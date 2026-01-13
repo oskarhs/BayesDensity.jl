@@ -48,7 +48,7 @@ for func in (:pdf, :cdf)
             fillcolor --> :auto
             fillalpha --> 0.25
             label --> ""
-            estimate --> :mean
+            estimate --> mean
 
             ci = get(plotattributes, :ci, true)
             level = get(plotattributes, :level, 0.95)
@@ -67,14 +67,14 @@ for func in (:pdf, :cdf)
                 throw(ArgumentError("Seriestype :$(plotattributes[:seriestype]) not supported for objects of type PosteriorSamples."))
             end
 
-            if plotattributes[:estimate] == :mean
+            if plotattributes[:estimate] == mean
                 y = mean(ps, $func, x)
                 if ci
                     qs = [α/2, 1 - α/2]
                     quants = quantile(ps, $func, x, qs)
                     lower, upper = (quants[:,i] for i in eachindex(qs))
                 end
-            elseif plotattributes[:estimate] == :median
+            elseif plotattributes[:estimate] == median
                 if ci
                     qs = [α/2, 0.5, 1 - α/2]
                     quants = quantile(ps, $func, x, qs)

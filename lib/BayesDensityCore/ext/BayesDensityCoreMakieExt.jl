@@ -27,7 +27,7 @@ Makie.@recipe LineBandPlot (ps, func, x) begin
     strokecolor = @inherit patchstrokecolor
     strokewidth = @inherit linewidth
     linestyle = nothing
-    estimate = :mean
+    estimate = mean
     ci = true
     level = 0.95
     cycle = [[:color, :strokecolor] => :patchcolor]
@@ -45,7 +45,7 @@ for func in (:pdf, :cdf)
         function Makie.plot!(plot::LineBandPlot{<:Tuple{<:PosteriorSamples, <:typeof($func), <:AbstractVector}})
 
             map!(plot, [:ps, :x, :estimate, :ci, :level], [:est, :lower, :upper]) do ps, x, estimate, ci, level
-                if estimate == :mean
+                if estimate == mean
                     est = mean(ps, $func, x)
                     if ci
                         α = 1 - level
@@ -56,7 +56,7 @@ for func in (:pdf, :cdf)
                         lower = copy(est)
                         upper = copy(est)
                     end
-                elseif estimate == :median
+                elseif estimate == median
                     if ci
                         α = 1 - level
                         qs = [α/2, 0.5, 1 - α/2]
