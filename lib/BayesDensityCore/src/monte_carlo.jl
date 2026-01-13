@@ -18,7 +18,7 @@ struct PosteriorSamples{T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel
         return new{T,V,M,A}(samples, model, n_samples, non_burnin_ind)
     end
 end
-# Convenience constructor which makrs the first `n_burnin` samples as burn-in
+# Convenience constructor which makes the first `n_burnin` samples as burn-in
 PosteriorSamples{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel} = PosteriorSamples{T}(samples, model, n_samples, collect(n_burnin+1:n_samples))
 
 """
@@ -85,21 +85,26 @@ end
     sample(
         [rng::Random.AbstractRNG],
         bdm::AbstractBayesDensityModel,
-        n_samples::Int;
-        n_burnin::Int=min(1_000, div(n_samples, 5))
+        n_samples::Int
+        args...;
+        [n_burnin::Int],
+        kwargs...
     ) -> PosteriorSamples
 
 Generate approximate posterior samples from the density model `bdm` using Markov chain Monte Carlo methods.
 
 This functions returns a [`PosteriorSamples`](@ref) object which can be used to compute posterior quantities of interest such as the posterior mean of ``f(t)`` or posterior quantiles.
+See the specific method docstring for method-specific additional positional and keyword arguments.
 
 # Arguments
 * `rng`: Seed used for random variate generation.
 * `bdm`: The Bayesian density model object to generate posterior samples from.
 * `n_samples`: Number of Monte Carlo samples (including burn-in)
+* `args...`: Other model-specific positional arguments. See the specific model docstring for this method for further details.
 
 # Keyword arguments
 * `n_burnin`: Number of burn-in samples.
+* `kwargs...`: Other model-specific kwargs. See the specific model docstring for this method for further details.
 
 # Returns
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.

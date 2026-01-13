@@ -18,6 +18,7 @@ makedocs(;
     format=Documenter.HTML(; assets=["assets/favicon.ico"]),
     pages=[
         "Home" => "index.md",
+        "A primer on Bayesian nonparametric density estimation" => "density_estimation_primer.md",
         "API" => [
             "api/general_api.md",
             "api/plotting_api.md" # Also add a subpage here with methods api
