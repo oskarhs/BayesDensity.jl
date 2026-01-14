@@ -162,3 +162,13 @@ function _get_integrated_spline_coefs(basis::AbstractBSplineBasis{N, T}, spline_
 
     return spline_coefs_int
 end
+
+
+# KL-divergence between two multivariate normal distributions in their canonical form (takes potential, covmatrix as inputs)
+# Note: The implementation in Distributions.jl forms the covariance matrix itself, which is dense.
+# Here, we use sparse solver methods instead for efficiency and stability.
+function Distributions.kldivergence(h1, Q1, h2, Q2)
+    μ1 = Q1 \ h1
+    μ2 = Q2 \ h2
+    return 1/2 * (dot(μ2 - μ1, Q2, μ1 - μ2) + tr(Q1 \ Q2) - logabsdet(Q2) + logabsdet(Q1) - length(h1))
+end

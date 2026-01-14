@@ -81,6 +81,7 @@ Find a variational approximation to the posterior distribution of a [`BSplineMix
 * `vip`: A [`BSplineMixtureVIPosterior`](@ref) object representing the variational posterior.
 """
 function BayesDensityCore.varinf(bsm::BSplineMixture; init_params=get_default_initparams(bsm), max_iter::Int=1000) # Also: tolerance parameters
+    (max_iter >= 1) && throw(ArgumentError("Maximum number of iterations must be positive."))
     return _variational_inference(bsm, init_params, max_iter)
 end
 
@@ -164,7 +165,18 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         Q = transpose(P) * D * P + Q0
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
-        μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
+        h1 = Q*μ + Ωκ
+        μ_opt = inv_Σ_opt \ h1
+
+        # Compute ELBO:
+        KL_τ2 = (a_τ_opt - a_τ) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(a_τ) + a_τ*(log(b_τ_opt) - log(b_τ)) + a_τ_opt/b_τ_opt * (b_τ - b_τ_opt)
+        KL_δ2 = @. (a_δ_opt - a_δ) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(a_δ) + a_δ*(log(b_δ_opt) - log(b_δ)) + a_δ_opt / b_δ_opt * (b_δ - b_δ_opt)
+        KL_β = kldivergence(h1, inv_Σ_opt, Q*μ, Q)
+        KL_ω = E_S .* log.(cosh.(d0 / 2)) - d0.^2 .* E_ω/2
+        # Now all thats missing are the remaining terms:
+        nonprob_term = sum(-E_S * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
+
+        ELBO[i] = - KL_τ2 - sum(KL_δ2) - KL_β - sum(KL_ω)
     end
     return BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end
