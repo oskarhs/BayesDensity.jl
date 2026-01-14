@@ -232,7 +232,7 @@ plot!(ax1, ps, t, label="MCMC") # Plot the posterior mean and credible bands:
 lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
 
 ax2 = Axis(fig[1,2], xlabel="x", ylabel="Cumulative distribution")
-plot!(ax2, ps, cdf, label="MCMC")
+plot!(ax2, ps, cdf, t, label="MCMC")
 lines!(ax2, t, cdf(d_true, t), label="Truth", color=:black)
 
 Legend(fig[1,3], ax1, framevisible=false)
@@ -380,7 +380,7 @@ plot!(ax1, vip, t, label="VI") # Plot the posterior mean and credible bands:
 lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
 
 ax2 = Axis(fig[1,2], xlabel="x", ylabel="Cumulative distribution")
-plot!(ax2, vip, cdf, label="VI")
+plot!(ax2, vip, cdf, t, label="VI")
 lines!(ax2, t, cdf(d_true, t), label="Truth", color=:black)
 
 Legend(fig[1,3], ax1, framevisible=false)
