@@ -20,6 +20,7 @@ The BSplineMixture struct is used to generate quantities that are needed for the
 * `b_τ`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
 * `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
 * `b_δ`: Rate hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
+* `σ`: Prior standard deviation of the first two unconstrained spline parameters β₁ and β_2. Defaults to `1e5`.
 
 # Returns
 * `bsm`: A B-Spline mixture model object.
@@ -59,14 +60,14 @@ The hyperparameters `τ2` and `δ2[k]` govern the smoothness of the B-spline mix
 
     β[k+2] = μ[k+2] + 2 {β[k+1] - μ[k+1]} - {β[k] - μ[k]} + τ * δ[k] * ϵ[k],
 
-where ϵ[k] is standard normal.
+where ϵ[k] is standard normal. The first two parameters β[1] and β[2] are assigned diffuse N(0, σ²) priors.
 
 The prior distributions of the local and global smoothing parameters are given by
 
     τ² ∼ InverseGamma(a_τ, b_τ)
     δₖ² ∼ InverseGamma(a_δ, b_δ),   1 ≤ k ≤ K-3.
 
-As noninformative defaults, we suggest using `a_τ = 1`, `b_τ = 1e-3`, `a_δ = 0.5`, `b_δ = 0.5`.
+As noninformative defaults, we suggest using `a_τ = 1`, `b_τ = 1e-3`, `a_δ = 0.5`, `b_δ = 0.5` and `σ = 1e5`.
 To control the smoothness in the resulting density estimates, we recommend adjusting the value of `b_τ` while keeping the other hyperparameters fixed.
 Setting `b_τ` to a smaller value generally yields smoother curves.
 Similar priors for regression models suggest that values in the range [5e-5, 5e-3] are reasonable.
@@ -78,8 +79,9 @@ struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: Abstr
     b_τ::T
     a_δ::T
     b_δ::T
-    function BSplineMixture{T}(x::AbstractVector{<:Real}; K::Int = get_default_splinedim(x), bounds::Tuple{<:Real,<:Real} = get_default_bounds(x), n_bins::Union{Nothing,Int}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5) where {T<:Real}
-        check_bsmkwargs(x, n_bins, bounds, a_τ, b_τ, a_δ, b_δ) # verify that supplied parameters make sense
+    σ::T
+    function BSplineMixture{T}(x::AbstractVector{<:Real}; K::Int = get_default_splinedim(x), bounds::Tuple{<:Real,<:Real} = get_default_bounds(x), n_bins::Union{Nothing,Int}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5, σ::Real=1e5) where {T<:Real}
+        check_bsmkwargs(x, n_bins, bounds, a_τ, b_τ, a_δ, b_δ, σ) # verify that supplied parameters make sense
 
         bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
         K = length(bs)
@@ -94,6 +96,7 @@ struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: Abstr
         T_b_τ = T(b_τ)
         T_a_δ = T(a_δ)
         T_b_δ = T(b_δ)
+        T_σ = T(σ)
         T_x = T.(x)
         
         n = length(x)
@@ -109,7 +112,7 @@ struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: Abstr
 
             data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
         end
-        return new{T,typeof(bs),typeof(data)}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ)
+        return new{T,typeof(bs),typeof(data)}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ, T_σ)
     end
 end
 BSplineMixture(args...; kwargs...) = BSplineMixture{Float64}(args...; kwargs...)
@@ -133,11 +136,11 @@ BayesDensityCore.support(bsm::BSplineMixture) = boundaries(bsm.basis)
 """
     hyperparams(
         bsm::BSplineMixture{T}
-    ) where {T} -> @NamedTuple{a_τ::T, b_τ::T, a_δ::T, b_δ::T}
+    ) where {T} -> @NamedTuple{a_τ::T, b_τ::T, a_δ::T, b_δ::T, σ::T}
 
 Returns the hyperparameters of the B-Spline mixture model `bsm` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(bsm::BSplineMixture) = (a_τ=bsm.a_τ, b_τ=bsm.b_τ, a_δ=bsm.a_δ, b_δ=bsm.b_δ)
+BayesDensityCore.hyperparams(bsm::BSplineMixture) = (a_τ=bsm.a_τ, b_τ=bsm.b_τ, a_δ=bsm.a_δ, b_δ=bsm.b_δ, σ=bsm.σ)
 
 Base.eltype(::BSplineMixture{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
 
@@ -150,7 +153,8 @@ function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTu
         println(io, " support: ", BayesDensityCore.support(bsm))
         println(io, "Hyperparameters: ")
         println(io, " a_τ = " , bsm.a_τ, ", b_τ = ", bsm.b_τ)
-        print(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
+        println(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
+        print(io, "σ = ", bsm.σ)
     end
     nothing
 end
@@ -163,7 +167,8 @@ function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTu
         println(io, " support: ", BayesDensityCore.support(bsm))
         println(io, "Hyperparameters: ")
         println(io, " a_τ = " , bsm.a_τ, ", b_τ = ", bsm.b_τ)
-        print(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
+        println(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
+        print(io, "σ = ", bsm.σ)
     end
     nothing
 end
@@ -214,7 +219,6 @@ function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{fal
 end
 function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs are given)
-    # TODO allow for different types here
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
         spline_coefs[:, i] = params[i].spline_coefs
@@ -294,7 +298,6 @@ function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{fal
 end
 function _cdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs are given)
-    # TODO allow for different types here
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
         spline_coefs[:, i] = params[i].spline_coefs
@@ -367,21 +370,14 @@ function get_default_bounds(x::AbstractVector{<:Real})
     return xmin - 0.05*R, xmax + 0.05*R
 end
 
-function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, a_τ::Real, b_τ::Real, a_δ::Real, b_δ::Real)
-    if !isnothing(n_bins) && n_bins ≤ 1
-        throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
-    end
+function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, a_τ::Real, b_τ::Real, a_δ::Real, b_δ::Real, σ::Real)
+    (isnothing(n_bins) || n_bins ≥ 1) || throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
     xmin, xmax = extrema(x)
-    if bounds[1] ≥ bounds[2]
-        throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
-    elseif bounds[1] > xmin || bounds[2] < xmax
-        throw(ArgumentError("Data is not contained within supplied bounds."))
-    end
-    hyperpar = [a_τ, b_τ, a_δ, b_δ]
-    hyperpar_symb = [:a_τ, :b_τ, :a_δ, :b_δ]
+    (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
+    (bounds[1] ≤ xmin ≤ xmax ≤ bounds[2]) || throw(ArgumentError("Data is not contained within supplied bounds."))
+    hyperpar = [a_τ, b_τ, a_δ, b_δ, σ]
+    hyperpar_symb = [:a_τ, :b_τ, :a_δ, :b_δ, :σ]
     for i in eachindex(hyperpar)
-        if hyperpar[i] ≤ 0.0 || hyperpar[i] == Inf
-            throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
-        end
+        (0 < hyperpar[i] < Inf) || throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
     end
 end

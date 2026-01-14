@@ -35,7 +35,7 @@ end
     @test_throws ArgumentError BSplineMixture(x; bounds=(-1, 1))
     @test_throws ArgumentError BSplineMixture(x; bounds=(1, -1))
 
-    for hyp in [:a_τ, :b_τ, :a_δ, :b_δ]
+    for hyp in [:a_τ, :b_τ, :a_δ, :b_δ, :σ]
         @eval @test_throws ArgumentError $BSplineMixture($x; $hyp = -1)
     end
 

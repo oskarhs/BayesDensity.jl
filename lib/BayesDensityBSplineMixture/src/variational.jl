@@ -34,7 +34,7 @@ function Base.show(io::IO, ::MIME"text/plain", vip::BSplineMixtureVIPosterior{T,
     println(io, " q_τ::", B, ",")
     println(io, " q_δ::", Vector{B}, ".")
     println(io, "Model:")
-    println(io, model(vip))
+    print(io, model(vip))
     nothing
 end
 
@@ -88,7 +88,8 @@ end
 function get_default_initparams(bsm::BSplineMixture{T, A, NT}) where {T, A, NT}
     K = length(basis(bsm))
     P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
-    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
     a_τ_opt = a_τ + (K-3)/2
     b_τ_opt = b_τ
     a_δ_opt = fill(a_δ + 1/2, K-3)
@@ -96,7 +97,7 @@ function get_default_initparams(bsm::BSplineMixture{T, A, NT}) where {T, A, NT}
 
     μ_opt = compute_μ(basis(bsm))
     D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
-    Q = transpose(P) * D * P
+    Q = transpose(P) * D * P + Q0
     inv_Σ_opt = Q + 0.05 * Diagonal(ones(K-1))
     return (μ_opt = μ_opt, inv_Σ_opt = inv_Σ_opt, b_τ_opt = b_τ_opt, b_δ_opt = b_δ_opt)
 end
@@ -108,7 +109,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     P = sparse(P) # Needed for selinv
     n_bins = length(bincounts)
 
-    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = init_params
 
@@ -159,7 +161,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         
         # Update q(β)
         D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
-        Q = transpose(P) * D * P
+        Q = transpose(P) * D * P + Q0
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
         μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)
@@ -174,7 +176,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
     P = sparse(P) # Needed for selinv
 
-    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = init_params
 
@@ -225,7 +228,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         
         # Update q(β)
         D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
-        Q = transpose(P) * D * P
+        Q = transpose(P) * D * P + Q0
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
         μ_opt = inv_Σ_opt \ (Q*μ + Ωκ)

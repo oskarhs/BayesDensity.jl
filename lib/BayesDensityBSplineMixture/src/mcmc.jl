@@ -59,7 +59,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     n_bins = length(bincounts)
 
     # Prior Hyperparameters
-    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
 
     # Initial parameters
     (; β, τ2) = initial_params
@@ -120,7 +121,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         # Update β
         # Compute the Q matrix
         D = Diagonal(1 ./(τ2*δ2))
-        Q = transpose(P) * D * P
+        Q = transpose(P) * D * P + Q0
         # Compute the Ω matrix (Note: Q + D retains the banded structure!)
         Ω = Diagonal(ω)
         inv_Σ_new = Ω + Q
@@ -148,7 +149,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     (; x, log_B, b_ind, μ, P, n) = bsm.data
 
     # Prior Hyperparameters
-    (; a_τ, b_τ, a_δ, b_δ) = hyperparams(bsm)
+    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
     
     # Initial parameters
     (; β, τ2) = initial_params
@@ -211,7 +213,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         # Update β
         # Compute the Q matrix
         D = Diagonal(1 ./(τ2*δ2))
-        Q = transpose(P) * D * P
+        Q = transpose(P) * D * P + Q0
         # Compute the Ω matrix (Note: Q + Ω retains the banded structure!)
         Ω = Diagonal(ω)
         inv_Σ_new = Ω + Q
