@@ -12,7 +12,7 @@ This model is available through the `BayesDensityHistSmoother` package.
 HistSmoother
 ```
 
-## Evaluating the pdf and cdf
+### Evaluating the pdf and cdf
 ```@docs
 BayesDensityHistSmoother.pdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 BayesDensityHistSmoother.cdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
