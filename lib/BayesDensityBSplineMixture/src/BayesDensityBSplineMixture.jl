@@ -9,6 +9,7 @@ import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, un
 using BSplineKit
 
 using Random, Distributions, StatsBase, BandedMatrices, PolyaGammaHybridSamplers, LinearAlgebra, SparseArrays, SelectedInversion
+using SpecialFunctions
 
 import Distributions: support
 
