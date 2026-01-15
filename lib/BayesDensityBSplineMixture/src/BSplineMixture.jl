@@ -189,7 +189,7 @@ Base.show(io::IO, bsm::BSplineMixture) = show(io, MIME("text/plain"), bsm)
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate f(t | η) when the model parameters are equal to η.
+Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """
@@ -265,7 +265,7 @@ end
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate f(t | η) when the model parameters are equal to η.
+Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """

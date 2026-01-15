@@ -81,6 +81,10 @@ Find a variational approximation to the posterior distribution of a [`BSplineMix
 
 # Returns
 * `vip`: A [`BSplineMixtureVIPosterior`](@ref) object representing the variational posterior.
+
+# Extended help
+## Convergence
+The criterion used to determine convergence is that the relative change in the ELBO falls below the given `rtol`.
 """
 function BayesDensityCore.varinf(bsm::BSplineMixture; init_params=get_default_initparams(bsm), max_iter::Int=2000, rtol::Real=1e-6) # Also: tolerance parameters
     (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
@@ -186,7 +190,6 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         # Compute ELBO:
         KL_τ2 = (a_τ_opt - a_τ) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(a_τ) + a_τ*(log(b_τ_opt) - log(b_τ)) + a_τ_opt/b_τ_opt * (b_τ - b_τ_opt)
         KL_δ2 = @. (a_δ_opt - a_δ) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(a_δ) + a_δ*(log(b_δ_opt) - log(b_δ)) + a_δ_opt / b_δ_opt * (b_δ - b_δ_opt)
-        #KL_β = kldivergence(h1, inv_Σ_opt, h2, Q)
         # Find the required posterior moments of q(β):
         Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
