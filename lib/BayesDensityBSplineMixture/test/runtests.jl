@@ -1,6 +1,6 @@
 using BayesDensityBSplineMixture
 using Test
-using Random, Distributions, LinearAlgebra
+using Random, Distributions, LinearAlgebra, Suppressor
 
 const rng = Random.Xoshiro(1)
 
@@ -87,13 +87,13 @@ end
     t = LinRange(0, 1, 11)
 
     bsm1 = BSplineMixture(x; K=K, bounds=(0,1))
-    vip1 = varinf(bsm1; max_iter = 10)
+    vip1 = @suppress varinf(bsm1; max_iter = 10)
     
     @test typeof(vip1) <: AbstractVIPosterior
     @test typeof(sample(vip1, 10)) <: PosteriorSamples{Float64}
 
     bsm2 = BSplineMixture(x; K=K, bounds=(0,1), n_bins=nothing)
-    vip2 = varinf(bsm2; max_iter = 10)
+    vip2 = @suppress varinf(bsm2; max_iter = 10)
     @test typeof(vip1) <: AbstractVIPosterior
     @test typeof(sample(vip1, 10)) <: PosteriorSamples{Float64}
 

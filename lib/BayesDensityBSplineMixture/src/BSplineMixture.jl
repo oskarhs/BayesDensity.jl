@@ -16,7 +16,7 @@ The BSplineMixture struct is used to generate quantities that are needed for the
 # Keyword arguments
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
 * `bounds`: A tuple giving the support of the B-spline mixture model.
-* `n_bins`: Lower bound on the number of bins used when fitting the `BSplineMixture` to data. Binned fitting can be disabled by setting this equal to `nothing`. Defaults to `1000`.
+* `n_bins`: Lower bound on the number of bins used when fitting the `BSplineMixture` to data. Binned fitting can be disabled by setting this equal to `nothing`. The default setting uses unbinned fitting if `length(x) ≤ 1200` and `1000` bins otherwise.
 * `a_τ`: Shape hyperparameter for the global smoothing parameter τ². Defaults to `1.0`.
 * `b_τ`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
 * `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
@@ -81,7 +81,7 @@ struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: Abstr
     a_δ::T
     b_δ::T
     σ::T
-    function BSplineMixture{T}(x::AbstractVector{<:Real}; K::Int = get_default_splinedim(x), bounds::Tuple{<:Real,<:Real} = get_default_bounds(x), n_bins::Union{Nothing,Int}=1000, a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5, σ::Real=1e5) where {T<:Real}
+    function BSplineMixture{T}(x::AbstractVector{<:Real}; K::Int = _get_default_splinedim(x), bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x), n_bins::Union{Nothing,Int}=_get_default_bins(x), a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5, σ::Real=1e5) where {T<:Real}
         check_bsmkwargs(x, n_bins, bounds, a_τ, b_τ, a_δ, b_δ, σ) # verify that supplied parameters make sense
 
         bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
@@ -360,16 +360,15 @@ function _mean(ps::PosteriorSamples{T, V, M, <:AbstractVector}, mean_spline_coef
     return meanfunc.(t)
 end
 
-function get_default_splinedim(x::AbstractVector{<:Real})
-    n = length(x)
-    return max(min(200, ceil(Int, n/10)), 100)
-end
+_get_default_splinedim(x::AbstractVector{<:Real}) = max(min(200, ceil(Int, length(x)/10)), 100)
 
-function get_default_bounds(x::AbstractVector{<:Real})
+function _get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin
     return xmin - 0.05*R, xmax + 0.05*R
 end
+
+_get_default_bins(x::AbstractVector{<:Real}) = ifelse(length(x) ≤ 1200, nothing, 1000)
 
 function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, a_τ::Real, b_τ::Real, a_δ::Real, b_δ::Real, σ::Real)
     (isnothing(n_bins) || n_bins ≥ 1) || throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))

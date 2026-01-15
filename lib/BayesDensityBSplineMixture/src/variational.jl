@@ -112,6 +112,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     K = length(bs)
     (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
     n_bins = length(bincounts)
+    P = sparse(P)
 
     # Get hyperparameters
     (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
@@ -185,9 +186,9 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         # Compute ELBO:
         KL_τ2 = (a_τ_opt - a_τ) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(a_τ) + a_τ*(log(b_τ_opt) - log(b_τ)) + a_τ_opt/b_τ_opt * (b_τ - b_τ_opt)
         KL_δ2 = @. (a_δ_opt - a_δ) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(a_δ) + a_δ*(log(b_δ_opt) - log(b_δ)) + a_δ_opt / b_δ_opt * (b_δ - b_δ_opt)
-        KL_β = kldivergence(h1, inv_Σ_opt, h2, Q)
+        #KL_β = kldivergence(h1, inv_Σ_opt, h2, Q)
         # Find the required posterior moments of q(β):
-        Z, _ = selinv(sparse(inv_Σ_opt); depermute=true) # Get pentadiagonal entries of Σ*
+        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
@@ -195,22 +196,29 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
+        # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
+        term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(σ) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
+        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * σ^2)
+        term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
+        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
+
         nonprob_term = sum(-view(E_S, 1:K-1) * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
 
-        ELBO[iter] = - KL_τ2 - sum(KL_δ2) - KL_β - sum(KL_ω) + nonprob_term + last_term
-        converged = ((ELBO[iter]-ELBO_last)/abs(ELBO[iter]) < rtol) && iter ≥ 2
+        ELBO[iter] = - KL_τ2 - sum(KL_δ2) + term_β - sum(KL_ω) + nonprob_term + last_term
+        converged = (abs(ELBO[iter]-ELBO_last)/abs(ELBO[iter]) < rtol) && iter ≥ 2
         ELBO_last = ELBO[iter]
         iter += 1
     end
 
     converged || @warn "Failed to meet convergence criterion in $(iter-1) iterations."
-    return BSplineMixtureVIPosterior{T}(μ_opt, inv_Σ_opt, a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm), ELBO[1:iter-1]
+    return BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end
 
 function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, init_params::NT, max_iter::Int, rtol::Real) where {T, A, Vals, NT}
     bs = basis(bsm)
     K = length(bs)
     (; x, log_B, b_ind, μ, P, n) = bsm.data
+    P = sparse(P)
 
     # Get prior hyperparameters
     (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
@@ -284,9 +292,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         # Compute ELBO:
         KL_τ2 = (a_τ_opt - a_τ) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(a_τ) + a_τ*(log(b_τ_opt) - log(b_τ)) + a_τ_opt/b_τ_opt * (b_τ - b_τ_opt)
         KL_δ2 = @. (a_δ_opt - a_δ) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(a_δ) + a_δ*(log(b_δ_opt) - log(b_δ)) + a_δ_opt / b_δ_opt * (b_δ - b_δ_opt)
-        KL_β = kldivergence(h1, inv_Σ_opt, h2, Q)
         # Find the required posterior moments of q(β):
-        Z, _ = selinv(sparse(inv_Σ_opt); depermute=true) # Get pentadiagonal entries of Σ*
+        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
@@ -294,14 +301,20 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
+        # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
+        term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(σ) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
+        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * σ^2)
+        term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
+        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
+
         nonprob_term = sum(-view(E_S, 1:K-1) * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
 
-        ELBO[iter] = - KL_τ2 - sum(KL_δ2) - KL_β - sum(KL_ω) + nonprob_term + last_term
+        ELBO[iter] = - KL_τ2 - sum(KL_δ2) + term_β - sum(KL_ω) + nonprob_term + last_term
         converged = ((ELBO[iter]-ELBO_last)/abs(ELBO[iter]) < rtol) && iter ≥ 2
         ELBO_last = ELBO[iter]
         iter += 1
     end
 
     converged || @warn "Failed to meet convergence criterion in $(iter-1) iterations."
-    return BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm), ELBO[1:iter-1]
+    return BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
 end

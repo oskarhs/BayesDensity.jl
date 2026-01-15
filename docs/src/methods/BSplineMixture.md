@@ -2,13 +2,12 @@
 
 Documentation for B-Spline Mixture Models.
 
-This model is available through the `BayesDensityBSplineMixture` module.
+This model is available through the `BayesDensityBSplineMixture` package.
 
 ## Example usage
 
 ## Module API
 
-The first step to fitting a B-spline mixture model to a given dataset is to construct a [`BSplineMixture`](@ref) model object:
 ```@docs
 BSplineMixture
 ```
