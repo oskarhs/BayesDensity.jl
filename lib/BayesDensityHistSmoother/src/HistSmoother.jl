@@ -5,7 +5,8 @@ Struct representing a spline histogram smoothing model.
 
 # Constructors
     
-    HistSmoother(x::AbstractVector{<:Real}; kwargs...) 
+    HistSmoother(x::AbstractVector{<:Real}; kwargs...)
+    HistSmoother{T}(x::AbstractVector{<:Real}; kwargs...)
 
 # Arguments
 * `x`: The data vector.

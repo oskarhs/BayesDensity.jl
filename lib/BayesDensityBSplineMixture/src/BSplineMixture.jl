@@ -7,7 +7,8 @@ The BSplineMixture struct is used to generate quantities that are needed for the
 
 # Constructors
     
-    BSplineMixture(x::AbstractVector{<:Real}, kwargs...) 
+    BSplineMixture(x::AbstractVector{<:Real}; kwargs...)
+    BSplineMixture{T}(x::AbstractVector{<:Real}; kwargs...)
 
 # Arguments
 * `x`: The data vector.
@@ -20,7 +21,7 @@ The BSplineMixture struct is used to generate quantities that are needed for the
 * `b_τ`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
 * `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
 * `b_δ`: Rate hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
-* `σ`: Prior standard deviation of the first two unconstrained spline parameters β₁ and β_2. Defaults to `1e5`.
+* `σ`: Prior standard deviation of the first two unconstrained spline parameters β₁ and β₂. Defaults to `1e5`.
 
 # Returns
 * `bsm`: A B-Spline mixture model object.
