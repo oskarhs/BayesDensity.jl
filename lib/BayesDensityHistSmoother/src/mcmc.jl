@@ -1,11 +1,11 @@
 """
     sample(
         [rng::Random.AbstractRNG],
-        bsm::HistSmoother,
+        bsm::HistSmoother{T},
         n_samples::Int;
         n_burnin::Int = min(1000, div(n_samples, 5)),
         initial_params::NamedTuple = get_default_initparams_mcmc(bsm)
-    )
+    ) where {T} -> PosteriorSamples{T}
 
 Generate `n_samples` posterior samples from a `HistSmoother` using an augmented Gibbs sampler.
 

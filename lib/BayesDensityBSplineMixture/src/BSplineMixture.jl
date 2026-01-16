@@ -128,7 +128,7 @@ BSplineKit.length(bsm::BSplineMixture) = length(bsm.basis)
 BSplineKit.knots(bsm::BSplineMixture) = knots(bsm.basis)
 
 """
-    support(bsm::BSplineMixture) -> NTuple{2, <:Real}
+    support(bsm::BSplineMixture{T}) where {T} -> NTuple{2, T}
 
 Get the support of the B-Spline mixture model `bsm`.
 """

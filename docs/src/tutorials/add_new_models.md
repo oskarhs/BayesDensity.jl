@@ -73,7 +73,7 @@ where the expectations are taken with respect to ``q(\boldsymbol{\theta})`` and 
 
 For our particular example it can be shown that the optimal ``q`` densities are:
 - ``q(\boldsymbol{\theta})`` is the ``\mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{r})``-density, where ``r_k = \sum_{i=1}^n q(z_i = k)``.
-- ``q(\boldsymbol{z})`` is the pmf of a categorical distribution on ``\{1,2,\ldots, K\}`` with ``q(z_i = k) \propto \varphi_k(x_i)\, \exp\big\{\psi(a_k + r_k)\big\}``, where ``\psi(\cdot)`` denotes the [digamma function](https://en.wikipedia.org/wiki/Digamma_function).
+- ``q(\boldsymbol{z}) = \prod_{i=1}^n q(z_i)``, where ``q(z_i)`` is the probability mass function of a categorical distribution on ``\{1,2,\ldots, K\}`` with ``q(z_i = k) \propto \varphi_k(x_i)\, \exp\big\{\psi(a_k + r_k)\big\}``, where ``\psi(\cdot)`` denotes the [digamma function](https://en.wikipedia.org/wiki/Digamma_function).
 
 An expression for the ELBO of this model is as follows:
 ```math

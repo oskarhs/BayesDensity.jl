@@ -134,7 +134,7 @@ BayesDensityCore.hyperparams(shs::HistSmoother) = (σ_β = shs.σ_β, s_σ = shs
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `HistSmoother` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``f(t\\, |\\, \\boldsymbol{\\eta})`` for a given `HistSmoother` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain a field named `:β`.
 If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
@@ -231,7 +231,7 @@ end
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `HistSmoother` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``F(t\\, |\\, \\boldsymbol{\\eta})`` for a given `HistSmoother` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain a field named `:β`.
 If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.

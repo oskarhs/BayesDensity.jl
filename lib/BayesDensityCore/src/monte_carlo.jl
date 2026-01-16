@@ -84,12 +84,12 @@ end
 """
     sample(
         [rng::Random.AbstractRNG],
-        bdm::AbstractBayesDensityModel,
+        bdm::AbstractBayesDensityModel{T},
         n_samples::Int
         args...;
         [n_burnin::Int],
         kwargs...
-    ) -> PosteriorSamples
+    ) where {T} -> PosteriorSamples{T}
 
 Generate approximate posterior samples from the density model `bdm` using Markov chain Monte Carlo methods.
 
@@ -114,14 +114,14 @@ StatsBase.sample(bdm::AbstractBayesDensityModel, args...; kwargs...) = StatsBase
 """
     quantile(
         ps::PosteriorSamples,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         q::RealAbstractVector{<:Real,
     ) -> Union{Real, Vector{<:Real}}
 
     quantile(
         ps::PosteriorSamples,
-        [func = ::typeof(pdf)]
+        [func = pdf]
         t::Union{Real, AbstractVector{<:Real}},
         q::AbstractVector{<:Real},
     ) -> Matrix{<:Real}
@@ -187,7 +187,7 @@ Distributions.quantile(ps::PosteriorSamples, t::Union{Real, AbstractVector{<:Rea
 """
     median(
         ps::PosteriorSamples,
-        [func = ::typeof(pdf)]
+        [func = pdf]
         t::Union{Real, AbstractVector{<:Real}},
     ) -> Union{Real, Vector{<:Real}}
 
@@ -203,7 +203,7 @@ Distributions.median(ps::PosteriorSamples) = throw(MethodError(median, (ps)))
 """
     mean(
         ps::PosteriorSamples,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
@@ -234,7 +234,7 @@ Distributions.mean(ps::PosteriorSamples) = throw(MethodError(mean, (ps)))
 """
     var(
         ps::PosteriorSamples,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
@@ -265,7 +265,7 @@ Distributions.var(ps::PosteriorSamples) = throw(MethodError(var, (ps)))
 """
     std(
         ps::PosteriorSamples,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 

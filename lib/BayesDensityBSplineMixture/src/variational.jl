@@ -63,11 +63,11 @@ end
 
 """
     varinf(
-        bsm::BSplineMixture;
+        bsm::BSplineMixture{T};
         init_params::NamedTuple=get_default_initparams(bsm),
-        max_iter::Int=1000
+        max_iter::Int=2000
         rtol::Real=1e-6
-    ) -> BSplineMixtureVIPosterior{<:Real}
+    ) where {T} -> BSplineMixtureVIPosterior{T}
 
 Find a variational approximation to the posterior distribution of a [`BSplineMixture`](@ref) using mean-field variational inference.
 
@@ -82,20 +82,24 @@ Find a variational approximation to the posterior distribution of a [`BSplineMix
 # Returns
 * `vip`: A [`BSplineMixtureVIPosterior`](@ref) object representing the variational posterior.
 
+!!! note
+    To sample for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
+    Note that setting `rtol` to a strictly negative value will issue a warning.
+
 # Extended help
 ## Convergence
 The criterion used to determine convergence is that the relative change in the ELBO falls below the given `rtol`.
 """
-function BayesDensityCore.varinf(bsm::BSplineMixture; init_params=get_default_initparams(bsm), max_iter::Int=2000, rtol::Real=1e-6) # Also: tolerance parameters
+function BayesDensityCore.varinf(bsm::BSplineMixture; init_params::NamedTuple=get_default_initparams(bsm), max_iter::Int=2000, rtol::Real=1e-6) # Also: tolerance parameters
     (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
-    (rtol > 0.0) || @warn "Relative tolerance is not positive."
+    (rtol ≥ 0.0) || @warn "Relative tolerance is negative."
     return _variational_inference(bsm, init_params, max_iter, rtol)
 end
 
 # Can do something more sophisticated here at a later point in time if we get a good idea.
 function get_default_initparams(bsm::BSplineMixture{T, A, NT}) where {T, A, NT}
     K = length(basis(bsm))
-    P = bsm.data.P
+    P = sparse(bsm.data.P)
     #P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
     (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
     Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
@@ -124,7 +128,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = init_params
     # Find the required posterior moments of q(β):
-    Z, _ = selinv(sparse(inv_Σ_opt); depermute=true) # Get pentadiagonal entries of Σ*
+    Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
     d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
     d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
     d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
@@ -313,7 +317,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         nonprob_term = sum(-view(E_S, 1:K-1) * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
 
         ELBO[iter] = - KL_τ2 - sum(KL_δ2) + term_β - sum(KL_ω) + nonprob_term + last_term
-        converged = ((ELBO[iter]-ELBO_last)/abs(ELBO[iter]) < rtol) && iter ≥ 2
+        converged = (abs(ELBO[iter]-ELBO_last)/abs(ELBO[iter]) < rtol) && iter ≥ 2
         ELBO_last = ELBO[iter]
         iter += 1
     end

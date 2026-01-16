@@ -1,9 +1,9 @@
 """
     varinf(
-        bdm::AbstractBayesDensityModel,
+        bdm::AbstractBayesDensityModel{T},
         args...;
         kwargs...
-    ) -> AbstractVIPosterior
+    ) where {T} -> AbstractVIPosterior{T}
 
 Compute a variational approximation to the posterior distribution.
 
@@ -28,9 +28,9 @@ Base.eltype(::AbstractVIPosterior{T}) where {T} = T
 """
     sample(
         [rng::Random.AbstractRNG],
-        vip::AbstractVIPosterior,
+        vip::AbstractVIPosterior{T},
         n_samples::Int
-    ) -> PosteriorSamples
+    ) where {T} -> PosteriorSamples{T}
 
 Generate `n_samples` independent samples from the variationonal posterior distribution `vip`.
 
@@ -56,7 +56,7 @@ function model(::AbstractVIPosterior) end
     quantile(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         q::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
@@ -65,7 +65,7 @@ function model(::AbstractVIPosterior) end
     quantile(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func::Union{::typeof(pdf), ::typeof(cdf)} = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         q::AbstractVector{<:Real},
         [n_samples::Int=1000]
@@ -112,7 +112,7 @@ Distributions.quantile(rng::AbstractRNG, vip::AbstractVIPosterior, t::Union{Real
     median(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -130,7 +130,7 @@ Distributions.median(vip::AbstractVIPosterior) = throw(MethodError(median, (vip)
     mean(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -160,7 +160,7 @@ Distributions.mean(vip::AbstractVIPosterior) = throw(MethodError(mean, (vip)))
     var(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -190,7 +190,7 @@ Distributions.var(vip::AbstractVIPosterior) = throw(MethodError(var, (vip)))
     std(
         [rng::Random.AbstractRNG],
         vip::AbstractVIPosterior,
-        [func = ::typeof(pdf)],
+        [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         [n_samples::Int=1000]
     ) -> Union{Real, Vector{<:Real}}
@@ -224,12 +224,12 @@ end
 Struct holding the result of a variational inference procedure
 
 # Fields
-* `ELBO`: The value of the evidence lower bound.
-* `converged`: Boolean flag indicating whether the optimization was succesfull or not.
-* `n_iter`: Number of iterations before termination.
+* `ELBO`: The values of the evidence lower bound per iteration.
+* `converged`: Boolean flag indicating whether the optimization was succesful or not.
+* `n_iter`: Number of iterations run before termination.
 * `variational_posterior`: The fitted variational posterior distribution.
 """
-struct VariationalOptimizationInfo{T<:Real, V<:AbstractVector, A<:AbstractVIPosterior}
+struct VariationalOptimizationResult{T<:Real, V<:AbstractVector, A<:AbstractVIPosterior}
     ELBO::V
     converged::Bool
     n_iter::Int
@@ -241,7 +241,7 @@ function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizatio
     println(io, nameof(typeof(varoptinf)), "{", T, "} object.")
     println(io, " Converged: ", varoptinf.converged)
     println(io, " Number of iterations: ", varoptinf.n_iter)
-    println(io, varoptinf.variational_posterior)
+    print(io, varoptinf.variational_posterior)
     nothing
 end
 

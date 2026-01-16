@@ -28,8 +28,9 @@ The `ci` keyword is a boolean, controlling whether or not a credible interval sh
 To control the level of the drawn credible interval, set the `level` keyword argument to the desired confidence level.
 
 Other keyword arguments mostly control the appearance of the drawn lines and credible bands.
-Of particular note are `:strokecolor`, which controls the color of the density estimate, and `:color`, which controls the color of the credible bands. 
+Of particular note are `strokecolor`, which controls the color of the density estimate, and `color`, which controls the color of the credible bands. 
 The `alpha` keyword argument controls the transparency of the credible bands.
+The line width of the density estimate is controlled through the `:strokewidth` keyword argument.
 
 ### Example
 
@@ -67,6 +68,7 @@ ax4 = Axis(fig[2,2], xlabel="x", ylabel="Cumulative density")
 
 # Plot estimated density and CI from MCMC samples
 plot!(ax1, posterior_sample, color=:red, strokecolor=:red, label="Estimate (CI)", alpha=0.1)
+ylims!(ax1, 0.0, 0.85)
 
 # Compare the posterior median of the VI fit to the true density (without CI)
 plot!(ax2, vi_posterior, pdf, t; ci=false,
@@ -74,7 +76,7 @@ plot!(ax2, vi_posterior, pdf, t; ci=false,
 lines!(ax2, t, pdf(d_true, t), color=:black, label="True pdf",
        linestyle=:dash)
 xlims!(ax2, -2.5, 2.5)
-ylims!(ax2, 0.0, 0.7)
+ylims!(ax2, 0.0, 0.85)
 
 # Plot the estimated cdf and the CI
 plot!(ax3, posterior_sample, cdf, level=0.99, color=:red, strokecolor=:red, label="Estimate (CI)")
@@ -86,7 +88,7 @@ lines!(ax4, t, cdf(d_true, t),
 xlims!(ax4, -2.2, 2.2)
 
 for ax in (ax1, ax2, ax3, ax4)
-    axislegend(ax; position=:lt, framevisible=false)
+    axislegend(ax; position=:lt, framevisible=false, labelsize=10)
 end
 
 fig
@@ -113,7 +115,7 @@ The `ci` keyword is a boolean, controlling whether or not a credible interval sh
 To control the level of the drawn credible interval, set the `level` keyword argument to the desired confidence level.
 
 Other keyword arguments mostly control the appearance of the drawn lines and credible bands.
-Of particular note are `:color`, which controls the color of the density estimate, and `:fillcolor`, which controls the color of the credible bands. 
+Of particular note are `color`, which controls the color of the density estimate, and `fillcolor`, which controls the color of the credible bands. 
 The `fillalpha` keyword argument controls the transparency of the credible bands.
 
 ### Example

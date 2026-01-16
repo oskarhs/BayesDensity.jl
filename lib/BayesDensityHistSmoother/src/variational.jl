@@ -52,11 +52,11 @@ end
 
 """
     varinf(
-        hs::HistSmoother;
+        hs::HistSmoother{T};
         init_params::NamedTuple=get_default_initparams(hs),
         max_iter::Int=500,
         rtol::Real=1e-5
-    ) -> HistSmootherVIPosterior{<:Real}
+    ) where {T} -> HistSmootherVIPosterior{T}
 
 Find a variational approximation to the posterior distribution of a [`HistSmoother`](@ref) using mean-field variational inference.
 
@@ -71,11 +71,17 @@ Find a variational approximation to the posterior distribution of a [`HistSmooth
 # Returns
 * `vip`: A [`HistSmootherVIPosterior`](@ref) object representing the variational posterior.
 
+!!! note
+    To sample for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
+    Note that setting `rtol` to a strictly negative value will issue a warning.
+
 # Extended help
 ## Convergence
 The criterion used to determine convergence is that the relative change in the expectation of ``\\mathbb{E}(\\sigma^{-2})`` falls below the given `rtol`.
 """
 function BayesDensityCore.varinf(shs::HistSmoother; init_params::NamedTuple=get_default_initparams(shs), max_iter::Int=500, rtol::Real=1e-5) # Also: tolerance parameters
+    (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
+    (rtol ≥ 0.0) || @warn "Relative tolerance is negative."
     return _variational_inference(shs, init_params, max_iter, rtol)
 end
 
