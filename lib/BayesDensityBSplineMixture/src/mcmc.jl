@@ -31,11 +31,11 @@ function StatsBase.sample(
     (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
     (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
     (n_samples ≥ n_burnin) || @warn "The total number of samples is smaller than the number of burn-in samples."
-    check_initparams(bsm, initial_params)
+    _check_initparams(bsm, initial_params)
     return _sample_posterior(rng, bsm, initial_params, n_samples, n_burnin)
 end
 
-function check_initparams(bsm::BSplineMixture, initial_params::NamedTuple{N, V}) where {N, V}
+function _check_initparams(bsm::BSplineMixture, initial_params::NamedTuple{N, V}) where {N, V}
     (:β in N && :τ2 in N) || throw(ArgumentError("Expected a NamedTuple with fields β and τ2"))
     K = length(BSplineKit.basis(bsm))
     (; β, τ2) = initial_params

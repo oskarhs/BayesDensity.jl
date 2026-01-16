@@ -11,5 +11,6 @@ The following table provides a complete list of all the models available in `Bay
 | :---------- | :----: | :----: | :------------------------- |
 | [`BSplineMixture`](@ref) | ✅ | ✅ | `BayesDensityBSplineMixture` |
 | [`HistSmoother`](@ref) | ✅ | ✅ | `BayesDensityHistSmoother` |
+| [`PitmanYorMixture`](@ref) | ❌ | ❌ | `BayesDensityPitmanYorMixture` |
 
 ### TODO: Add link to modules once we are online.

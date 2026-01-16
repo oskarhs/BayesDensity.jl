@@ -3,8 +3,6 @@
     
 Struct representing a B-spline mixture model.
 
-The BSplineMixture struct is used to generate quantities that are needed for the model fitting procedure.
-
 # Constructors
     
     BSplineMixture(x::AbstractVector{<:Real}; kwargs...)

@@ -237,7 +237,7 @@ struct VariationalOptimizationResult{T<:Real, V<:AbstractVector, A<:AbstractVIPo
 end
 
 # Print method:
-function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizationInfo{T, V}) where {T, V}
+function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizationResult{T, V}) where {T, V}
     println(io, nameof(typeof(varoptinf)), "{", T, "} object.")
     println(io, " Converged: ", varoptinf.converged)
     println(io, " Number of iterations: ", varoptinf.n_iter)
@@ -245,4 +245,4 @@ function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizatio
     nothing
 end
 
-Base.show(io::IO, varoptinf::VariationalOptimizationInfo) = show(io, MIME("text/plain"), varoptinf)
+Base.show(io::IO, varoptinf::VariationalOptimizationResult) = show(io, MIME("text/plain"), varoptinf)

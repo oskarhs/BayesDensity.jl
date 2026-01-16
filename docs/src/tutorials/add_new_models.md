@@ -78,7 +78,7 @@ For our particular example it can be shown that the optimal ``q`` densities are:
 An expression for the ELBO of this model is as follows:
 ```math
 \begin{aligned}
-  \mathrm{ELBO}(q) &= \sum_{i=1}^n \sum_{k=1}^K q(z_i = k) \big\{\log b_k(x_i) - \log q(z_i = k)\big\} \\ &+ \sum_{k=1}^K \big\{\log \Gamma(a + r_k) - \log \Gamma(a)\big\} \\ &- \log \Gamma(aK+n) + \log \Gamma(aK)
+  \mathrm{ELBO}(q) =& \sum_{i=1}^n \sum_{k=1}^K q(z_i = k) \big\{\log b_k(x_i) - \log q(z_i = k)\big\} \\ &+ \sum_{k=1}^K \big\{\log \Gamma(a + r_k) - \log \Gamma(a)\big\} \\ &- \log \Gamma(aK+n) + \log \Gamma(aK)
 \end{aligned}
 ```
 
