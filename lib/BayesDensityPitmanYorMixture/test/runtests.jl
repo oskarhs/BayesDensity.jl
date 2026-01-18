@@ -4,6 +4,8 @@ using Distributions, Random
 
 const rng = Random.Xoshiro(1)
 
+#include("aqua.jl")
+
 @testset "PitmanYorMixture: Constructor and model object" begin
     x = [1.0, -1.0]
 
@@ -36,7 +38,7 @@ end
     @test isapprox(pdf(pym, parameters, 0.0), pdf(Normal(0, 1), 0.0))
     @test isapprox(cdf(pym, parameters, 0.0), cdf(Normal(0, 1), 0.0))
 
-    # Evaluate for multiple samples at single point:
+    # Evaluate for single sample at multiple points:
     t = LinRange(-5, 5, 11)
     @test isapprox(pdf(pym, parameters, t), pdf(Normal(0, 1), t))
     @test isapprox(cdf(pym, parameters, t), cdf(Normal(0, 1), t))

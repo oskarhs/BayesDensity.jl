@@ -45,12 +45,29 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
 
     # Cluster allocation vector for all variables
     cluster_alloc = Vector{Int}(undef, n)
+    # DO SOME INITIALIZATION HERE
+    cluster_counts = StatsBase.counts(cluster_alloc)
+    K = length(cluster_counts)
 
     samples = Vector{NamedTuple{(:μ, :σ2, :cluster_alloc), (Vector{T}, Vector{T}, Vector{T})}}(undef, n_samples)
 
     for m in 1:n_samples
 
-
+        for i in 1:n
+            logprobs = Vector{T}(undef, K+1)
+            for k in 1:K
+                cluster_counts_k = sum(cluster_alloc .== k)
+                logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts_k - d)
+            end
+            logprobs[K+1] = _tdist_logpdf(2*γ, μ0, sqrt(σ0^2 + δ/γ), x[i]) + log(α + K * d)
+            probs = BayesDensityCore.softmax(logprobs)
+            new_alloc = wsample(rng, 1:K+1, probs)
+            cluster_counts[new_alloc] += 1
+            
+            if new_alloc == K+1
+                
+            end
+        end
 
         samples[m] = (μ = μ, σ2 = σ2, cluster_counts = cluster_counts)
     end
