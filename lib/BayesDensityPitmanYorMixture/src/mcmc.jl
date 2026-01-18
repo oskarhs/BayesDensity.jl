@@ -65,7 +65,9 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
             cluster_counts[new_alloc] += 1
             
             if new_alloc == K+1
-                
+                cluster_alloc[n] = K+1
+
+                # Sample μ, σ2
             end
         end
 
