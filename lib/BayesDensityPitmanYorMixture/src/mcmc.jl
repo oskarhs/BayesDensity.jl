@@ -37,7 +37,7 @@ end
 
 function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, D}
     # Unpack hyperparameters and data
-    (; data, d, α, μ0, σ0, γ, δ) = pym
+    (; data, discount, strength, μ0, σ0, γ, δ) = pym
     (; x, n) = data
 
     # Initialize μ, σ2

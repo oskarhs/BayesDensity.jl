@@ -12,12 +12,12 @@ Struct representing a Pitman-Yor mixture model with a normal kernel.
 * `x`: The data vector.
 
 # Keyword arguments
-* `d`: Discount parameter of the Pitman-Yor process. Defaults to `0.0`, corresponding to a Dirichlet Process.
-* `α`: Strength parameter of the Pitman-Yor process. Defaults to `1.0`.
-* `μ0`: Prior mean of `μ`. Defaults to the midrange of the data vector.
-* `σ0`: Prior standard deviation of `μ`. Defaults to `sqrt(R)`, where `R` is the sample range.
-* `γ`: Prior shape parameter of `σ2`: Defaults to `2.0`.
-* `δ`: Prior rate parameter of `σ2`. Defaults to `0.2*R^2` where `R` is the sample range.
+* `discount`: Discount parameter of the Pitman-Yor process. Defaults to `0.0`, corresponding to a Dirichlet Process.
+* `strength`: Strength parameter of the Pitman-Yor process. Defaults to `1.0`.
+* `location`: Prior mean of the location parameter `μ`. Defaults to `mean(x)`.
+* `scale_fac`: Factor by which the conditional prior variance `σ2` of `μ` is scaled. Defaults to `1`.
+* `shape`: Prior shape parameter of the squared scale parameter `σ2`: Defaults to `2.0`.
+* `rate`: Prior rate parameter of the squared scale parameter `σ2`. Defaults to `var(x)`.
 
 # Returns
 * `pym`: A Pitman-Yor mixture model object.
@@ -28,17 +28,17 @@ Struct representing a Pitman-Yor mixture model with a normal kernel.
 """
 struct PitmanYorMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
-    d::T
-    α::T
-    μ0::T
-    σ0::T
-    γ::T
-    δ::T
-    function PitmanYorMixture{T}(x::AbstractVector{<:Real}; d::Real=0.0, α::Real=1.0, μ0::Real=_get_default_μ0(x), σ0::Real=_get_default_σ0(x), γ::Real=2.0, δ::Real=_get_default_δ(x)) where {T<:Real}
-        _check_pitmanyorkwargs(d, α, σ0, γ, δ)
+    discount::T
+    strength::T
+    location::T
+    scale_fac::T
+    shape::T
+    rate::T
+    function PitmanYorMixture{T}(x::AbstractVector{<:Real}; discount::Real=0.0, strength::Real=1.0, location::Real=mean(x), scale_fac::Real=_get_default_σ0(x), shape::Real=2.0, rate::Real=var(x)) where {T<:Real}
+        _check_pitmanyorkwargs(discount, strength, scale_fac, shape, rate)
         data = (x = T.(x), n = length(x))
 
-        return new{T,typeof(data)}(data, T(d), T(α), T(μ0), T(σ0), T(γ), T(δ))
+        return new{T,typeof(data)}(data, T(discount), T(strength), T(location), T(scale_fac), T(shape), T(rate))
     end
 end
 PitmanYorMixture(args...; kwargs...) = PitmanYorMixture{Float64}(args...; kwargs...)
@@ -50,16 +50,16 @@ Base.:(==)(pym1::PitmanYorMixture, pym2::PitmanYorMixture) = (pym1.data == pym2.
 
 Get the support of the Pitman-Yor mixture model `pym`.
 """
-BayesDensityCore.support(pym::PitmanYorMixture{T}) where {T} = (-T(Inf), T(Inf))
+BayesDensityCore.support(::PitmanYorMixture{T}) where {T} = (-T(Inf), T(Inf))
 
 """
     hyperparams(
         pym::PitmanYorMixture{T}
-    ) where {T} -> @NamedTuple{d::T, α::T, μ0::T, σ0::T, γ::T, δ::T}
+    ) where {T} -> @NamedTuple{discount::T, strength::T, location::T, scale_fac::T, shape::T, rate::T}
 
 Returns the hyperparameters of the Pitman-Yor mixture model `pym` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(pym::PitmanYorMixture) = (d=pym.d, α=pym.α, μ0=pym.μ0, σ0=pym.σ0, γ=pym.γ, δ=pym.δ)
+BayesDensityCore.hyperparams(pym::PitmanYorMixture) = (discount=pym.discount, strength=pym.strength, location=pym.location, scale_fac=pym.scale_fac, shape=pym.shape, rate=pym.rate)
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", pym::PitmanYorMixture{T}) where {T}
@@ -67,9 +67,9 @@ function Base.show(io::IO, ::MIME"text/plain", pym::PitmanYorMixture{T}) where {
     println(io, "Using ", pym.data.n, "  observations.")
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, "Hyperparameters: ")
-        println(io, " d = " , pym.d, ", α = ", pym.α)
-        println(io, " μ0 = " , pym.μ0, ", σ0 = ", pym.σ0)
-        print(io, "γ = ", pym.γ, ", δ = ", pym.δ)
+        println(io, " discount = " , pym.discount, ", strength = ", pym.strength)
+        println(io, " location = " , pym.location, ", scale_fac = ", pym.scale_fac)
+        print(io, "shape = ", pym.shape, ", rate = ", pym.rate)
     end
     nothing
 end
@@ -101,16 +101,16 @@ function _pdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::S) where {T<:Real
     R = promote_type(T, S)
     (; μ, σ2, cluster_counts) = params
     n = pym.data.n
-    (; d, α, μ0, σ0, γ, δ) = hyperparams(pym)
+    (; discount, strength, location, scale_fac, shape, rate) = hyperparams(pym)
     K = length(cluster_counts) # Number of existing clusters
 
     vals = zero(R)
     
     # Compute relative weight of (μ, σ²) belonging to a new cluster
     for k in eachindex(cluster_counts)
-        vals += (cluster_counts[k] - d) / (α + n) * pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+        vals += (cluster_counts[k] - discount) / (strength + n) * pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
-    vals += (α + K * d) / (α + n) * exp(_tdist_logpdf(2*γ, μ0, sqrt(σ0^2 + δ/γ), t)) # Contribution from event that (μ, σ²) forms a new cluster
+    vals += (strength + K * discount) / (strength + n) * exp(_tdist_logpdf(2*shape, location, sqrt(scale_fac^2 + rate/shape), t)) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
@@ -118,16 +118,16 @@ function _pdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::AbstractVector{S}
     R = promote_type(T, S)
     (; μ, σ2, cluster_counts) = params
     n = pym.data.n
-    (; d, α, μ0, σ0, γ, δ) = hyperparams(pym)
+    (; discount, strength, location, scale_fac, shape, rate) = hyperparams(pym)
     K = length(cluster_counts) # Number of existing clusters
 
     vals = zeros(R, length(t))
     
     # Compute relative weight of (μ, σ²) belonging to a new cluster
     for k in eachindex(cluster_counts)
-        vals .+= (cluster_counts[k] - d) / (α + n) .* pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+        vals .+= (cluster_counts[k] - discount) / (strength + n) .* pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
-    vals .+= (α + K * d) / (α + n) .* exp.(_tdist_logpdf(2*γ, μ0, sqrt(σ0^2 + δ/γ), t)) # Contribution from event that (μ, σ²) forms a new cluster
+    vals .+= (strength + K * discount) / (strength + n) .* exp.(_tdist_logpdf(2*shape, location, sqrt(scale_fac^2 + rate/shape), t)) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
@@ -155,18 +155,18 @@ function _cdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::S) where {T<:Real
     R = promote_type(T, S)
     (; μ, σ2, cluster_counts) = params
     n = pym.data.n
-    (; d, α, μ0, σ0, γ, δ) = hyperparams(pym)
+    (; discount, strength, location, scale_fac, shape, rate) = hyperparams(pym)
     K = length(cluster_counts) # Number of existing clusters
     
     vals = zero(R)
 
     # Compute relative weight of (μ, σ²) belonging to a new cluster
     for k in eachindex(cluster_counts)
-        vals += (cluster_counts[k] - d) / (α + n) * cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+        vals += (cluster_counts[k] - discount) / (strength + n) * cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
 
-    scale_new = sqrt(σ0^2 + δ/γ)
-    vals += (α + K * d) / (α + n) * cdf(TDist(2*γ), (t - μ0)/scale_new) # Contribution from event that (μ, σ²) forms a new cluster
+    scale_new = sqrt(scale_fac^2 + rate/shape)
+    vals += (strength + K * discount) / (strength + n) * cdf(TDist(2*shape), (t - location)/scale_new) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
@@ -174,46 +174,25 @@ function _cdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::AbstractVector{S}
     R = promote_type(T, S)
     (; μ, σ2, cluster_counts) = params
     n = pym.data.n
-    (; d, α, μ0, σ0, γ, δ) = hyperparams(pym)
+    (; discount, strength, location, scale_fac, shape, rate) = hyperparams(pym)
     K = length(cluster_counts) # Number of existing clusters
     
     vals = zeros(R, length(t))
 
     # Compute relative weight of (μ, σ²) belonging to a new cluster
     for k in eachindex(cluster_counts)
-        vals .+= (cluster_counts[k] - d) / (α + n) .* cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+        vals .+= (cluster_counts[k] - discount) / (strength + n) .* cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
 
-    scale_new = sqrt(σ0^2 + δ/γ)
-    vals .+= (α + K * d) / (α + n) .* cdf(TDist(2*γ), (t .- μ0)/scale_new) # Contribution from event that (μ, σ²) forms a new cluster
+    scale_new = sqrt(scale_fac^2 + rate/shape)
+    vals .+= (strength + K * discount) / (strength + n) .* cdf(TDist(2*shape), (t .- location)/scale_new) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
-function _check_pitmanyorkwargs(d::Real, α::Real, σ0::Real, γ::Real, δ::Real)
-    (0 ≤ d < 1) || throw(ArgumentError("Discount parameter `d` must lie in the interval [0,1)."))
-    (α > -d) || throw(ArgumentError("Strength parameter `α` must be greater than -d."))
-    (σ0 > 0) || throw(ArgumentError("Prior standard deviation `σ0` must be positive."))
-    (γ > 0) || throw(ArgumentError("Prior shape parameter `γ` must be positive."))
-    (δ > 0) || throw(ArgumentError("Prior rate parameter `δ` must be positive."))
-end
-
-function _get_default_μ0(x::AbstractVector{<:Real})
-    xmin, xmax = extrema(x)
-    return (xmax + xmin) / 2
-end
-
-function _get_default_σ0(x::AbstractVector{<:Real})
-    xmin, xmax = extrema(x)
-    return sqrt(xmax - xmin)
-end
-
-function _get_default_δ(x::AbstractVector{<:Real})
-    xmin, xmax = extrema(x)
-    return 0.2*(xmax - xmin)^2
-end
-
-# Logpdf of location-shape t-distribution
-function _tdist_logpdf(df::T, loc::T, scale::T, t::Union{S, AbstractVector{S}}) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    return @. loggamma((df+1)/2) - loggamma(df/2) - log(df*R(pi)*scale) - (df + 1) / 2 * log(1 + (t - loc)^2/(df*scale))
+function _check_pitmanyorkwargs(discount::Real, strength::Real, scale_fac::Real, shape::Real, rate::Real)
+    (0 ≤ discount < 1) || throw(ArgumentError("Discount parameter `discount` must lie in the interval [0,1)."))
+    (strength > -discount) || throw(ArgumentError("Strength parameter `strength` must be greater than -discount."))
+    (scale_fac > 0) || throw(ArgumentError("Prior standard deviation `scale_fac` must be positive."))
+    (shape > 0) || throw(ArgumentError("Prior shape parameter `shape` must be positive."))
+    (rate > 0) || throw(ArgumentError("Prior rate parameter `rate` must be positive."))
 end
