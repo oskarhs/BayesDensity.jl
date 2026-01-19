@@ -43,3 +43,7 @@ end
     @test isapprox(pdf(pym, parameters, t), pdf(Normal(0, 1), t))
     @test isapprox(cdf(pym, parameters, t), cdf(Normal(0, 1), t))
 end
+
+@testset "PitmanYorMixture: sample" begin
+    
+end

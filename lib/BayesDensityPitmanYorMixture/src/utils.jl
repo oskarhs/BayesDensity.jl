@@ -5,7 +5,8 @@ struct TDistLocationScale{T<:Real} <: ContinuousUnivariateDistribution
 end
 TDistLocationScale(args...) = TDistLocationScale{Float64}(args...)
 
-function Distributions.logpdf(tdist::TDistLocationScale, t::Union{Real, AbstractVector{<:Real}})
+function Distributions.logpdf(tdist::TDistLocationScale{T}, t::Union{S, AbstractVector{S}}) where {T<:Real, S<:Real}
+    R = promote_type(T, S)
     (; df, location, scale) = tdist
     return @. loggamma((df+1)/2) - loggamma(df/2) - log(df*R(pi)*scale) - (df + 1) / 2 * log(1 + (t - location)^2/(df*scale))
 end

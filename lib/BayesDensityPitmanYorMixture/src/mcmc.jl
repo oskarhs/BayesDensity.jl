@@ -49,33 +49,63 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
     cluster_counts = StatsBase.counts(cluster_alloc)
     K = length(cluster_counts)
 
-    scale_new = sqrt(rate*(1 + scale_fac)/shape)
+    marginal_scale = sqrt(rate*(1 + scale_fac)/shape)
 
-    samples = Vector{NamedTuple{(:μ, :σ2, :cluster_alloc), (Vector{T}, Vector{T}, Vector{T})}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:μ, :σ2, :cluster_counts), (Vector{T}, Vector{T}, Vector{Int})}}(undef, n_samples)
 
     for m in 1:n_samples
+        # Update clusters
         for i in 1:n
+            if cluster_counts[cluster_alloc[i]] == 1
+                # Remove the cluster (swap with last cluster and resize vectors)
+                old = cluster_alloc[i]
+                μ[cluster_alloc[i]] = μ[K]
+                σ2[cluster_alloc[i]] = σ2[K]
+                cluster_counts[cluster_alloc[i]] = cluster_counts[K]
+                pop!(μ)
+                pop!(σ2)
+                pop!(cluster_counts)
+                K = K - 1
+                cluster_alloc[cluster_alloc .== K] .= old
+            else
+                cluster_counts[cluster_alloc[i]] -= 1
+            end
+
+            # Assign obervation x[i] to a new cluster:
             logprobs = Vector{T}(undef, K+1)
             for k in 1:K
-                cluster_counts_k = sum(cluster_alloc .== k)
-                logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts_k - discount)
+                logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts[k] - discount)
             end
-            logprobs[K+1] = logpdf(TDistLocationScale(2.0*shape, location, scale_new), x[i]) + log(strength + K * discount)
+            logprobs[K+1] = logpdf(TDistLocationScale(2.0*shape, location, marginal_scale), x[i]) + log(strength + K * discount)
             probs = BayesDensityCore.softmax(logprobs)
             new_alloc = wsample(rng, 1:K+1, probs)
-            cluster_counts[new_alloc] += 1
+            cluster_alloc[i] = new_alloc
             
             if new_alloc == K+1
-                cluster_alloc[n] = K+1
-
                 # Sample μ, σ2 from posterior
-                shape_new = rate + ...
-                rate_new = ...
-                scale_fac_new = ...
+                shape_new = shape + 1/2
+                scale_fac_new = scale_fac + 1
+                rate_new = rate + scale_fac * abs2(x[i] - location) / (2*scale_fac_new)
                 location_new = (x[i] + scale_fac * location) / (1 + scale_fac)
-                σ2 = rand(rng, InverseGamma(new_shape, new_rate))
-                μ = rand(rng, Normal(location, σ2 * scale_fac))
+                push!(σ2, rand(rng, InverseGamma(shape_new, rate_new)))
+                push!(μ, Normal(location_new, sqrt(σ2[end] * scale_fac_new)))
+                # Update cluster counts
+                push!(cluster_counts, 1)
             end
+        end
+        # Sample parameters given clusters.
+        for k in 1:K
+            # Compute updated cluster-specific hyperparameters
+            clust_k_ind = (cluster_alloc .== k)
+            clust_mean = mean(view(x, clust_k_ind))
+            scale_fac_post = scale_fac + cluster_counts[k]
+            shape_post = shape + cluster_counts[k]/2
+            rate_post = rate + (sum(abs2, view(x, clust_k_ind) .- clust_mean) + cluster_counts[k] * scale_fac / scale_fac_post * sum(abs2, clust_mean - location)) / 2
+            location_post = (scale_fac * location + cluster_counts[k] * clust_mean) / scale_fac_post
+
+            # Sample cluster parameters
+            σ2[k] = rand(rng, InverseGamma(shape_post, rate_post))
+            μ[k] = rand(rng, Normal(location_post, sqrt(scale_fac_post * σ2[k])))
         end
 
         samples[m] = (μ = μ, σ2 = σ2, cluster_counts = cluster_counts)
