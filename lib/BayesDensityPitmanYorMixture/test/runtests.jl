@@ -21,7 +21,7 @@ const rng = Random.Xoshiro(1)
     @test support(pym) == (-Inf, Inf)
 
     # Check that out of bounds hyperparameter values throw errors
-    for hyp in (:d, :α, :σ0, :γ, :δ)
+    for hyp in (:discount, :strength, :σ0, :γ, :δ)
         @eval @test_throws ArgumentError $PitmanYorMixture($x; $hyp = -1)
     end
 end
