@@ -1,7 +1,7 @@
 """
     PitmanYorMixture{T<:Real} <: AbstractBayesDensityModel{T}
     
-Struct representing a Pitman-Yor mixture model with a normal kernel.
+Struct representing a Pitman-Yor mixture model with a normal kernel and a conjugate Normal-InverseGamma base measure.
 
 # Constructors
     
@@ -34,7 +34,7 @@ struct PitmanYorMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     scale_fac::T
     shape::T
     rate::T
-    function PitmanYorMixture{T}(x::AbstractVector{<:Real}; discount::Real=0.0, strength::Real=1.0, location::Real=mean(x), scale_fac::Real=_get_default_σ0(x), shape::Real=2.0, rate::Real=var(x)) where {T<:Real}
+    function PitmanYorMixture{T}(x::AbstractVector{<:Real}; discount::Real=0.0, strength::Real=1.0, location::Real=mean(x), scale_fac::Real=1.0, shape::Real=2.0, rate::Real=var(x)) where {T<:Real}
         _check_pitmanyorkwargs(discount, strength, scale_fac, shape, rate)
         data = (x = T.(x), n = length(x))
 
@@ -110,7 +110,8 @@ function _pdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::S) where {T<:Real
     for k in eachindex(cluster_counts)
         vals += (cluster_counts[k] - discount) / (strength + n) * pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
-    vals += (strength + K * discount) / (strength + n) * exp(_tdist_logpdf(2*shape, location, sqrt(scale_fac^2 + rate/shape), t)) # Contribution from event that (μ, σ²) forms a new cluster
+    scale_new = sqrt(rate*(1 + scale_fac)/shape)
+    vals += (strength + K * discount) / (strength + n) * pdf(TDistLocationScale(2*shape, location, scale_new), t) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
@@ -127,7 +128,8 @@ function _pdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::AbstractVector{S}
     for k in eachindex(cluster_counts)
         vals .+= (cluster_counts[k] - discount) / (strength + n) .* pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
-    vals .+= (strength + K * discount) / (strength + n) .* exp.(_tdist_logpdf(2*shape, location, sqrt(scale_fac^2 + rate/shape), t)) # Contribution from event that (μ, σ²) forms a new cluster
+    scale_new = sqrt(rate*(1 + scale_fac)/shape)
+    vals .+= (strength + K * discount) / (strength + n) .* pdf(TDistLocationScale(2*shape, location, scale_new), t) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
@@ -165,8 +167,8 @@ function _cdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::S) where {T<:Real
         vals += (cluster_counts[k] - discount) / (strength + n) * cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
 
-    scale_new = sqrt(scale_fac^2 + rate/shape)
-    vals += (strength + K * discount) / (strength + n) * cdf(TDist(2*shape), (t - location)/scale_new) # Contribution from event that (μ, σ²) forms a new cluster
+    scale_new = sqrt(rate*(1 + scale_fac)/shape)
+    vals += (strength + K * discount) / (strength + n) * cdf(TDistLocationScale(2*shape, location, scale_new), t) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 
@@ -183,9 +185,8 @@ function _cdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::AbstractVector{S}
     for k in eachindex(cluster_counts)
         vals .+= (cluster_counts[k] - discount) / (strength + n) .* cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
     end
-
-    scale_new = sqrt(scale_fac^2 + rate/shape)
-    vals .+= (strength + K * discount) / (strength + n) .* cdf(TDist(2*shape), (t .- location)/scale_new) # Contribution from event that (μ, σ²) forms a new cluster
+    scale_new = sqrt(rate*(1 + scale_fac)/shape)
+    vals .+= (strength + K * discount) / (strength + n) .* cdf(TDistLocationScale(2*shape, location, scale_new), t) # Contribution from event that (μ, σ²) forms a new cluster
     return vals
 end
 

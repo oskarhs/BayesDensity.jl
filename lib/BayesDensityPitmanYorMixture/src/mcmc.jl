@@ -31,13 +31,13 @@ function StatsBase.sample(
     (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
     (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
     (n_samples ≥ n_burnin) || @warn "The total number of samples is smaller than the number of burn-in samples."
-    _check_initparams(bsm, initial_params)
+    #_check_initparams(bsm, initial_params)
     return _sample_posterior(rng, pym, initial_params, n_samples, n_burnin)
 end
 
 function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, D}
     # Unpack hyperparameters and data
-    (; data, discount, strength, μ0, σ0, γ, δ) = pym
+    (; data, discount, strength, location, scale_fac, rate, shape) = pym
     (; x, n) = data
 
     # Initialize μ, σ2
@@ -49,17 +49,18 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
     cluster_counts = StatsBase.counts(cluster_alloc)
     K = length(cluster_counts)
 
+    scale_new = sqrt(rate*(1 + scale_fac)/shape)
+
     samples = Vector{NamedTuple{(:μ, :σ2, :cluster_alloc), (Vector{T}, Vector{T}, Vector{T})}}(undef, n_samples)
 
     for m in 1:n_samples
-
         for i in 1:n
             logprobs = Vector{T}(undef, K+1)
             for k in 1:K
                 cluster_counts_k = sum(cluster_alloc .== k)
-                logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts_k - d)
+                logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts_k - discount)
             end
-            logprobs[K+1] = _tdist_logpdf(2*γ, μ0, sqrt(σ0^2 + δ/γ), x[i]) + log(α + K * d)
+            logprobs[K+1] = logpdf(TDistLocationScale(2.0*shape, location, scale_new), x[i]) + log(strength + K * discount)
             probs = BayesDensityCore.softmax(logprobs)
             new_alloc = wsample(rng, 1:K+1, probs)
             cluster_counts[new_alloc] += 1
@@ -67,7 +68,13 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
             if new_alloc == K+1
                 cluster_alloc[n] = K+1
 
-                # Sample μ, σ2
+                # Sample μ, σ2 from posterior
+                shape_new = rate + ...
+                rate_new = ...
+                scale_fac_new = ...
+                location_new = (x[i] + scale_fac * location) / (1 + scale_fac)
+                σ2 = rand(rng, InverseGamma(new_shape, new_rate))
+                μ = rand(rng, Normal(location, σ2 * scale_fac))
             end
         end
 

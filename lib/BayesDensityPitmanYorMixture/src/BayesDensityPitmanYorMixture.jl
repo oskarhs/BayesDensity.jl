@@ -15,4 +15,6 @@ export PitmanYorMixture
 
 include("mcmc.jl")
 
+include("utils.jl")
+
 end # module

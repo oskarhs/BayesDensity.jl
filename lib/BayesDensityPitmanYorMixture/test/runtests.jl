@@ -21,7 +21,7 @@ const rng = Random.Xoshiro(1)
     @test support(pym) == (-Inf, Inf)
 
     # Check that out of bounds hyperparameter values throw errors
-    for hyp in (:discount, :strength, :σ0, :γ, :δ)
+    for hyp in (:discount, :strength, :scale_fac, :shape, :rate)
         @eval @test_throws ArgumentError $PitmanYorMixture($x; $hyp = -1)
     end
 end
@@ -29,7 +29,7 @@ end
 @testset "PitmanYorMixture: pdf and cdf" begin
     x = [1.0, -1.0]
 
-    pym = PitmanYorMixture(x; α = 1e-10)
+    pym = PitmanYorMixture(x; strength = 1e-10)
 
     # For α ≈ 0 the new cluster part does not contribute much
     parameters = (μ = [0.0], σ2 = [1.0], cluster_counts = [2])
