@@ -139,6 +139,7 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
 
     converged = false
     iter = 1
+    ELBO = Vector{T}(undef, max_iter)
 
     while !converged && iter ≤ max_iter
         # Update q(a)
@@ -159,11 +160,20 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
         # Check convergence criterion
         b_σ_opt = b_σ_new
         converged = (relative_change < rtol)
-        
+
+        # Compute the ELBO:
+        ELBO[iter] = 1 - log(T(pi)) - 2*log(σ_β) + 1/2 * logabsdet(Σ_opt)[1] - sum(loggamma.(N .+ one(T)))
+        ELBO[iter] += -1/(2*σ_β^2) * @views(sum(abs2, μ_opt[1:2]) + tr(Σ_opt[1:2, 1:2])) + a_a_opt * a_σ_opt / (b_a_opt * b_σ_opt)
+        ELBO[iter] += -log(s_σ) - log(a_σ_opt / b_σ_opt + 1/s_σ^2) + loggamma((K-one(T))/2)
+        ELBO[iter] += - (K-one(T))/2 * log(a_a_opt / b_a_opt + 1/2 * @views(sum(abs2, μ_opt[3:end]) + tr(Σ_opt[3:end, 3:end])))
+        ELBO[iter] += sum(N .* (C * μ_opt)) - sum(exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2))))
+
         # Increment iteration counter
         iter += 1
     end
     
     converged || @warn "Failed to meet convergence criterion in $iter iterations."
-    return HistSmootherVIPosterior{T}(μ_opt, Symmetric(Σ_opt), a_σ_opt, b_σ_opt, shs)
+    posterior = HistSmootherVIPosterior{T}(μ_opt, Symmetric(Σ_opt), a_σ_opt, b_σ_opt, shs)
+    info = VariationalOptimizationResult{T}(ELBO[1:iter-1], converged, iter-1, rtol, posterior)
+    return posterior, info
 end

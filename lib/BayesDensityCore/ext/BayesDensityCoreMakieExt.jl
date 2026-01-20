@@ -97,4 +97,7 @@ Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::PosteriorSamples, t::Abstra
 Makie.plottype(::PosteriorSamples) = LineBandPlot
 Makie.plottype(::PosteriorSamples, ::AbstractVector{<:Real}) = LineBandPlot
 
+Makie.convert_arguments(P::Type{<:PointBased}, varinfopt::VariationalOptimizationResult) = convert_arguments(P, collect(1:n_iter(varinfopt)), elbo(varinfopt))
+Makie.plottype(::VariationalOptimizationResult) = Makie.Lines
+
 end # module

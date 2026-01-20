@@ -6,7 +6,16 @@ using Reexport
 
 import BayesDensityCore: linear_binning
 
-using Distributions, BSplineKit, LinearAlgebra, SparseArrays, StatsBase, Random, MixedModels, DataFrames, Logging
+using BSplineKit
+using DataFrames
+using Distributions
+using LinearAlgebra
+using Logging
+using MixedModels
+using Random
+using SparseArrays
+using SpecialFunctions
+using StatsBase
 
 import Distributions: support
 

@@ -107,4 +107,8 @@ for func in (:pdf, :cdf)
     end
 end
 
+@recipe function f(varinfopt::VariationalOptimizationResult)
+    1:n_iter(varinfopt), elbo(varinfopt)
+end
+
 end # module
