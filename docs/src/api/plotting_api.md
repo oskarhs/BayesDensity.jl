@@ -49,7 +49,7 @@ x = rand(rng, d_true, 1000)
 # Fit the model via MCMC and VI
 histsmoother = HistSmoother(x)
 posterior_sample = sample(rng, histsmoother, 1100)
-vi_posterior = varinf(histsmoother)
+vi_posterior, info = varinf(histsmoother)
 ```
 
 Having fitted the model, we can use the extended plot function to generate various plots from the fitted model objects, be it the variational posterior or the MCMC samples.
@@ -94,6 +94,8 @@ end
 fig
 ```
 
+Makie.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.
+
 ## Plotting with Plots.jl
 In general, the available plot method for [`PosteriorSamples`](@ref) and [`AbstractVIPosterior`](@ref) objects has the following signature:
 ```julia
@@ -135,7 +137,7 @@ x = rand(rng, d_true, 1000)
 # Fit the model via MCMC and VI
 histsmoother = HistSmoother(x)
 posterior_sample = sample(rng, histsmoother, 1100)
-vi_posterior = varinf(histsmoother)
+vi_posterior, info = varinf(histsmoother)
 ```
 
 Having fitted the model, we can use the extended plot function to generate various plots from the fitted model objects, be it the variational posterior or the MCMC samples.
@@ -175,3 +177,5 @@ xlims!(p4, -2.2, 2.2)
 
 plot(p1, p2, p3, p4, layout=(2,2), size=(670, 670))
 ```
+
+Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.

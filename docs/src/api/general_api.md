@@ -176,3 +176,14 @@ std(::AbstractVIPosterior)
 !!! note
     Note that each call to `mean`, `quantile`, `median`, `var` or `std` in most cases will first simulate a random sample from the posterior distribution, and then uses this sample to compute a Monte Carlo approximation of the quantity of interest using these samples.
     If posterior inference for multiple quantities is desired, then it is recommended to first use [`sample`](@ref), and call these functions on this object as only a single batch of posterior samples is generated in this case.
+
+#### Storing info from the variational optimization
+In order to provide a simple way of performing convergence diagnostics for variational optimization problems, `BayesDensityCore` exports the [`VariationalOptimizationResult`](@ref) type.
+```@docs
+VariationalOptimizationResult
+elbo
+n_iter
+converged
+tolerance
+posterior
+```

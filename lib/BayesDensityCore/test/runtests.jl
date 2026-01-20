@@ -84,6 +84,11 @@ function StatsBase.sample(rng::Random.AbstractRNG, rhp::RHPosterior{T, S}, n_sam
     return PosteriorSamples{T}(samples, model, n_samples, 0)
 end
 
+function BayesDensityCore.varinf(rhm::RandomHistogram{T, NT}) where {T, NT}
+    posterior = RHPosterior{T}(rhm)
+    info = VariationalOptimizationResult{T}([0.0], true, 1, 0.0, posterior)
+end
+
 @testset "Core: pdf and cdf fallback methods" begin
     K = 15
     a = 1.0
@@ -191,13 +196,18 @@ end
     @test isapprox(posterior_median_cdf[1], median(posterior, cdf, t[1]))
 end
 
-@testset "Core: VI sample" begin
+@testset "Core: VI: varinf, sample" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
     rhm = RandomHistogram{Float64}(x, K; a=a)
-    rhp = RHPosterior{Float64}(rhm)
+    rhp, info = varinf(rhm)
 
+    @test converged(info)
+    @test elbo(info) == [0.0]
+    @test n_iter(info) == 1
+    @test tolerance(info) isa Real
+    
     n_samples = 100
 
     @test typeof(rhp) <: AbstractVIPosterior

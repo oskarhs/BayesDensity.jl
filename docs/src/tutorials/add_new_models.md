@@ -304,6 +304,7 @@ end
 ```
 
 Finally, we are ready to implement the optimization procedure itself by overloading [`varinf`](@ref).
+Note that this function should return a 2-tuple, consisting of the fitted variational posterior itself and an object of type [`VariationalOptimizationResult`](@ref).
 ```@example Bernstein; continued=true
 using SpecialFunctions # For the digamma-function
 
@@ -317,7 +318,7 @@ function BayesDensityCore.varinf(model::BernsteinDensity{T, D}; max_iter::Int=10
 
     # CAVI optimization loop
     ELBO_prev = T(-1)
-    ELBO = T(0)
+    ELBO = Vector{T}(undef, max_iter)
     converged = false
     iter = 1
     while !converged && iter <= max_iter
@@ -335,20 +336,20 @@ function BayesDensityCore.varinf(model::BernsteinDensity{T, D}; max_iter::Int=10
         end
 
         # Check if the procedure has converged:
-        ELBO = Bernstein_ELBO(model, r, ω)
+        ELBO[iter] = Bernstein_ELBO(model, r, ω)
 
         # Run at least two iterations
-        converged = (abs(ELBO_prev - ELBO) / ELBO_prev <= rtol) && iter > 1
-        ELBO_prev = ELBO
+        converged = (abs(ELBO_prev - ELBO[iter]) / ELBO_prev <= rtol) && iter > 1
+        ELBO_prev = ELBO[iter]
         iter += 1
     end
 
     # Print a warning if the procedure fails to converge within the maximum number of iterations
-    if !converged
-        @warn "Maximum number of iterations reached."
-    end
-
-    return BernsteinDensityVIPosterior{T}(r, model)
+    converged || @warn "Maximum number of iterations reached."
+    
+    posterior = BernsteinDensityVIPosterior{T}(r, model)
+    info = VariationalOptimizationResult{T}(ELBO[1:iter-1], converged, iter-1, rtol, posterior)
+    return posterior, info
 end
 ```
 
@@ -364,7 +365,7 @@ x = rand(rng, d_true, 1_000)
 
 K = 20
 bdm = BernsteinDensity(x, K) # Create Bernstein density model object (a = 1)
-vip = varinf(bdm) # Compute the variational posterior.
+vip, info = varinf(bdm) # Compute the variational posterior.
 
 mean(vip, 0.2) # Compute the posterior mean of f(0.2)
 ```
@@ -374,7 +375,7 @@ For instance, we can visualize the variational posterior fit by displaying the (
 using CairoMakie
 t = LinRange(0, 1, 1001) # Grid for plotting
 
-fig = Figure(size=(670, 320))
+fig = Figure(size=(500, 320))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
 plot!(ax1, vip, t, label="VI") # Plot the posterior mean and credible bands:
 lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
@@ -385,5 +386,13 @@ lines!(ax2, t, cdf(d_true, t), label="Truth", color=:black)
 
 Legend(fig[1,3], ax1, framevisible=false)
 
+fig
+```
+
+We can also verify that the ELBO has converged:
+```@example Bernstein
+fig = Figure(size=(500, 500))
+ax = Axis(fig[1,1], xlabel="Iteration", ylabel="ELBO")
+lines!(ax, info)
 fig
 ```

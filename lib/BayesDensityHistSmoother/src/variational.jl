@@ -139,7 +139,11 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
 
     converged = false
     iter = 1
-    ELBO = Vector{T}(undef, max_iter)
+    ELBO_const_terms_sum = 1/2 * (K - one(T)) + loggamma(1/2 * (K - one(T))) - log(T(pi)) - log(s_σ) - sum(loggamma.(N .+ 1)) - log(σ_β)
+    ELBO = fill(ELBO_const_terms_sum, max_iter)
+
+    w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
+    N_transpose_C = transpose(N) * C
 
     while !converged && iter ≤ max_iter
         # Update q(a)
@@ -151,7 +155,7 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
         relative_change = abs(b_σ_opt/b_σ_new - 1)
 
         # Update q(β)
-        w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
+        #w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
         Λ = Diagonal(vcat(fill(1/σ_β^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
         inv_Σ_opt = transpose(C) * (C .* w) + Λ
         Σ_opt = inv(inv_Σ_opt)
@@ -162,12 +166,12 @@ function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTu
         converged = (relative_change < rtol)
 
         # Compute the ELBO:
-        ELBO[iter] = 1 - log(T(pi)) - 2*log(σ_β) + 1/2 * logabsdet(Σ_opt)[1] - sum(loggamma.(N .+ one(T)))
-        ELBO[iter] += -1/(2*σ_β^2) * @views(sum(abs2, μ_opt[1:2]) + tr(Σ_opt[1:2, 1:2])) + a_a_opt * a_σ_opt / (b_a_opt * b_σ_opt)
-        ELBO[iter] += -log(s_σ) - log(a_σ_opt / b_σ_opt + 1/s_σ^2) + loggamma((K-one(T))/2)
-        ELBO[iter] += - (K-one(T))/2 * log(a_a_opt / b_a_opt + 1/2 * @views(sum(abs2, μ_opt[3:end]) + tr(Σ_opt[3:end, 3:end])))
-        ELBO[iter] += sum(N .* (C * μ_opt)) - sum(exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2))))
-
+        w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
+        ELBO[iter] += N_transpose_C * μ_opt - sum(w)
+        ELBO[iter] += -1/(2*σ_β^2) * @views(sum(abs2, μ_opt[1:2]) + tr(Σ_opt[1:2, 1:2])) + 1/2 * logabsdet(Σ_opt)[1]
+        ELBO[iter] += -1/2 * (K - one(T)) * log(a_a_opt/b_a_opt + 1/2 * @views(sum(abs2, μ_opt[3:end]) + tr(Σ_opt[3:end, 3:end])))
+        ELBO[iter] += -log(a_σ_opt / b_σ_opt+1/s_σ^2) + a_a_opt * a_σ_opt / (b_a_opt * b_σ_opt)
+        
         # Increment iteration counter
         iter += 1
     end
