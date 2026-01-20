@@ -1,8 +1,11 @@
 # PitmanYorMixture
 
-Documentation for Pitman-Yor mixture models [Ishwaran2001Gibbs](@citet).
+Documentation for Pitman-Yor mixture models [Ishwaran2001Gibbs](@citet), with a normal kernel and a normal-inverse gamma base measure.
 
-Markov Chain monte Carlo is via algorithm 2 in [Neal2000Markov](@citet).
+For Markov chain Monte Carlo based inference, this module implements algorithm 2 by [Neal2000Markov](@citet).
+
+!!! note
+    Since Dirichlet process mixture models are equivalent to a Pitman-Yor mixture model with discount parameter equal to `0`, this module can also be used to fit the former type of models.
 
 ## Example usage
 

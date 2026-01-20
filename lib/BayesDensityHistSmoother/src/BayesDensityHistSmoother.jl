@@ -4,6 +4,8 @@ using Reexport
 
 @reexport using BayesDensityCore
 
+import BayesDensityCore: linear_binning
+
 using Distributions, BSplineKit, LinearAlgebra, SparseArrays, StatsBase, Random, MixedModels, DataFrames, Logging
 
 import Distributions: support

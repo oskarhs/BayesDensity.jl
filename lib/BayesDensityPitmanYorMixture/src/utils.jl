@@ -21,8 +21,3 @@ function Distributions.cdf(tdist::TDistLocationScale, t::Union{Real, AbstractVec
     (; df, location, scale) = tdist
     return cdf(TDist(df), @.((t-location)/scale))
 end
-
-function _tdist_logpdf(df::T, location::T, scale::T, t::Union{S, AbstractVector{S}}) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    return @. loggamma((df+1)/2) - loggamma(df/2) - log(df*R(pi)*scale) - (df + 1) / 2 * log(1 + (t - location)^2/(df*scale))
-end

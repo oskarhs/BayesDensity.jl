@@ -56,6 +56,24 @@ function bin_regular(x::AbstractVector{T}, xmin::T, xmax::T, M::Int, right::Bool
     return bincounts
 end
 
+# Compute linear binning on a regular grid
+function linear_binning(x::AbstractVector{T}, n_bins::Int, xmin::T, xmax::T) where {T<:Real}
+    N = zeros(T, n_bins)
+    delta = (xmax - xmin) / n_bins
+
+    for i in eachindex(x)
+        lxi = ((x[i] - xmin) / delta) + 1
+        li = floor(Int, lxi)
+        rem = lxi - li
+
+        if 1 <= li < n_bins
+            N[li] += 1 - rem
+            N[li + 1] += rem
+        end
+    end
+    return round.(Int, N)
+end
+
 # Create the k'th unit vector in the canonical basis for R^K.
 function unitvector(K::Int, k::Int, T::Type{<:Real}=Float64)
     if !(1 ≤ k ≤ K)

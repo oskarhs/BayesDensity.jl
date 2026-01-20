@@ -92,21 +92,3 @@ function create_unnormalized_sparse_spline_basis_matrix(x::AbstractVector{T}, ba
     end
     return sparse(I, J, V, n, K)
 end
-
-# Compute linear binning on a regular grid
-function linear_binning(x::AbstractVector{T}, n_bins::Int, xmin::T, xmax::T) where {T<:Real}
-    N = zeros(T, n_bins)
-    delta = (xmax - xmin) / n_bins
-
-    for i in eachindex(x)
-        lxi = ((x[i] - xmin) / delta) + 1
-        li = floor(Int, lxi)
-        rem = lxi - li
-
-        if 1 <= li < n_bins
-            N[li] += 1 - rem
-            N[li + 1] += rem
-        end
-    end
-    return round.(Int, N)
-end

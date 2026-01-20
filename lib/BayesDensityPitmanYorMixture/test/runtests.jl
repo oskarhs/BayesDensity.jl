@@ -21,7 +21,7 @@ const rng = Random.Xoshiro(1)
     @test support(pym) == (-Inf, Inf)
 
     # Check that out of bounds hyperparameter values throw errors
-    for hyp in (:discount, :strength, :scale_fac, :shape, :rate)
+    for hyp in (:discount, :strength, :inv_scale_fac, :shape, :rate)
         @eval @test_throws ArgumentError $PitmanYorMixture($x; $hyp = -1)
     end
 end
@@ -45,5 +45,8 @@ end
 end
 
 @testset "PitmanYorMixture: sample" begin
-    
+    x = collect(-5:0.1:5)
+
+    pym = PitmanYorMixture(x)
+    @test typeof(sample(rng, pym, 100)) <: PosteriorSamples{Float64}
 end
