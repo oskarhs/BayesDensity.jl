@@ -72,8 +72,19 @@ Find a variational approximation to the posterior distribution of a [`HistSmooth
 * `vip`: A [`HistSmootherVIPosterior`](@ref) object representing the variational posterior.
 
 !!! note
-    To sample for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
+    To run the optimization loop for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
     Note that setting `rtol` to a strictly negative value will issue a warning.
+
+# Examples
+```jldoctest
+julia> using Random
+
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> hs = HistSmoother(x);
+
+julia> vip, info = varinf(hs; rtol=1e-6);
+```
 
 # Extended help
 ## Convergence

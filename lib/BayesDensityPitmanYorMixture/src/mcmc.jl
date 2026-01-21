@@ -16,10 +16,23 @@ Generate `n_samples` posterior samples from a `PitmanYorMixture` using an augmen
 
 # Keyword arguments
 * `n_burnin`: Number of burn-in samples.
-* `initial_params`: Initial values used in the MCMC algorithm. Should be supplied as a `NamedTuple` with fields `:μ`, `:σ2` and `:cluster_alloc`, where both are vectors of the same dimension.
+* `initial_params`: Initial values used in the MCMC algorithm. Should be supplied as a `NamedTuple` with fields `:μ`, `:σ2` and `:cluster_alloc`, where `μ` and `σ2` are vector of the same dimension, and `cluster_alloc` is vector of length `length(x)` indicating the cluster membership of each observation.
 
 # Returns
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
+
+# Examples
+```julia-repl
+julia> using Random
+
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> pym = PitmanYorMixture(x);
+
+julia> ps = sample(Xoshiro(1), model, 5000);
+
+julia> ps = sample(Xoshiro(1), model, 5000; initial_params = (μ = [0.2, 0.8], σ2 = [1.0, 1.0], cluster_alloc = vcat(fill(1, 2500), fill(2, 2500))));
+```
 """
 function StatsBase.sample(
     rng::AbstractRNG,
@@ -44,11 +57,10 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
     (; μ, σ2, cluster_alloc) = initial_params
 
     # Cluster allocation vector for all variables
-    # DO SOME INITIALIZATION HERE
     cluster_counts = StatsBase.counts(cluster_alloc)
     K = length(cluster_counts)
 
-    marginal_scale = sqrt(rate*(1 + 1.0/inv_scale_fac)/shape)
+    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
     marginal_dist = TDistLocationScale(2.0*shape, location, marginal_scale)
 
     samples = Vector{NamedTuple{(:μ, :σ2, :cluster_counts), Tuple{Vector{T}, Vector{T}, Vector{Int}}}}(undef, n_samples)

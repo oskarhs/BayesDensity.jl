@@ -4,8 +4,6 @@ Documentation for B-Spline Mixture Models.
 
 This model is available through the `BayesDensityBSplineMixture` package.
 
-## Example usage
-
 ## Module API
 
 ```@docs

@@ -37,10 +37,6 @@ Hyperparameters:
  a_δ = 0.5, b_δ = 0.5
 
 julia> model = BSplineMixture(x; K = 150, bounds=(0, 1), n_bins=nothing, b_τ = 5e-3);
-
-julia> posterior_samples = sample(Random.Xoshiro(1), model, 5000; n_burnin = 1000);
-
-julia> vip = varinf(model);
 ```
 
 # Extended help

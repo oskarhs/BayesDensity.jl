@@ -20,6 +20,17 @@ Generate `n_samples` posterior samples from a `BSplineMixture` using an augmente
 
 # Returns
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
+
+# Examples
+```jldoctest
+julia> using Random
+
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> bsm = BSplineMixture(x);
+
+julia> ps = sample(Xoshiro(1), bsm, 5000);
+ ```
 """
 function StatsBase.sample(
     rng::AbstractRNG,

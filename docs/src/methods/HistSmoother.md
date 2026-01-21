@@ -4,8 +4,6 @@ Documentation for the histogram smoother of [Wand2022engines](@citet).
 
 This model is available through the `BayesDensityHistSmoother` package.
 
-## Example usage
-
 ## Module API
 
 ```@docs

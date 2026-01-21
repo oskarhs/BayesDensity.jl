@@ -243,10 +243,15 @@ end
 
 # Print method:
 function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizationResult{T, V}) where {T, V}
+    status_msg = ifelse(
+        converged(varoptinf),
+        " Converged in $(n_iter(varoptinf)) iterations.",
+        " Failed to converge in $(n_iter(varoptinf))."
+    )
     println(io, nameof(typeof(varoptinf)), "{", T, "} object.")
-    println(io, " Converged: ", varoptinf.converged, " at tolerance level ", varoptinf.tolerance)
-    println(io, " Number of iterations: ", varoptinf.n_iter)
-    print(io, varoptinf.variational_posterior)
+    println(io, status_msg)
+    println(io, " Tolerance level for convergence: ", tolerance(varoptinf))
+    print(io, "Posterior: ", nameof(typeof(varoptinf.variational_posterior)))
     nothing
 end
 

@@ -28,6 +28,10 @@ julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 julia> shs = HistSmoother(x)
 52-dimensional HistSmoother{Float64}:
 Using 5000 binned observations with 400 bins.
+ support: (-0.105, 1.105)
+Hyperparameters:
+ σ_β = 1000.0
+ s_σ = 1000.0
 
 julia> shs = HistSmoother(x; K = 80, σ_β = 1e5);
 ```
@@ -101,7 +105,7 @@ end
 Base.show(io::IO, shs::HistSmoother) = show(io, MIME("text/plain"), shs)
 
 """
-    support(shs::HistSmoother) -> NTuple{2, <:Real}
+    support(shs::HistSmoother{T}) where {T} -> NTuple{2, T}
 
 Get the support of the spline histogram smoother model `shs`.
 """
