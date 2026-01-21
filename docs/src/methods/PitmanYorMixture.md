@@ -7,8 +7,6 @@ For Markov chain Monte Carlo based inference, this module implements algorithm 2
 !!! note
     Since Dirichlet process mixture models are equivalent to a Pitman-Yor mixture model with discount parameter equal to `0`, this module can also be used to fit the former type of models.
 
-## Example usage
-
 ## Module API
 
 ```@docs
