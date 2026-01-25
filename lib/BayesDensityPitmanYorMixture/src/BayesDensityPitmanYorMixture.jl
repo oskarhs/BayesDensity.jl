@@ -3,6 +3,7 @@ module BayesDensityPitmanYorMixture
 using Reexport
 
 @reexport using BayesDensityCore
+import BayesDensityCore: truncated_stickbreaking
 
 using Distributions
 using Random

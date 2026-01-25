@@ -26,7 +26,7 @@ const rng = Random.Xoshiro(1)
     end
 end
 
-@testset "PitmanYorMixture: pdf and cdf" begin
+@testset "PitmanYorMixture: Marginal parameterization pdf and cdf" begin
     x = [1.0, -1.0]
 
     pym = PitmanYorMixture(x; strength = 1e-10)
@@ -48,7 +48,30 @@ end
     @test isapprox(pdf(pym, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
     @test isapprox(cdf(pym, parameters, t), cdf(Normal(0, 1), t))
     @test isapprox(cdf(pym, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+end
 
+@testset "PitmanYorMixture: Stickbreaking parameterization pdf and cdf" begin
+    x = [1.0, -1.0]
+
+    pym = PitmanYorMixture(x; strength = 1e-10)
+
+    # For α ≈ 0 the new cluster part does not contribute much
+    n_rep = 10
+    parameters = (μ = [0.0], σ2 = [1.0], w = [1.0])
+    parameters_vec = fill(parameters, n_rep)
+
+    # Evaluate at single point:
+    @test isapprox(pdf(pym, parameters, 0.0), pdf(Normal(0, 1), 0.0))
+    @test isapprox(pdf(pym, parameters_vec, 0.0), fill(pdf(Normal(0, 1), 0.0), (1, n_rep)))
+    @test isapprox(cdf(pym, parameters, 0.0), cdf(Normal(0, 1), 0.0))
+    @test isapprox(cdf(pym, parameters_vec, 0.0), fill(cdf(Normal(0, 1), 0.0), (1, n_rep)))
+
+    # Evaluate at multiple points:
+    t = LinRange(-5, 5, 11)
+    @test isapprox(pdf(pym, parameters, t), pdf(Normal(0, 1), t))
+    @test isapprox(pdf(pym, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+    @test isapprox(cdf(pym, parameters, t), cdf(Normal(0, 1), t))
+    @test isapprox(cdf(pym, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
 end
 
 @testset "PitmanYorMixture: sample" begin

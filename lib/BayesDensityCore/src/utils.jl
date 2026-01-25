@@ -37,6 +37,21 @@ function logistic_stickbreaking(β::AbstractVector{T}) where {T<:Real}
     return softmax(log_π)
 end
 
+# Stickbreaking map. Takes a vector in [0, 1]^(K-1) and outputs a simplex-vector
+# NB! It is implicit that V[K] = 1 in the input here.
+function truncated_stickbreaking(v::AbstractVector{T}) where {T<:Real}
+    K = length(v)-1
+    w = Vector{T}(undef, K)
+    w[1] = v[1]
+    cum_w = w[1]
+    for k in 2:K-1
+        w[k] = v[1] * (1 - cum_w)
+        cum_w += w[k]
+    end
+    w[K] = 1-cumsum(w[1:K-1])
+    return w
+end
+
 # Compute bin counts on a regular grid consisting of `M` bins over the interval [xmin, xmax]
 function bin_regular(x::AbstractVector{T}, xmin::T, xmax::T, M::Int, right::Bool) where {T<:Real}
     R = xmax - xmin

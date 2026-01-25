@@ -3,7 +3,6 @@ struct TDistLocationScale{T<:Real} <: ContinuousUnivariateDistribution
     location::T
     scale::T
 end
-TDistLocationScale(args...) = TDistLocationScale{Float64}(args...)
 
 function Distributions.logpdf(tdist::TDistLocationScale{T}, t::Union{S, AbstractVector{S}}) where {T<:Real, S<:Real}
     R = promote_type(T, S)
@@ -20,4 +19,18 @@ end
 function Distributions.cdf(tdist::TDistLocationScale, t::Union{Real, AbstractVector{<:Real}})
     (; df, location, scale) = tdist
     return cdf(TDist(df), @.((t-location)/scale))
+end
+
+struct NormalInverseGamma{T<:Real} <: ContinuousUnivariateDistribution
+    location::T
+    inv_scale_fac::T
+    shape::T
+    rate::T
+end
+
+function Distributions.rand(rng::AbstractRNG, dist::NormalInverseGamma)
+    (; location, inv_scale_fac, shape, rate) = dist
+    σ2 = rand(rng, InverseGamma(shape, rate))
+    μ = rand(rng, Normal(location, sqrt(σ2 / inv_scale_fac)))
+    return μ, σ2
 end

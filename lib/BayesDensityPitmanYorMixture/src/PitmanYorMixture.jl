@@ -111,64 +111,6 @@ Distributions.pdf(pym::PitmanYorMixture, params::NamedTuple, t::AbstractVector{<
 Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
 Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(pym, params, t)
 
-function _pdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::S) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    (; μ, σ2, cluster_counts) = params
-    n = pym.data.n
-    (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
-    K = length(cluster_counts) # Number of existing clusters
-
-    vals = zero(R)
-    
-    # Compute relative weight of (μ, σ²) belonging to a new cluster
-    for k in eachindex(cluster_counts)
-        vals += (cluster_counts[k] - discount) / (strength + n) * pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
-    end
-    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-    vals += (strength + K * discount) / (strength + n) * pdf(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
-    return vals
-end
-
-function _pdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::AbstractVector{S}) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    (; μ, σ2, cluster_counts) = params
-    n = pym.data.n
-    (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
-    K = length(cluster_counts) # Number of existing clusters
-
-    vals = zeros(R, length(t))
-    
-    # Compute relative weight of (μ, σ²) belonging to a new cluster
-    for k in eachindex(cluster_counts)
-        vals .+= (cluster_counts[k] - discount) / (strength + n) .* pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
-    end
-    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-    vals .+= (strength + K * discount) / (strength + n) .* pdf(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
-    return vals
-end
-
-function _pdf(pym::PitmanYorMixture{T}, params::AbstractVector{NamedTuple}, t::AbstractVector{S}) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    n = pym.data.n
-    (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
-    K = length(cluster_counts) # Number of existing clusters
-    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-
-    vals = zeros(R, (length(t), length(params)))
-    
-    # Compute relative weight of (μ, σ²) belonging to a new cluster
-    for j in eachindex(params)
-        (; μ, σ2, cluster_counts) = params[j]
-        for k in eachindex(cluster_counts)
-            vals[:, j] .+= (cluster_counts[k] - discount) / (strength + n) .* pdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
-        end
-        vals[:, j] .+= (strength + K * discount) / (strength + n) .* pdf(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
-    end
-    return vals
-end
-_pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(pym, params, [t])
-
-
 """
     cdf(
         bsm::PitmanYorMixture,
@@ -191,62 +133,124 @@ Distributions.cdf(pym::PitmanYorMixture, params::NamedTuple, t::AbstractVector{<
 Distributions.cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
 Distributions.cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, t)
 
-function _cdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::S) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    (; μ, σ2, cluster_counts) = params
-    n = pym.data.n
-    (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
-    K = length(cluster_counts) # Number of existing clusters
-    
-    vals = zero(R)
 
-    # Compute relative weight of (μ, σ²) belonging to a new cluster
-    for k in eachindex(cluster_counts)
-        vals += (cluster_counts[k] - discount) / (strength + n) * cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
-    end
+# pdf/cdf evalutation for samplers using the marginal parameterization
+for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
+    @eval begin
+        function $(funcs[1])(
+            pym::PitmanYorMixture{T},
+            params::NamedTuple{(:μ, :σ2, :cluster_counts), V},
+            t::S
+        ) where {T<:Real, S<:Real, V<:Tuple}
+            R = promote_type(T, S)
+            (; μ, σ2, cluster_counts) = params
+            n = pym.data.n
+            (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
+            K = length(cluster_counts) # Number of existing clusters
 
-    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-    vals += (strength + K * discount) / (strength + n) * cdf(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
-    return vals
-end
-
-function _cdf(pym::PitmanYorMixture{T}, params::NamedTuple, t::AbstractVector{S}) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    (; μ, σ2, cluster_counts) = params
-    n = pym.data.n
-    (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
-    K = length(cluster_counts) # Number of existing clusters
-    
-    vals = zeros(R, length(t))
-
-    # Compute relative weight of (μ, σ²) belonging to a new cluster
-    for k in eachindex(cluster_counts)
-        vals .+= (cluster_counts[k] - discount) / (strength + n) .* cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
-    end
-    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-    vals .+= (strength + K * discount) / (strength + n) .* cdf(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
-    return vals
-end
-
-function _cdf(pym::PitmanYorMixture{T}, params::AbstractVector{NamedTuple}, t::AbstractVector{S}) where {T<:Real, S<:Real}
-    R = promote_type(T, S)
-    n = pym.data.n
-    (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
-    K = length(cluster_counts) # Number of existing clusters
-    
-    vals = zeros(R, (length(t), length(params)))
-
-    # Compute relative weight of (μ, σ²) belonging to a new cluster
-    for j in eachindex(params)
-        (; μ, σ2, cluster_counts) = params[j]
-        for k in eachindex(cluster_counts)
-            vals[:, k] .+= (cluster_counts[k] - discount) / (strength + n) .* cdf(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+            vals = zero(R)
+            
+            # Compute relative weight of (μ, σ²) belonging to a new cluster
+            for k in eachindex(cluster_counts)
+                vals += (cluster_counts[k] - discount) / (strength + n) * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+            end
+            marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
+            vals += (strength + K * discount) / (strength + n) * $(funcs[2])(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+            return vals
         end
-        marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-        vals[:, k] .+= (strength + K * discount) / (strength + n) .* cdf(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+        function $(funcs[1])(
+            pym::PitmanYorMixture{T},
+            params::NamedTuple{(:μ, :σ2, :cluster_counts), V},
+            t::AbstractVector{S}
+        ) where {T<:Real, S<:Real, V<:Tuple}
+            R = promote_type(T, S)
+            (; μ, σ2, cluster_counts) = params
+            n = pym.data.n
+            (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
+            K = length(cluster_counts) # Number of existing clusters
+
+            vals = zeros(R, length(t))
+            
+            # Compute relative weight of (μ, σ²) belonging to a new cluster
+            for k in eachindex(cluster_counts)
+                vals .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+            end
+            marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
+            vals .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+            return vals
+        end
+        function $(funcs[1])(
+            pym::PitmanYorMixture{T},
+            params::AbstractVector{NamedTuple{(:μ, :σ2, :cluster_counts), V}},
+            t::AbstractVector{S}
+        ) where {T<:Real, S<:Real, V<:Tuple}
+            R = promote_type(T, S)
+            n = pym.data.n
+            (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
+            K = length(cluster_counts) # Number of existing clusters
+            marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
+
+            vals = zeros(R, (length(t), length(params)))
+            
+            # Compute relative weight of (μ, σ²) belonging to a new cluster
+            for j in eachindex(params)
+                (; μ, σ2, cluster_counts) = params[j]
+                for k in eachindex(cluster_counts)
+                    vals[:, j] .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+                end
+                vals[:, j] .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+            end
+            return vals
+        end
     end
-    return vals
 end
+
+
+# pdf/cdf evaluation for samplers/VI algorithms based on the stickbreaking parameterization
+for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
+    @eval begin
+        function $(funcs[1])(
+            ::PitmanYorMixture{T},
+            params::NamedTuple{(:μ, :σ2, :w), V},
+            t::S
+        ) where {T<:Real, S<:Real, V<:Tuple}
+            (; μ, σ2, w) = params
+            val = zero(promote_type(T, S))
+            for k in eachindex(μ)
+                val += w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+            end
+            return val
+        end
+        function $(funcs[1])(
+            ::PitmanYorMixture{T},
+            params::NamedTuple{(:μ, :σ2, :w), V},
+            t::AbstractVector{S}
+        ) where {T<:Real, S<:Real, V<:Tuple}
+            (; μ, σ2, w) = params
+            val = zeros(promote_type(T, S), length(t))
+            for k in eachindex(μ)
+                val .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+            end
+            return val
+        end
+        function $(funcs[1])(
+            ::PitmanYorMixture{T},
+            params::AbstractVector{NamedTuple{(:μ, :σ2, :w), V}},
+            t::AbstractVector{S}
+        ) where {T<:Real, S<:Real, V<:Tuple}
+            val = zeros(promote_type(T, S), (length(t), length(params)))
+            for m in eachindex(params)
+                (; μ, σ2, w) = params[m]
+                for k in eachindex(μ)
+                    val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                end
+            end
+            return val
+        end
+    end
+end
+
+_pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(pym, params, [t])
 _cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, [t])
 
 

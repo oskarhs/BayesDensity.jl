@@ -53,7 +53,7 @@ end
 """
     varinf(
         hs::HistSmoother{T};
-        init_params::NamedTuple=get_default_initparams(hs),
+        initial_params::NamedTuple=get_default_initparams(hs),
         max_iter::Int=500,
         rtol::Real=1e-5
     ) where {T} -> HistSmootherVIPosterior{T}
@@ -64,7 +64,7 @@ Find a variational approximation to the posterior distribution of a [`HistSmooth
 * `hs`: The `HistSmoother` whose posterior we want to approximate.
 
 # Keyword arguments
-* `init_params`: Initial values of the VI parameters `μ_opt`, `Σ_opt` and `b_σ_opt`.
+* `initial_params`: Initial values of the VI parameters `μ_opt`, `Σ_opt` and `b_σ_opt`.
 * `max_iter`: Maximal number of VI iterations. Defaults to `500`.
 * `rtol`: Relative tolerance used to determine convergence. Defaults to `1e-5`.
 
@@ -90,10 +90,14 @@ julia> vip, info = varinf(hs; rtol=1e-6);
 ## Convergence
 The criterion used to determine convergence is that the relative change in the expectation of ``\\mathbb{E}(\\sigma^{-2})`` falls below the given `rtol`.
 """
-function BayesDensityCore.varinf(shs::HistSmoother; init_params::NamedTuple=get_default_initparams(shs), max_iter::Int=500, rtol::Real=1e-5) # Also: tolerance parameters
+function BayesDensityCore.varinf(shs::HistSmoother;
+    initial_params::NamedTuple=get_default_initparams(shs),
+    max_iter::Int=500,
+    rtol::Real=1e-5
+)
     (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
     (rtol ≥ 0.0) || @warn "Relative tolerance is negative."
-    return _variational_inference(shs, init_params, max_iter, rtol)
+    return _variational_inference(shs, initial_params, max_iter, rtol)
 end
 
 function get_default_initparams(shs::HistSmoother{T, A, D}) where {T, A, D}
@@ -138,10 +142,10 @@ function get_default_initparams(shs::HistSmoother{T, A, D}) where {T, A, D}
     return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt)
 end
 
-function _variational_inference(shs::HistSmoother{T, A, D}, init_params::NamedTuple, max_iter::Int, rtol::Real) where {T, A, D}
+function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::NamedTuple, max_iter::Int, rtol::Real) where {T, A, D}
     (; data, bs, σ_β, s_σ) = shs
     (; x, n, x_grid, N, C, LZ, bounds) = data
-    (; μ_opt, Σ_opt, b_σ_opt) = init_params
+    (; μ_opt, Σ_opt, b_σ_opt) = initial_params
 
     K = length(bs)
     # These stay constant throughout the optimization procedure
