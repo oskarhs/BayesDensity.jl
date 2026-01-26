@@ -246,7 +246,7 @@ function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizatio
     status_msg = ifelse(
         converged(varoptinf),
         " Converged in $(n_iter(varoptinf)) iterations.",
-        " Failed to converge in $(n_iter(varoptinf))."
+        " Failed to converge in $(n_iter(varoptinf)) iterations."
     )
     println(io, nameof(typeof(varoptinf)), "{", T, "} object.")
     println(io, status_msg)

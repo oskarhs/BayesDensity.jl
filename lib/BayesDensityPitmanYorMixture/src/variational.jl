@@ -8,7 +8,7 @@ Struct representing the variational posterior distribution of a [`PitmanYorMixtu
 * `q_θ`: Vector of distributions representing the optimal variational densities q*(θₖ), i.e. the joint density of the mixture component means and variances.
 * `pym`: The `PitmanYorMixture` to which the variational posterior was fit.
 """
-struct PitmanYorMixtureVIPosterior{T<:Real, A<:AbstractVector{<:Beta{T}}, B<:AbstractVector{<:Normal{T}}, M<:PitmanYorMixture} <: AbstractVIPosterior{T}
+struct PitmanYorMixtureVIPosterior{T<:Real, A<:AbstractVector{<:Beta{T}}, B<:AbstractVector{<:NormalInverseGamma{T}}, M<:PitmanYorMixture} <: AbstractVIPosterior{T}
     q_v::A
     q_θ::B
     pym::M
@@ -36,8 +36,8 @@ end
 BayesDensityCore.model(vip::PitmanYorMixtureVIPosterior) = vip.pym
 
 function Base.show(io::IO, ::MIME"text/plain", vip::PitmanYorMixtureVIPosterior{T, A, B, M}) where {T, A, B, M}
-    K = length(model(vip.q_θ))
-    println(io, nameof(typeof(vip)), "{", T, "} vith truncation level", K, " and variational densities:")
+    K = length(vip.q_θ)
+    println(io, nameof(typeof(vip)), "{", T, "} vith truncation level ", K, " and variational densities:")
     println(io, " q_v::", A, ",")
     println(io, " q_θ::", B, ",")
     println(io, "Model:")
@@ -49,7 +49,12 @@ Base.show(io::IO, vip::PitmanYorMixtureVIPosterior) = show(io, MIME("text/plain"
 function StatsBase.sample(rng::AbstractRNG, vip::PitmanYorMixtureVIPosterior{T, A, B, M}, n_samples::Int) where {T<:Real, A, B, M}
     (; q_v, q_θ, pym) = vip
     K = length(q_θ)
-    samples = Vector{NamedTuple{(:w, :μ, :σ2), Tuple{Vector{T}, Vector{T}, Vector{T}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:μ, :σ2, :w), Tuple{Vector{T}, Vector{T}, Vector{T}}}}(undef, n_samples)
+    
+    # Initialize vectors holding samples
+    v = Vector{T}(undef, K-1)
+    μ = Vector{T}(undef, K)
+    σ2 = Vector{T}(undef, K)
 
     for m in 1:n_samples
         for k in 1:K-1
@@ -58,14 +63,14 @@ function StatsBase.sample(rng::AbstractRNG, vip::PitmanYorMixtureVIPosterior{T, 
         end
         μ[K], σ2[K] = rand(rng, q_θ[K])
         w = truncated_stickbreaking(v)
-        samples[m] = (w = w, μ = μ, σ2 = σ2)
+        samples[m] = (μ = μ, σ2 = σ2, w = w)
     end
     return PosteriorSamples{T}(samples, pym, n_samples, 0)
 end
 
 """
     varinf(
-        bsm::PitmanYorMixture{T};
+        pym::PitmanYorMixture{T};
         truncation_level::Int=30,
         initial_params::Union{Nothing,NamedTuple}=nothing,
         max_iter::Int=3000
@@ -75,10 +80,10 @@ end
 Find a variational approximation to the posterior distribution of a [`PitmanYorMixture`](@ref) using mean-field variational inference based on a truncated stickbreaking-approach.
 
 # Arguments
-* `bsm`: The `BSplineMixture` whose posterior we want to approximate.
+* `pym`: The `PitmanYorMixture` whose posterior we want to approximate.
 
 # Keyword arguments
-* `truncation level`: Integer specifying the truncation level of the variational approximation. Defaults to `30`. This parameter is ignored `initial_params` is set to another value than nothing. 
+* `truncation level`: Positive integer specifying the truncation level of the variational approximation. Defaults to `30`. This parameter is ignored `initial_params` is set to another value than nothing. 
 * `initial_params`: Initial values of the VI parameters `a_v` `b_v`, `locations` and `inv_scale_facs`, `shapes` and `rates`, supplied as a NamedTuple.
 * `max_iter`: Maximal number of VI iterations. Defaults to `3000`.
 * `rtol`: Relative tolerance used to determine convergence. Defaults to `1e-6`.
@@ -87,12 +92,17 @@ Find a variational approximation to the posterior distribution of a [`PitmanYorM
 * `vip`: A [`PitmanYorMixtureVIPosterior`](@ref) object representing the variational posterior.
 
 !!! note
-    To sample for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
+    To perform the optimization for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
     Note that setting `rtol` to a strictly negative value will issue a warning.
 
 # Extended help
 ## Convergence
 The criterion used to determine convergence is that the relative change in the ELBO falls below the given `rtol`.
+
+## Truncation
+The truncation level determines the maximal number of components used in the variational approximation.
+Generally, setting the truncation level to a higher value leads to an approximating class with a greater representational capacity, at the cost of increased computation.
+
 """
 function BayesDensityCore.varinf(
     pym::PitmanYorMixture;
@@ -117,7 +127,7 @@ function _get_default_initparams(pym::PitmanYorMixture{T, NT}, truncation_level:
     locations = quantile(x, LinRange(1/(truncation_level+1), (truncation_level)/(truncation_level+1), truncation_level))
     return (
         a_v = fill(1, truncation_level-1),
-        b_v = T.(collect(1/(truncation_level-1:1))),
+        b_v = fill(1, truncation_level-1),
         locations = locations,
         inv_scale_facs = fill(inv_scale_fac, truncation_level),
         shapes = fill(shape, truncation_level),
@@ -125,8 +135,8 @@ function _get_default_initparams(pym::PitmanYorMixture{T, NT}, truncation_level:
         )
 end
 
-function _varinf(
-    pym::PitmanYorMixtureVIPosterior{T, NT},
+function _variational_inference(
+    pym::PitmanYorMixture{T, NT},
     initial_params::NamedTuple,
     max_iter::Int,
     rtol::Real
@@ -137,6 +147,15 @@ function _varinf(
 
     # Get initial parameter values
     (; a_v, b_v, locations, inv_scale_facs, shapes, rates) = initial_params
+    K = length(locations)
+    
+    # Matrix of q(zᵢ = k)
+    q_mat = Matrix{T}(undef, (K, n))
+
+    # Precompute some quantities that are used for the ELBO
+    E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
+    E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
+
 
     # Optimize:
     ELBO = Vector{T}(undef, max_iter)
@@ -146,13 +165,53 @@ function _varinf(
     while !converged && iter ≤ max_iter
         # Write the CAVI loop here...
 
+        # Update q(z)
+        # Compute contribution to logprobabilities from non-kernel terms
+        non_kernel_term = vcat(E_log_v, zero(T)) + cumsum(vcat(zero(T), E_log_cv))
+        kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
+        for i in eachindex(x)
+            # Contributions from kernel
+            kernel_term = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
+            logprobs = kernel_term + non_kernel_term
+            probs = softmax(logprobs)
+            q_mat[:, i] = probs
+        end
+        # Vector of number of observations with label greater than k
+        E_N = vec(sum(q_mat; dims=2))
+        E_S = n .- cumsum(E_N)
+        wmeans = (q_mat * x) ./ (E_N .+ T(1e-10))
+        wsumsq = Vector{T}(undef, K)
+        for k in 1:K
+            wsumsq[k] = sum(q_mat[k, :] .* (x .- wmeans[k]).^2)
+        end
+
+        # Update q(v)
+        a_v = @. 1 - discount + E_N[1:K-1]
+        b_v = @. E_S[1:K-1] + strength + discount * (1:K-1)
+        E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
+        E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
+        ELBO_v_term = sum(@. (E_N - discount) * E_log_v + (E_S + strength + discount * (1:K-1) - 1) * E_log_cv - - logbeta.(1 - discount, 1 + strength + discount*(1:K-1)))
+
+        # Update q(θ)
+        inv_scale_facs = inv_scale_fac .+ E_N
+        locations = (inv_scale_fac * location .+ E_N .* wmeans) ./ inv_scale_facs
+        shapes = shape .+ E_N / 2
+        rates = rate .+ (wsumsq + inv_scale_fac * E_N ./ inv_scale_facs .* (wmeans .- location).^2) / 2
+        ELBO_θ_term = sum(@. -(strength + 3/2) * (log(rates) - digamma(shapes)) - (shapes + inv_scale_facs * (1/inv_scale_facs + shapes * (locations - location)^2 / rates)/2)) # From prior
+        ELBO_θ_term = ELBO_θ_term + sum(@. ) # Here we just esentially get what we compute when considering q_z
+
         # Check convergence
-        ELBO[iter] = ...
+        E_q_v = -sum(@. logbeta(a_v, b_v)- (a_v - 1)*digamma(a_v) - (b_v - 1)*digamma(b_v) + (a_v + b_v - 2)*digamma(a_v+b_v))
+        E_q_θ = -sum(@. shapes + loggamma(shapes) + 3*log(rates)/2 - 3*digamma(shapes)/2 + (1 + log(2*T(pi)/inv_scale_facs))/2)
+        E_q_z = sum(@. q_mat * log(q_mat))
+        ELBO[iter] = ELBO_v_term + ELBO_θ_term - E_q_v - E_q_z - E_q_θ
         converged = (abs(ELBO[iter] - ELBO_old)/abs(ELBO_old) ≤ rtol && iter ≥ 2)
         ELBO_old = ELBO[iter]
         iter += 1
     end
-    vip = PitmanYorMixtureVIPosterior{T}(
+
+    #converged || @warn "Failed to meet convergence criterion in $(iter-1) iterations."
+    variational_posterior = PitmanYorMixtureVIPosterior{T}(
         a_v,
         b_v,
         locations,
@@ -161,6 +220,6 @@ function _varinf(
         rates,
         pym
     )
-    info = VariationalOptimizationResult{T}(ELBO[1:n_iter], converged, n_iter, tolerance, variational_posterior)
-    return vip, info
+    info = VariationalOptimizationResult{T}(ELBO[1:iter-1], converged, iter-1, rtol, variational_posterior)
+    return variational_posterior, info
 end

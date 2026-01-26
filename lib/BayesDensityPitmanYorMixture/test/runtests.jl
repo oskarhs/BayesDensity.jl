@@ -24,6 +24,12 @@ const rng = Random.Xoshiro(1)
     for hyp in (:discount, :strength, :inv_scale_fac, :shape, :rate)
         @eval @test_throws ArgumentError $PitmanYorMixture($x; $hyp = -1)
     end
+
+    # Test show method
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, pym)
+    output = String(take!(io))
+    @test typeof(output) == String
 end
 
 @testset "PitmanYorMixture: Marginal parameterization pdf and cdf" begin
@@ -79,4 +85,13 @@ end
 
     pym = PitmanYorMixture(x)
     @test typeof(sample(rng, pym, 100)) <: PosteriorSamples{Float64}
+end
+
+@testset "PitmanYorMixture: varinf" begin
+    x = collect(-5:0.1:5)
+
+    pym = PitmanYorMixture(x)
+    vip, _ = varinf(pym)
+    @test typeof(vip) <: AbstractVIPosterior{Float64}
+    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
 end

@@ -40,15 +40,15 @@ end
 # Stickbreaking map. Takes a vector in [0, 1]^(K-1) and outputs a simplex-vector
 # NB! It is implicit that V[K] = 1 in the input here.
 function truncated_stickbreaking(v::AbstractVector{T}) where {T<:Real}
-    K = length(v)-1
+    K = length(v)+1
     w = Vector{T}(undef, K)
     w[1] = v[1]
     cum_w = w[1]
     for k in 2:K-1
-        w[k] = v[1] * (1 - cum_w)
+        w[k] = v[k] * (1 - cum_w)
         cum_w += w[k]
     end
-    w[K] = 1-cumsum(w[1:K-1])
+    w[K] = 1 - cum_w
     return w
 end
 

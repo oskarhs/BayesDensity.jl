@@ -16,10 +16,10 @@ for func in (:pdf, :cdf)
 end
 # Fall back to default behavior for PosteriorSamples (i.e. plotting the pdf)
 @recipe function f(vip::AbstractVIPosterior)
-    return vip
+    return vip, pdf
 end
 @recipe function f(vip::AbstractVIPosterior, t::AbstractVector{<:Real})
-    return vip, t
+    return vip, pdf, t
 end
 
 for func in (:pdf, :cdf)
