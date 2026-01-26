@@ -56,7 +56,7 @@ function StatsBase.sample(rng::AbstractRNG, vip::BSplineMixtureVIPosterior{T, A,
             δ2[k] = rand(rng, q_δ[k])
         end
 
-        samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
+        samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = copy(δ2))
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, 0)
 end

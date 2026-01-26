@@ -63,7 +63,7 @@ function StatsBase.sample(rng::AbstractRNG, vip::PitmanYorMixtureVIPosterior{T, 
         end
         μ[K], σ2[K] = rand(rng, q_θ[K])
         w = truncated_stickbreaking(v)
-        samples[m] = (μ = μ, σ2 = σ2, w = w)
+        samples[m] = (μ = copy(μ), σ2 = copy(σ2), w = w)
     end
     return PosteriorSamples{T}(samples, pym, n_samples, 0)
 end
@@ -156,6 +156,11 @@ function _variational_inference(
     E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
     E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
 
+    kernel_terms = Matrix{T}(undef, (K, n))
+    kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
+    for i in eachindex(x)
+        kernel_terms[:, i] = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
+    end
 
     # Optimize:
     ELBO = Vector{T}(undef, max_iter)
@@ -163,16 +168,14 @@ function _variational_inference(
     converged = false
     iter = 1
     while !converged && iter ≤ max_iter
-        # Write the CAVI loop here...
-
         # Update q(z)
         # Compute contribution to logprobabilities from non-kernel terms
         non_kernel_term = vcat(E_log_v, zero(T)) + cumsum(vcat(zero(T), E_log_cv))
-        kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
+        #kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
         for i in eachindex(x)
             # Contributions from kernel
-            kernel_term = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
-            logprobs = kernel_term + non_kernel_term
+            #kernel_term = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
+            logprobs = kernel_terms[:, i] + non_kernel_term
             probs = softmax(logprobs)
             q_mat[:, i] = probs
         end
@@ -190,15 +193,20 @@ function _variational_inference(
         b_v = @. E_S[1:K-1] + strength + discount * (1:K-1)
         E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
         E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
-        ELBO_v_term = sum(@. (E_N - discount) * E_log_v + (E_S + strength + discount * (1:K-1) - 1) * E_log_cv - - logbeta.(1 - discount, 1 + strength + discount*(1:K-1)))
+        ELBO_v_term = sum(@. (E_N[1:K-1] - discount) * E_log_v[1:K-1] + (E_S[1:K-1] + strength + discount * (1:K-1) - 1) * E_log_cv[1:K-1] - logbeta.(1 - discount, 1 + strength + discount*(1:K-1)))
 
         # Update q(θ)
         inv_scale_facs = inv_scale_fac .+ E_N
         locations = (inv_scale_fac * location .+ E_N .* wmeans) ./ inv_scale_facs
         shapes = shape .+ E_N / 2
         rates = rate .+ (wsumsq + inv_scale_fac * E_N ./ inv_scale_facs .* (wmeans .- location).^2) / 2
+        # ELBO contribution
+        kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
+        for i in eachindex(x)
+            kernel_terms[:, i] = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
+        end
         ELBO_θ_term = sum(@. -(strength + 3/2) * (log(rates) - digamma(shapes)) - (shapes + inv_scale_facs * (1/inv_scale_facs + shapes * (locations - location)^2 / rates)/2)) # From prior
-        ELBO_θ_term = ELBO_θ_term + sum(@. ) # Here we just esentially get what we compute when considering q_z
+        ELBO_θ_term = ELBO_θ_term + sum(@. q_mat * kernel_terms) # Here we just esentially get what we compute when considering q_z
 
         # Check convergence
         E_q_v = -sum(@. logbeta(a_v, b_v)- (a_v - 1)*digamma(a_v) - (b_v - 1)*digamma(b_v) + (a_v + b_v - 2)*digamma(a_v+b_v))
