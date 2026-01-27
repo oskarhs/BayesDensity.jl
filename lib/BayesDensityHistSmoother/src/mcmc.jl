@@ -1,17 +1,17 @@
 """
     sample(
         [rng::Random.AbstractRNG],
-        bsm::HistSmoother{T},
+        hs::HistSmoother{T},
         n_samples::Int;
         n_burnin::Int = min(100, div(n_samples, 5)),
-        initial_params::NamedTuple = get_default_initparams_mcmc(bsm)
+        initial_params::NamedTuple = get_default_initparams_mcmc(hs)
     ) where {T} -> PosteriorSamples{T}
 
 Generate `n_samples` posterior samples from a `HistSmoother` using an augmented Gibbs sampler.
 
 # Arguments
 * `rng`: Optional random seed used for random variate generation.
-* `bsm`: The `HistSmoother` object for which posterior samples are generated.
+* `hs`: The `HistSmoother` object for which posterior samples are generated.
 * `n_samples`: The total number of samples (including burn-in).
 
 # Keyword arguments

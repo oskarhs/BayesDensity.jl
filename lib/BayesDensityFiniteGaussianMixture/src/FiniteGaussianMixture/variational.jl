@@ -95,7 +95,7 @@ function BayesDensityCore.varinf(
 )
     (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
     (rtol ≥ 0.0) || @warn "Relative tolerance is negative."
-    _check_initialparams(initial_params, fgm)
+    _check_initialparams_varinf(initial_params, fgm)
     return _variational_inference(fgm, initial_params, max_iter, rtol)
 end
 
@@ -141,7 +141,7 @@ function _variational_inference(
 end
 
 
-function _check_initialparams(initial_params::NamedTuple{N, T}, ::FiniteGaussianMixture) where {N, T}
+function _check_initialparams_varinf(initial_params::NamedTuple{N, T}, ::FiniteGaussianMixture) where {N, T}
     (:dirichlet_params in N &&
     :location_params  in N &&
     :variance_params  in N &&

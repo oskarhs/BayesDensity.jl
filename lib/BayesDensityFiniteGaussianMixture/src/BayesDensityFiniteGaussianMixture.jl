@@ -3,6 +3,8 @@ module BayesDensityFiniteGaussianMixture
 using Reexport
 
 @reexport using BayesDensityCore
+import BayesDensityCore: softmax
+
 using Distributions
 using Random
 using SpecialFunctions
