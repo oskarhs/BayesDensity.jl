@@ -72,7 +72,7 @@ end
     varinf(
         pym::PitmanYorMixture{T};
         truncation_level::Int=30,
-        initial_params::Union{Nothing,NamedTuple}=nothing,
+        initial_params::NamedTuple=nothing,
         max_iter::Int=3000
         rtol::Real=1e-6
     ) where {T} -> PitmanYorMixtureVIPosterior{T}
@@ -102,18 +102,14 @@ The criterion used to determine convergence is that the relative change in the E
 ## Truncation
 The truncation level determines the maximal number of components used in the variational approximation.
 Generally, setting the truncation level to a higher value leads to an approximating class with a greater representational capacity, at the cost of increased computation.
-
 """
 function BayesDensityCore.varinf(
     pym::PitmanYorMixture;
     truncation_level::Int=30,
-    initial_params::Union{Nothing,NamedTuple}=nothing,
+    initial_params::NamedTuple=_get_default_initparams(pym, truncation_level),
     max_iter::Int=3000,
     rtol::Real=1e-6
 )
-    if isnothing(initial_params)
-        initial_params = _get_default_initparams(pym, truncation_level)
-    end
     (truncation_level >= 1) || throw(ArgumentError("Truncation level must be positive."))
     (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
     (rtol ≥ 0.0) || @warn "Relative tolerance is negative."

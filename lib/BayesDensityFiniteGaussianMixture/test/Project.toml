@@ -1,0 +1,6 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+BayesDensityFiniteGaussianMixture = "dc1a60f9-7a32-4f65-8b9e-ee7db92abd95"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"

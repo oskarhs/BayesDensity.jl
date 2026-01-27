@@ -4,7 +4,6 @@
 Struct representing a Pitman-Yor mixture model with a normal kernel and a conjugate Normal-InverseGamma base measure.
 
 # Constructors
-    
     PitmanYorMixture(x::AbstractVector{<:Real}; kwargs...)
     PitmanYorMixture{T}(x::AbstractVector{<:Real}; kwargs...)
 
@@ -18,9 +17,6 @@ Struct representing a Pitman-Yor mixture model with a normal kernel and a conjug
 * `inv_scale_fac`: Factor by which the conditional prior variance `σ2` of `μ` is scaled. Defaults to `1`.
 * `shape`: Prior shape parameter of the squared scale parameter `σ2`: Defaults to `2.0`.
 * `rate`: Prior rate parameter of the squared scale parameter `σ2`. Defaults to `var(x)`.
-
-# Returns
-* `pym`: A Pitman-Yor mixture model object.
 
 # Examples
 ```jldoctest
@@ -104,7 +100,7 @@ Base.show(io::IO, pym::PitmanYorMixture) = show(io, MIME("text/plain"), pym)
 
 Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `PitmanYorMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
-The named tuple should contain fields named `:μ`, `:σ2` and `:cluster_counts`.
+The named tuple should contain fields named `:μ`, `:σ2` and a third field named `:cluster_counts` or `:w`, depending on whether the marginal or stickbreaking parameterization is used.
 """
 Distributions.pdf(pym::PitmanYorMixture, params::NamedTuple, t::Real) = _pdf(pym, params, t)
 Distributions.pdf(pym::PitmanYorMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
@@ -126,7 +122,7 @@ Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::
 
 Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `PitmanYorMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
-The named tuple should contain fields named `:μ`, `:σ2` and `:cluster_counts`.
+The named tuple should contain fields named `:μ`, `:σ2` and a third field named `:cluster_counts` or `:w`, depending on whether the marginal or stickbreaking parameterization is used.
 """
 Distributions.cdf(pym::PitmanYorMixture, params::NamedTuple, t::Real) = _cdf(pym, params, t)
 Distributions.cdf(pym::PitmanYorMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(pym, params, t)

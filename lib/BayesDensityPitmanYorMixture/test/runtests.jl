@@ -61,7 +61,6 @@ end
 
     pym = PitmanYorMixture(x; strength = 1e-10)
 
-    # For α ≈ 0 the new cluster part does not contribute much
     n_rep = 10
     parameters = (μ = [0.0], σ2 = [1.0], w = [1.0])
     parameters_vec = fill(parameters, n_rep)

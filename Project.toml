@@ -6,5 +6,6 @@ projects = [
     "lib/BayesDensityBSplineMixture",
     "lib/BayesDensityHistSmoother",
     "lib/BayesDensityPitmanYorMixture",
+    "lib/BayesDensityFiniteGaussianMixture",
     "lib/BayesDensity"
 ]
