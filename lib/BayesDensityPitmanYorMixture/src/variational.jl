@@ -155,9 +155,8 @@ function _variational_inference(
     # Precompute some quantities that are used for the ELBO
     E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
     E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
-
     kernel_terms = Matrix{T}(undef, (K, n))
-    kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
+    kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs) - log(2*T(pi)) / 2
     for i in eachindex(x)
         kernel_terms[:, i] = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
     end
@@ -171,18 +170,17 @@ function _variational_inference(
         # Update q(z)
         # Compute contribution to logprobabilities from non-kernel terms
         non_kernel_term = vcat(E_log_v, zero(T)) + cumsum(vcat(zero(T), E_log_cv))
-        #kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
         for i in eachindex(x)
             # Contributions from kernel
-            #kernel_term = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
             logprobs = kernel_terms[:, i] + non_kernel_term
             probs = softmax(logprobs)
             q_mat[:, i] = probs
         end
+        ELBO_q_term = -sum(xlogx.(q_mat))
         # Vector of number of observations with label greater than k
         E_N = vec(sum(q_mat; dims=2))
         E_S = n .- cumsum(E_N)
-        wmeans = (q_mat * x) ./ (E_N .+ T(1e-10))
+        wmeans = (q_mat * x) ./ (E_N)
         wsumsq = Vector{T}(undef, K)
         for k in 1:K
             wsumsq[k] = sum(q_mat[k, :] .* (x .- wmeans[k]).^2)
@@ -191,9 +189,10 @@ function _variational_inference(
         # Update q(v)
         a_v = @. 1 - discount + E_N[1:K-1]
         b_v = @. E_S[1:K-1] + strength + discount * (1:K-1)
+        # Compute ELBO contribution from the v part of the likelihood
         E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
         E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
-        ELBO_v_term = sum(@. (E_N[1:K-1] - discount) * E_log_v[1:K-1] + (E_S[1:K-1] + strength + discount * (1:K-1) - 1) * E_log_cv[1:K-1] - logbeta.(1 - discount, 1 + strength + discount*(1:K-1)))
+        ELBO_v_term = sum(@. (E_N[1:K-1]) * E_log_v[1:K-1] + (E_S[1:K-1]) * E_log_cv[1:K-1])
 
         # Update q(θ)
         inv_scale_facs = inv_scale_fac .+ E_N
@@ -201,24 +200,26 @@ function _variational_inference(
         shapes = shape .+ E_N / 2
         rates = rate .+ (wsumsq + inv_scale_fac * E_N ./ inv_scale_facs .* (wmeans .- location).^2) / 2
         # ELBO contribution
-        kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs)
+        kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs) - 1/2 * log(2*T(pi))
         for i in eachindex(x)
             kernel_terms[:, i] = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
         end
-        ELBO_θ_term = sum(@. -(strength + 3/2) * (log(rates) - digamma(shapes)) - (shapes + inv_scale_facs * (1/inv_scale_facs + shapes * (locations - location)^2 / rates)/2)) # From prior
-        ELBO_θ_term = ELBO_θ_term + sum(@. q_mat * kernel_terms) # Here we just esentially get what we compute when considering q_z
+        ELBO_θ_term = sum(q_mat .* kernel_terms) # Here we just esentially get what we compute when considering q_z
 
+        # Compute KL-divergences between q and priors
+        KL_v = sum(@. logbeta(1-discount, strength + discount*(1:K-1)) - logbeta(a_v, b_v) + (a_v-(1-discount))*digamma(a_v) + (b_v - (strength + discount*(1:K-1)))*digamma(b_v) + (1 - discount + strength + discount*(1:K-1) - b_v - a_v) * digamma(a_v + b_v))
+        KL_norm_const = @. (log(inv_scale_fac) - log(inv_scale_facs))/ 2 + shapes * log(rates) - shape * log(rate) - loggamma(shapes) + loggamma(shape)
+        KL_IG = @. (shape - shapes) * (log(rates) - digamma(shapes)) + (rate - rates) * shapes / rates
+        KL_N = @. 1 - inv_scale_fac/inv_scale_facs - shapes * (location - locations)^2 / rates
+        KL_θ = sum(KL_norm_const + KL_IG + KL_N)
         # Check convergence
-        E_q_v = -sum(@. logbeta(a_v, b_v)- (a_v - 1)*digamma(a_v) - (b_v - 1)*digamma(b_v) + (a_v + b_v - 2)*digamma(a_v+b_v))
-        E_q_θ = -sum(@. shapes + loggamma(shapes) + 3*log(rates)/2 - 3*digamma(shapes)/2 + (1 + log(2*T(pi)/inv_scale_facs))/2)
-        E_q_z = sum(@. q_mat * log(q_mat))
-        ELBO[iter] = ELBO_v_term + ELBO_θ_term - E_q_v - E_q_z - E_q_θ
+        ELBO[iter] = ELBO_v_term + ELBO_θ_term + ELBO_q_term - KL_v - KL_θ
         converged = (abs(ELBO[iter] - ELBO_old)/abs(ELBO_old) ≤ rtol && iter ≥ 2)
         ELBO_old = ELBO[iter]
         iter += 1
     end
 
-    #converged || @warn "Failed to meet convergence criterion in $(iter-1) iterations."
+    converged || @warn "Failed to meet convergence criterion in $(iter-1) iterations."
     variational_posterior = PitmanYorMixtureVIPosterior{T}(
         a_v,
         b_v,

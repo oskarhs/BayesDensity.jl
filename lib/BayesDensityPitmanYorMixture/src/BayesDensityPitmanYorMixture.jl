@@ -3,7 +3,7 @@ module BayesDensityPitmanYorMixture
 using Reexport
 
 @reexport using BayesDensityCore
-import BayesDensityCore: truncated_stickbreaking, softmax
+import BayesDensityCore: truncated_stickbreaking, softmax, xlogx
 
 using Distributions
 using Random
