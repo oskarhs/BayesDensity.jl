@@ -342,7 +342,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     end
 
     converged || @warn "Failed to meet convergence criterion in $(iter-1) iterations."
-    vip = BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
+    posterior = BSplineMixtureVIPosterior{T}(μ_opt, BandedMatrix(inv_Σ_opt), a_τ_opt, b_τ_opt, a_δ_opt, b_δ_opt, bsm)
     info = VariationalOptimizationResult{T}(ELBO[1:iter-1], converged, iter-1, rtol, posterior)
-    return vip, info
+    return posterior, info
 end

@@ -18,7 +18,7 @@ const rng = Random.Xoshiro(1)
     @test typeof(hyperparams(pym)) <: NamedTuple
 
     # Check that the support is returned correctly
-    @test support(pym) == (-Inf, Inf)
+    @test Distributions.support(pym) == (-Inf, Inf)
 
     # Check that out of bounds hyperparameter values throw errors
     for hyp in (:discount, :strength, :inv_scale_fac, :shape, :rate)

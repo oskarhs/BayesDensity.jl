@@ -87,6 +87,7 @@ end
 function BayesDensityCore.varinf(rhm::RandomHistogram{T, NT}) where {T, NT}
     posterior = RHPosterior{T}(rhm)
     info = VariationalOptimizationResult{T}([0.0], true, 1, 0.0, posterior)
+    return posterior, info
 end
 
 @testset "Core: pdf and cdf fallback methods" begin
