@@ -7,6 +7,8 @@ sigmoid(x::Real) = ifelse(x ≥ 0, 1/(1 + exp(-x)), exp(x)/(1 + exp(x)))
 # Logit map
 logit(x::Real) = log(x / (1-x))
 
+xlogx(x::Real) = ifelse(x > 0.0, x*log(x), 0.0)
+
 # Numerically stable softmax
 function softmax(x::AbstractVector{T}) where {T<:Real}
     xmax = maximum(x)
