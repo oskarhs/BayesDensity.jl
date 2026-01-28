@@ -73,6 +73,23 @@ function bin_regular(x::AbstractVector{T}, xmin::T, xmax::T, M::Int, right::Bool
     return bincounts
 end
 
+function bin_irregular(x::AbstractVector{<:Real}, breaks::AbstractVector{<:Real}, right::Bool)
+    K = length(breaks)-1
+    bincounts = zeros(Int64, length(breaks)-1)
+    if right
+        for val in x
+            idval = min(max(1, searchsortedfirst(breaks, val) - 1), K)
+            bincounts[idval] += 1
+        end
+    else
+        for val in x
+            idval = max(min(K, searchsortedlast(breaks, val)), 1)
+            bincounts[idval] += 1
+        end
+    end
+    return bincounts
+end
+
 # Compute linear binning on a regular grid
 function linear_binning(x::AbstractVector{T}, n_bins::Int, xmin::T, xmax::T) where {T<:Real}
     N = zeros(T, n_bins)

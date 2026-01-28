@@ -81,6 +81,7 @@ Find a variational approximation to the posterior distribution of a [`BSplineMix
 
 # Returns
 * `vip`: A [`BSplineMixtureVIPosterior`](@ref) object representing the variational posterior.
+* `info`: A [`VariationalOptimizationResult`](@ref) describing the result of the optimization.
 
 !!! note
     To sample for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.

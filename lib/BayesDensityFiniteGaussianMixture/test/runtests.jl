@@ -21,7 +21,7 @@ const rng = Random.Xoshiro(1)
     @test Distributions.support(gm) == (-Inf, Inf)
 
     # Check that out of bounds hyperparameter values throw errors
-    for hyp in (:prior_strength, :prior_variance, :prior_shape, :prior_rate)
+    for hyp in (:prior_strength, :prior_variance, :prior_shape, :hyperprior_rate, :hyperprior_shape)
         @eval @test_throws ArgumentError $FiniteGaussianMixture($x, 2; $hyp = -1)
     end
 
@@ -47,7 +47,7 @@ end
     @test Distributions.support(gm) == (-Inf, Inf)
 
     # Check that out of bounds hyperparameter values throw errors
-    for hyp in (:prior_strength, :prior_variance, :prior_shape, :prior_rate)
+    for hyp in (:prior_strength, :prior_variance, :prior_shape, :hyperprior_rate, :hyperprior_shape)
         @eval @test_throws ArgumentError $RandomFiniteGaussianMixture($x; $hyp = -1)
     end
 
@@ -81,4 +81,12 @@ end
         @test isapprox(cdf(gm, parameters, t), cdf(Normal(0, 1), t))
         @test isapprox(cdf(gm, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
     end
+end
+
+@testset "FiniteGaussianMixture: MCMC sample" begin
+    K = 2
+    x = collect(-5:0.1:5)
+
+    fgm = FiniteGaussianMixture(x, 2)
+    @test typeof(sample(rng, fgm, 20)) <: PosteriorSamples{Float64}
 end

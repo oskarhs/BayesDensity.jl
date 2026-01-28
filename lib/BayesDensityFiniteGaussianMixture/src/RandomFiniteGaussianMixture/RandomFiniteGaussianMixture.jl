@@ -25,7 +25,8 @@ struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:StatsBase.Abstrac
     prior_location::T
     prior_variance::T
     prior_shape::T
-    prior_rate::T
+    hyperprior_rate::T
+    hyperprior_shape::T
     function RandomFiniteGaussianMixture{T}(
         x::AbstractVector{<:Real};
         prior_components::AbstractVector{<:Real}=fill(1, 30),
@@ -33,12 +34,13 @@ struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:StatsBase.Abstrac
         prior_location::Real=_get_default_location(x),
         prior_variance::Real=_get_default_variance(x),
         prior_shape::Real=2.0,
-        prior_rate::Real=_get_default_rate(x)
+        hyperprior_shape::Real=0.2,
+        hyperprior_rate::Real=_get_default_hyperprior_rate(x)
     ) where {T<:Real}
-        _check_finitegaussianmixturekwargs(prior_strength, prior_variance, prior_shape, prior_rate)
+        _check_finitegaussianmixturekwargs(prior_strength, prior_variance, prior_shape, hyperprior_rate, hyperprior_shape)
         prior_components = pweights(T.(prior_components))
         data = (x = T.(x), n  = length(x))
-        return new{T, typeof(data), typeof(prior_components)}(data, prior_components, T(prior_strength), T(prior_location), T(prior_variance), T(prior_shape), T(prior_rate))
+        return new{T, typeof(data), typeof(prior_components)}(data, prior_components, T(prior_strength), T(prior_location), T(prior_variance), T(prior_shape), T(hyperprior_rate), T(hyperprior_shape))
     end
 end
 RandomFiniteGaussianMixture(args...; kwargs...) =  RandomFiniteGaussianMixture{Float64}(args...; kwargs...)
@@ -59,7 +61,15 @@ BayesDensityCore.support(::RandomFiniteGaussianMixture{T}) where {T} = (-T(Inf),
 
 Returns the hyperparameters of the finite Gaussian mixture model `gm` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(gm::RandomFiniteGaussianMixture) = (prior_components = gm.prior_components, prior_strength = gm.prior_strength, prior_location=gm.prior_location, prior_variance=gm.prior_variance, prior_shape=gm.prior_shape, prior_rate=gm.prior_rate)
+BayesDensityCore.hyperparams(gm::RandomFiniteGaussianMixture) = (
+    prior_components = gm.prior_components,
+    prior_strength = gm.prior_strength,
+    prior_location = gm.prior_location,
+    prior_variance = gm.prior_variance,
+    prior_shape = gm.prior_shape,
+    hyperprior_shape = gm.hyperprior_shape,
+    hyperprior_rate = gm.hyperprior_rate
+)
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", gm::RandomFiniteGaussianMixture{T}) where {T}
@@ -68,8 +78,8 @@ function Base.show(io::IO, ::MIME"text/plain", gm::RandomFiniteGaussianMixture{T
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, "Hyperparameters:")
         println(io, " prior_location = " , gm.prior_location, ", prior_variance = ", gm.prior_variance)
-        println(io, " prior_shape = ", gm.prior_shape, ", prior_rate = ", gm.prior_rate)
-        print(io, " prior_strength =", gm.prior_strength)
+        println(io, " prior_shape = ", gm.prior_shape, ", hyperprior_shape = ", gm.hyperprior_shape, ", hyperprior_rate = ", gm.hyperprior_rate)
+        print(io, " prior_strength = ", gm.prior_strength)
     end
     nothing
 end

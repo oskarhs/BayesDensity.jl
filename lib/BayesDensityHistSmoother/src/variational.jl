@@ -70,6 +70,7 @@ Find a variational approximation to the posterior distribution of a [`HistSmooth
 
 # Returns
 * `vip`: A [`HistSmootherVIPosterior`](@ref) object representing the variational posterior.
+* `info`: A [`VariationalOptimizationResult`](@ref) describing the result of the optimization.
 
 !!! note
     To run the optimization loop for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.

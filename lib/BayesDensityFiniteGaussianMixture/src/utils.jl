@@ -6,18 +6,39 @@ end
 function _get_default_variance(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin
-    return R
+    return R^2
 end
 
 function _get_default_rate(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin
-    return 0.2*R^2
+    return R^2/5
 end
 
-function _check_finitegaussianmixturekwargs(prior_strength::Real, prior_variance::Real, prior_shape::Real, prior_rate::Real)
+function _get_default_hyperprior_rate(x::AbstractVector{<:Real})
+    xmin, xmax = extrema(x)
+    R = xmax - xmin
+    return 10/R^2
+end
+
+function _check_finitegaussianmixturekwargs(prior_strength::Real, prior_variance::Real, prior_shape::Real, hyperprior_shape::Real, hyperprior_rate::Real)
     (prior_strength > 0) || throw(ArgumentError("Prior strength `prior_strength` must be positive."))
     (prior_variance > 0) || throw(ArgumentError("Prior standard deviation `prior_variance` must be positive."))
     (prior_shape > 0) || throw(ArgumentError("Prior shape parameter `prior_shape` must be positive."))
-    (prior_rate > 0) || throw(ArgumentError("Prior rate parameter `prior_rate` must be positive."))
+    (hyperprior_shape > 0) || throw(ArgumentError("Hyperprior shape parameter `hyperprior_shape` must be positive."))
+    (hyperprior_rate > 0) || throw(ArgumentError("Hyperprior rate parameter `hyperprior_rate` must be positive."))
+end
+
+function _get_suffstats_binned(x::AbstractVector{T}, breaks::AbstractVector{T}) where {T}
+    K = length(breaks)-1
+    bin_counts = zeros(Int, K)
+    bin_sums = zeros(T, K)
+    bin_sumsqs = zeros(T, K)
+    for val in x
+        idval = min(max(1, searchsortedfirst(breaks, val) - 1), K)
+        bin_counts[idval] +=1
+        bin_sums[idval] += val
+        bin_sumsqs[idval] += val^2
+    end
+    return bin_counts, bin_sums, bin_sumsqs
 end

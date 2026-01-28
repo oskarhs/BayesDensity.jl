@@ -15,7 +15,8 @@ Struct representing a finite Gaussian mixture model with a fixed number of compo
 * `prior_location`: Prior mean of the location parameters `μ[k]`. Defaults to the midpoint of the minimum and maximum values in the sample.
 * `prior_variance`: The prior variance of the location parameter `μ[k]`. Defaults to the sample range.
 * `prior_shape`: Prior shape parameter of the squared scale parameters `σ2[k]`: Defaults to `2.0`.
-* `prior_rate`: Prior rate parameter of the squared scale parameters `σ2[k]`. Defaults to `0.2*R^2`, where `R` is the sample range.
+* `hyperprior_shape`: Prior shape parameter of the hyperprior on the rate parameter of `σ2[k]`. Defaults to `0.2`.
+* `hyperprior_rate`: Prior rate parameter of the hyperprior on the rate parameter of `σ2[k]`. Defaults to `0.2*R^2`, where `R` is the sample range.
 """
 struct FiniteGaussianMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
@@ -24,7 +25,8 @@ struct FiniteGaussianMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityMod
     prior_location::T
     prior_variance::T
     prior_shape::T
-    prior_rate::T
+    hyperprior_rate::T
+    hyperprior_shape::T
     function FiniteGaussianMixture{T}(
         x::AbstractVector{<:Real},
         K::Int;
@@ -32,11 +34,12 @@ struct FiniteGaussianMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityMod
         prior_location::Real=_get_default_location(x),
         prior_variance::Real=_get_default_variance(x),
         prior_shape::Real=2.0,
-        prior_rate::Real=_get_default_rate(x)
+        hyperprior_shape::Real=0.2,
+        hyperprior_rate::Real=_get_default_hyperprior_rate(x)
     ) where {T<:Real}
-        _check_finitegaussianmixturekwargs(prior_strength, prior_variance, prior_shape, prior_rate)
+        _check_finitegaussianmixturekwargs(prior_strength, prior_variance, prior_shape, hyperprior_rate, hyperprior_shape)
         data = (x = T.(x), n  = length(x))
-        return new{T, typeof(data)}(data, K, T(prior_strength), T(prior_location), T(prior_variance), T(prior_shape), T(prior_rate))
+        return new{T, typeof(data)}(data, K, T(prior_strength), T(prior_location), T(prior_variance), T(prior_shape), T(hyperprior_rate), T(hyperprior_shape))
     end
 end
 FiniteGaussianMixture(args...; kwargs...) = FiniteGaussianMixture{Float64}(args...; kwargs...)
@@ -57,7 +60,14 @@ BayesDensityCore.support(::FiniteGaussianMixture{T}) where {T} = (-T(Inf), T(Inf
 
 Returns the hyperparameters of the finite Gaussian mixture model `gm` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(gm::FiniteGaussianMixture) = (prior_strength = gm.prior_strength, prior_location=gm.prior_location, prior_variance=gm.prior_variance, prior_shape=gm.prior_shape, prior_rate=gm.prior_rate)
+BayesDensityCore.hyperparams(gm::FiniteGaussianMixture) = (
+    prior_strength = gm.prior_strength,
+    prior_location = gm.prior_location,
+    prior_variance = gm.prior_variance,
+    prior_shape = gm.prior_shape,
+    hyperprior_shape = gm.hyperprior_shape,
+    hyperprior_rate = gm.hyperprior_rate
+)
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", gm::FiniteGaussianMixture{T}) where {T}
@@ -66,8 +76,8 @@ function Base.show(io::IO, ::MIME"text/plain", gm::FiniteGaussianMixture{T}) whe
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, "Hyperparameters:")
         println(io, " prior_location = " , gm.prior_location, ", prior_variance = ", gm.prior_variance)
-        println(io, " prior_shape = ", gm.prior_shape, ", prior_rate = ", gm.prior_rate)
-        print(io, " prior_strength =", gm.prior_strength)
+        println(io, " prior_shape = ", gm.prior_shape, ", hyperprior_shape = ", gm.hyperprior_shape, ", hyperprior_rate = ", gm.hyperprior_rate)
+        print(io, " prior_strength = ", gm.prior_strength)
     end
     nothing
 end
