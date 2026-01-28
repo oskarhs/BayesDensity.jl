@@ -177,8 +177,8 @@ function _variational_inference(
         non_kernel_terms = @. digamma(dirichlet_params) - digamma_sum_dirichlet_params
         # Fix this, @. and sum do not go well together.
         KL_w = sum(
-            @. loggamma(sum(dirichlet_params)) - loggamma(prior_dirichlet_params) + loggamma(prior_dirichlet_params) - loggamma(dirichlet_params) + (dirichlet_params - prior_dirichlet_params) * (digamma(dirichlet_params) - digamma_sum_dirichlet_params)
-        )
+            @. loggamma(prior_dirichlet_params) - loggamma(dirichlet_params) + (dirichlet_params - prior_dirichlet_params) * (digamma(dirichlet_params) - digamma_sum_dirichlet_params)
+        ) + loggamma(sum(dirichlet_params)) - loggamma(sum(prior_dirichlet_params))
 
         # Update q(μ|k)
         variance_params = @. inv(1/prior_variance + E_inv_σ2 * E_N)
@@ -198,7 +198,10 @@ function _variational_inference(
         E_inv_σ2 = shape_params ./ rate_params
         E_log_σ2 = @. log(rate_params) - digamma(shape_params)
         KL_σ2 = sum(
-            @. 2
+            @. (shape_params - prior_shape) * E_log_σ2 + (rate_params - E_β) * E_inv_σ2
+        )
+        KL_σ2 += sum(
+            @. shape_params * log(rate_params) - hyperprior_shape * E_log_β + loggamma(hyperprior_shape) - loggamma(shape_params)
         )
 
         kernel_term0 = @. -log(2*T(pi))/2 - (log(rate_params) - digamma(shape_params)) / 2
