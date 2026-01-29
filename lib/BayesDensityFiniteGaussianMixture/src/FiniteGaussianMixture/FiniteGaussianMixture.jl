@@ -9,6 +9,7 @@ Struct representing a finite Gaussian mixture model with a fixed number of compo
 
 # Arguments
 * `x`: The data vector.
+* `K`: The number of mixture components.
 
 # Keyword arguments
 * `prior_strength`: Strength parameter of the symmetric Dirichlet prior on the mixture weights. E.g. the prior is Dirichlet(strength, ..., strength). Defaults to `1.0`.
@@ -17,6 +18,21 @@ Struct representing a finite Gaussian mixture model with a fixed number of compo
 * `prior_shape`: Prior shape parameter of the squared scale parameters `σ2[k]`: Defaults to `2.0`.
 * `hyperprior_shape`: Prior shape parameter of the hyperprior on the rate parameter of `σ2[k]`. Defaults to `0.2`.
 * `hyperprior_rate`: Prior rate parameter of the hyperprior on the rate parameter of `σ2[k]`. Defaults to `0.2*R^2`, where `R` is the sample range.
+
+# Examples
+```julia-repl
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> fgm = FiniteGaussianMixture(x, 5)
+FiniteGaussianMixture{Float64} with 5 components.
+Using 5000 observations.
+Hyperparameters:
+ prior_location = 0.5, prior_variance = 1.0
+ prior_shape = 2.0, hyperprior_shape = 0.2, hyperprior_rate = 10.0
+ prior_strength = 1.0
+
+julia> fgm = RandomFiniteGaussianMixture(x; prior_strength=10);
+```
 """
 struct FiniteGaussianMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT

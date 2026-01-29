@@ -3,7 +3,7 @@
         [rng::Random.AbstractRNG],
         fgm::FiniteGaussianMixture{T},
         n_samples::Int;
-        n_burnin::Int              = min(100, div(n_samples, 5)),
+        n_burnin::Int              = min(1000, div(n_samples, 5)),
         initial_params::NamedTuple = _get_default_initparams_mcmc(hs)
     ) where {T} -> PosteriorSamples{T}
 
@@ -23,9 +23,25 @@ The following constraints must also be satisfied: `σ2[k]>0` for all `k` and `w[
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
 
 # Examples
+```julia-repl
+julia> using Random
 
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> fgm = FiniteGaussianMixture(x, 2)
+
+julia> ps1 = sample(fgm, 5_000);
+
+julia> ps2 = sample(fgm, 5_000; n_burnin=2_000, initial_params = (μ = [0.2, 0.8], σ2 = [1.0, 2.0], w = [0.7, 0.3]));
+```
 """
-function StatsBase.sample(rng::AbstractRNG, fgm::FiniteGaussianMixture, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 1000), initial_params::NamedTuple=_get_default_initial_params_mcmc(fgm))
+function StatsBase.sample(
+    rng::AbstractRNG,
+    fgm::FiniteGaussianMixture,
+    n_samples::Int;
+    n_burnin::Int = min(div(n_samples, 5), 1000),
+    initial_params::NamedTuple=_get_default_initial_params_mcmc(fgm)
+)
     (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
     (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
     n_samples ≥ n_burnin || @warn "Number of total samples is smaller than the number of burn-in samples."

@@ -9,9 +9,11 @@ DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursiv
 makedocs(;
     modules=[
         BayesDensity,
-        BayesDensityCore,
         BayesDensityBSplineMixture,
-        BayesDensityHistSmoother
+        BayesDensityCore,
+        BayesDensityFiniteGaussianMixture,
+        BayesDensityHistSmoother,
+        BayesDensityPitmanYorMixture
     ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
@@ -26,7 +28,10 @@ makedocs(;
         "Methods" => [
             "methods/index.md",
             "methods/BSplineMixture.md",
-            "methods/HistSmoother.md"
+            "methods/HistSmoother.md",
+            "methods/PitmanYorMixture.md",
+            "methods/FiniteGaussianMixture.md",
+            "methods/RandomFiniteGaussianMixture.md"
         ],
         "Tutorials" => [
             "tutorials/add_new_models.md"

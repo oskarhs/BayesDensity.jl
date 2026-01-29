@@ -6,6 +6,7 @@ authors = ["Oskar Høgberg Simensen"]
 [deps]
 BayesDensityBSplineMixture = "dc1a60f9-7a32-4f65-8b9e-ee7db92abd95"
 BayesDensityCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+BayesDensityFiniteGaussianMixture = "588bb9d7-6d85-4df3-a9ca-7b66fb5e4296"
 BayesDensityHistSmoother = "4ec5b509-5e49-418c-a128-3e7a20b6d93e"
 BayesDensityPitmanYorMixture = "9da0b0c8-0459-4567-a5a4-3605fb8f6d57"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -13,6 +14,7 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 [compat]
 BayesDensityBSplineMixture = "0.1.0"
 BayesDensityCore = "0.1.0"
+BayesDensityFiniteGaussianMixture = "0.1.0"
 BayesDensityHistSmoother = "0.1.0"
 BayesDensityPitmanYorMixture = "0.1.0"
 Reexport = "1.0.0"

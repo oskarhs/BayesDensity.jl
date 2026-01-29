@@ -16,3 +16,6 @@ include(joinpath(@__DIR__, "..", "lib", "BayesDensityHistSmoother", "test", "run
 
 # PitmanYorMixture
 include(joinpath(@__DIR__, "..", "lib", "BayesDensityPitmanYorMixture", "test", "runtests.jl"))
+
+# FiniteGaussianMixture
+include(joinpath(@__DIR__, "..", "lib", "BayesDensityFiniteGaussianMixture", "test", "runtests.jl"))

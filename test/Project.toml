@@ -2,6 +2,7 @@
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 BayesDensityBSplineMixture = "dc1a60f9-7a32-4f65-8b9e-ee7db92abd95"
 BayesDensityCore = "93712312-7690-42d2-80ab-295e38cb0be8"
+BayesDensityFiniteGaussianMixture = "588bb9d7-6d85-4df3-a9ca-7b66fb5e4296"
 BayesDensityHistSmoother = "4ec5b509-5e49-418c-a128-3e7a20b6d93e"
 BayesDensityPitmanYorMixture = "9da0b0c8-0459-4567-a5a4-3605fb8f6d57"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"

@@ -173,7 +173,7 @@ function _variational_inference(
             probs = softmax(logprobs)
             q_mat[:, i] = probs
         end
-        ELBO_q_term = -sum(xlogx.(q_mat))
+        ELBO_q_term = -sum(xlogx, q_mat)
         # Vector of number of observations with label greater than k
         E_N = vec(sum(q_mat; dims=2))
         E_S = n .- cumsum(E_N)

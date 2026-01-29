@@ -61,12 +61,11 @@ end
     varinf(
         fgm::FiniteGaussianMixture{T};
         initial_params::NamedTuple = _get_default_initparams(x),
-        max_iter::Int              = 3000
+        max_iter::Int              = 2000
         rtol::Real                 = 1e-6
     ) where {T} -> PitmanYorMixtureVIPosterior{T}
 
-Find a variational approximation to the posterior distribution of a [`FiniteGaussianMixture`](@ref) using mean-field variational inference based on a truncated stickbreaking-approach.
-
+Find a variational approximation to the posterior distribution of a [`FiniteGaussianMixture`](@ref) using mean-field variational inference.
 # Arguments
 * `fgm`: The `FiniteGaussianMixture` whose posterior we want to approximate.
 
@@ -83,15 +82,28 @@ Find a variational approximation to the posterior distribution of a [`FiniteGaus
     To perform the optimization for a fixed number of iterations irrespective of the convergence criterion, one can set `rtol = 0.0`, and `max_iter` equal to the desired total iteration count.
     Note that setting `rtol` to a strictly negative value will issue a warning.
 
+# Examples
+```julia-repl
+julia> using Random
+
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> fgm = FiniteGaussianMixture(x);
+
+julia> vip, info = varinf(fgm);
+
+julia> vip, info = varinf(fgm; rtol=1e-7, max_iter=3000);
+ ```
+
 # Extended help
 ## Convergence
 The criterion used to determine convergence is that the relative change in the ELBO falls below the given `rtol`.
 """
 function BayesDensityCore.varinf(
     fgm::FiniteGaussianMixture;
-    initial_params::NamedTuple=_get_default_initparams_varinf(fgm),
-    max_iter::Int=1000,
-    rtol::Real=1e-6
+    initial_params::NamedTuple = _get_default_initparams_varinf(fgm),
+    max_iter::Int              = 2000,
+    rtol::Real                 = 1e-6
 )
     (max_iter >= 1) || throw(ArgumentError("Maximum number of iterations must be positive."))
     (rtol ≥ 0.0) || @warn "Relative tolerance is negative."
@@ -123,11 +135,11 @@ function _get_default_initparams_varinf(fgm::FiniteGaussianMixture{T}) where {T}
 end
 
 function _variational_inference(
-    fgm::FiniteGaussianMixture{T, NT},
+    fgm::FiniteGaussianMixture{T},
     initial_params::NamedTuple,
     max_iter::Int,
     rtol::Real
-) where {T, NT}
+) where {T}
     # Unpack model
     (; data, K, prior_strength, prior_location, prior_variance, prior_shape, hyperprior_rate, hyperprior_shape) = fgm
     (; x, n) = data
@@ -150,6 +162,8 @@ function _variational_inference(
     # Optimization loop
     converged = false
     ELBO = Vector{T}(undef, max_iter)
+    # Arbitrary init of ELBO
+    # (we perform at least 2 iterations, due to not all variables being initialized properly)
     ELBO_last = 1.0
     iter = 1
     while !converged && iter ≤ max_iter
@@ -162,23 +176,28 @@ function _variational_inference(
             E_N .+= probs
         end
         weighted_sum = q_mat * x
+        # ELBO contribution from -E[log q(z)]
+        ELBO_q_term = -sum(xlogx, q_mat)
 
         # Update q(β|k)
         shape_hyperparam = hyperprior_shape + K*prior_shape
         rate_hyperparam = hyperprior_rate + sum(E_inv_σ2)
         E_β = shape_hyperparam / rate_hyperparam
         E_log_β = - log(rate_hyperparam) + digamma(shape_hyperparam)
+        # KL between q(β|k) and p(β|k)
         KL_β = shape_hyperparam * log(rate_hyperparam) - loggamma(shape_hyperparam) - hyperprior_shape * log(hyperprior_rate) + loggamma(hyperprior_shape)
-        KL_β += (shape_hyperparam - hyperprior_shape) * E_log_β + (hyperprior_shape - shape_hyperparam) * E_β
+        KL_β += (shape_hyperparam - hyperprior_shape) * E_log_β + (hyperprior_rate - rate_hyperparam) * E_β
 
         # Update q(w|k)
         dirichlet_params = prior_strength .+ E_N
         digamma_sum_dirichlet_params = digamma(sum(dirichlet_params))
         non_kernel_terms = @. digamma(dirichlet_params) - digamma_sum_dirichlet_params
-        # Fix this, @. and sum do not go well together.
+        # KL between q(w|k) and p(w|k)
         KL_w = sum(
-            @. loggamma(prior_dirichlet_params) - loggamma(dirichlet_params) + (dirichlet_params - prior_dirichlet_params) * (digamma(dirichlet_params) - digamma_sum_dirichlet_params)
+            @. loggamma(prior_dirichlet_params) - loggamma(dirichlet_params) + (dirichlet_params - prior_dirichlet_params) * non_kernel_terms
         ) + loggamma(sum(dirichlet_params)) - loggamma(sum(prior_dirichlet_params))
+        # ELBO contributions from terms in the likelihood depending on w
+        ELBO_w_term = sum(@. E_N * non_kernel_terms)
 
         # Update q(μ|k)
         variance_params = @. inv(1/prior_variance + E_inv_σ2 * E_N)
@@ -188,8 +207,9 @@ function _variational_inference(
             weighted_rss += @. q_mat[:,i] * (x[i] - location_params)^2
         end
         weighted_rss += E_N .* variance_params
+        # KL between q(μ|k) and p(μ|k)
         KL_μ = sum(
-            @. (location_params - prior_location)^2 / (2*prior_variance) - (variance_params / prior_variance - 1 - log(variance_params / prior_variance)) / 2
+            @. (location_params - prior_location)^2 / (2*prior_variance) + (variance_params / prior_variance - 1 - log(variance_params / prior_variance)) / 2
         )
 
         # Update q(σ2|k)
@@ -197,20 +217,23 @@ function _variational_inference(
         rate_params = E_β .+ weighted_rss/2
         E_inv_σ2 = shape_params ./ rate_params
         E_log_σ2 = @. log(rate_params) - digamma(shape_params)
+        # KL between q(σ2|k) and p(σ2|k, E_β)
         KL_σ2 = sum(
-            @. (shape_params - prior_shape) * E_log_σ2 + (rate_params - E_β) * E_inv_σ2
+            @. (prior_shape - shape_params) * E_log_σ2 + (E_β-rate_params) * E_inv_σ2
         )
         KL_σ2 += sum(
             @. shape_params * log(rate_params) - hyperprior_shape * E_log_β + loggamma(hyperprior_shape) - loggamma(shape_params)
         )
 
-        kernel_term0 = @. -log(2*T(pi))/2 - (log(rate_params) - digamma(shape_params)) / 2
+        kernel_term0 = @. -log(2*T(pi))/2 - E_log_σ2 / 2
         for i in eachindex(x)
             kernel_terms[:, i] = kernel_term0 - @. E_inv_σ2 * ((x[i] - location_params)^2 + variance_params) / 2
         end
+        # ELBO contributions from terms in the likelihood depending on μ, σ2
+        ELBO_θ_term = sum(q_mat .* kernel_terms)
 
         # Check convergence
-        ELBO[iter] = ELBO_last + 1
+        ELBO[iter] =  ELBO_q_term + ELBO_w_term + ELBO_θ_term - KL_w - KL_β - KL_μ - KL_σ2
         converged = (abs(ELBO[iter]-ELBO_last)/abs(ELBO[iter]) < rtol) && iter ≥ 2
         ELBO_last = ELBO[iter]
         iter += 1

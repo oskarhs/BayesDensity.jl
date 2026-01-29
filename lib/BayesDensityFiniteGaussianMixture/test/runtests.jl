@@ -90,3 +90,31 @@ end
     fgm = FiniteGaussianMixture(x, 2)
     @test typeof(sample(rng, fgm, 20)) <: PosteriorSamples{Float64}
 end
+
+@testset "FiniteGaussianMixture: varinf" begin
+    x = collect(-5:0.1:5)
+    fgm = FiniteGaussianMixture(x, 3)
+
+    vip, _ = varinf(fgm)
+    @test typeof(vip) <: AbstractVIPosterior{Float64}
+    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
+end
+
+@testset "FiniteGaussianMixture: VIPosterior" begin
+    # Make a VI posterior very strongly concentrated on a given mixture.
+    # Then the posterior mean should be very close to just evaluating the pdf of the mixture
+    x = collect(-5:0.1:5)
+    fgm = FiniteGaussianMixture{Float64}(x, 3)
+    d_target = MixtureModel([Normal(j, sqrt(j+2)) for j in -1:1], [0.2, 0.6, 0.2])
+    vip = FiniteGaussianMixtureVIPosterior{Float64}(
+        1e12*[0.2, 0.6, 0.2], # dirichlet_params
+        [-1.0, 0.0, 1.0],     # location_params
+        fill(1e-12, 3),       # variance_params
+        fill(1e12, 3),        # shape_params
+        1e12*[1.0, 2.0, 3.0], # rate_params
+        fgm
+    )
+
+    t = LinRange(-5, 5, 1001)
+    @test isapprox(pdf(d_target, t), mean(vip, t); rtol=1e-5)
+end
