@@ -132,6 +132,8 @@ Any call to `varinf` will return a subtype of the abstract type `AbstractVIPoste
 AbstractVIPosterior
 ```
 
+For most models, `varinf` also returns an object which stores the result of the optimization procedure, see [`VariationalOptimizationResult`](@ref).
+
 The following convenience methods are also part of the public API:
 ```@docs
 model(::AbstractVIPosterior)
@@ -150,7 +152,7 @@ As shown in the above docstring, using the `sample` method on a `AbstractVIPoste
 
 ```@example general_api
 bsm = BSplineMixture(randn(1000))
-viposterior = varinf(bsm)
+viposterior, info = varinf(bsm)
 
 # Compute the (variational) posterior mean of f(0.5)
 mean(viposterior, pdf, 0.5)

@@ -178,4 +178,4 @@ xlims!(p4, -2.2, 2.2)
 plot(p1, p2, p3, p4, layout=(2,2), size=(670, 670))
 ```
 
-Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.
+Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `plot(elbo(info))`.

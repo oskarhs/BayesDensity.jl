@@ -81,7 +81,7 @@ Find a variational approximation to the posterior distribution of a [`HistSmooth
     Note that setting `rtol` to a strictly negative value will issue a warning.
 
 # Examples
-```jldoctest
+```julia-repl
 julia> using Random
 
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);

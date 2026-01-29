@@ -133,6 +133,6 @@ export PosteriorSamples, sample, quantile, mean, median, var, std, model, n_burn
 
 include("variational.jl")
 export AbstractVIPosterior, varinf
-export VariationalOptimizationResult, n_iter, elbo, tolerance, converged
+export VariationalOptimizationResult, n_iter, elbo, tolerance, converged, posterior
 
 end # module

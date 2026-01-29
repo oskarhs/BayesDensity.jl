@@ -22,7 +22,7 @@ Struct representing a spline histogram smoothing model.
 * `shs`: A histogram spline smoother object.
 
 # Examples
-```julia
+```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
 julia> shs = HistSmoother(x)

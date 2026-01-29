@@ -19,7 +19,7 @@ Struct representing a Pitman-Yor mixture model with a normal kernel and a conjug
 * `prior_rate`: Prior rate parameter of the squared scale parameter `σ2`. Defaults to `var(x)`.
 
 # Examples
-```jldoctest
+```julia-repl
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
 julia> pym = PitmanYorMixture(x)
