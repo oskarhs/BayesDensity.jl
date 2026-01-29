@@ -31,7 +31,7 @@ Hyperparameters:
  prior_shape = 2.0, hyperprior_shape = 0.2, hyperprior_rate = 10.0
  prior_strength = 1.0
 
-julia> fgm = RandomFiniteGaussianMixture(x; prior_strength=10);
+julia> fgm = FiniteGaussianMixture(x; prior_strength=10);
 ```
 """
 struct FiniteGaussianMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
@@ -117,10 +117,10 @@ Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `FiniteGaussianMixture` when
 
 The NamedTuple `params` should contain fields named `:μ`, `:σ2` and `:w`.
 """
-Distributions.pdf(pym::FiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(pym, params, t)
-Distributions.pdf(pym::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
-Distributions.pdf(pym::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
-Distributions.pdf(pym::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(pym, params, t)
+Distributions.pdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(fgm, params, t)
+Distributions.pdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(fgm, params, t)
+Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _pdf(fgm, params, t)
+Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(fgm, params, t)
 
 """
     cdf(
@@ -139,10 +139,10 @@ Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `FiniteGaussianMixture` when
 
 The NamedTuple `params` should contain fields named `:μ`, `:σ2` and `:w`.
 """
-Distributions.cdf(pym::FiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(pym, params, t)
-Distributions.cdf(pym::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
-Distributions.cdf(pym::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
-Distributions.cdf(pym::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, t)
+Distributions.cdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(fgm, params, t)
+Distributions.cdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(fgm, params, t)
+Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _cdf(fgm, params, t)
+Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(fgm, params, t)
 
 for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
     @eval begin

@@ -128,7 +128,7 @@ function _get_default_initparams_varinf(fgm::FiniteGaussianMixture{T}) where {T}
     return (
         dirichlet_params = prior_strength .+ bin_counts,
         location_params = copy(μ),
-        variance_params = fill(var(μ), K),
+        variance_params = fill(ifelse(K ≥ 2, var(μ), var(x)), K),
         shape_params = fill(prior_shape, K),
         rate_params = fill(hyperprior_shape / hyperprior_rate, K)
     )

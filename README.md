@@ -68,6 +68,6 @@ In particular, here is a non-exhaustive list of planned features (roguhly in ord
 
 - Remove redundant type parameters
 - Switch to using ProductDistribution where this is possible.
+- Implement an MCMC algorithm for RandomFixedGaussianMixture
 - Finish writing the general documentation, including a primer on Bayesian nonparametric density estimation.
 - Implement Bernstein polynomial model (variable K)
-- Implement finite gaussian mixtures and mixtures of these

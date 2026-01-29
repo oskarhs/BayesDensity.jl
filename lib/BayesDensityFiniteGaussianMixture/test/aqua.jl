@@ -1,6 +1,6 @@
-using BayesDensityRandomFiniteGaussianMixture
+using BayesDensityFiniteGaussianMixture
 using Test, Aqua
 
-@testset "RandomFiniteGaussianMixture: Aqua.jl" begin
-    Aqua.test_all(BayesDensityPitmanYorMixture)
+@testset "FiniteGaussianMixture: Aqua.jl" begin
+    Aqua.test_all(BayesDensityFiniteGaussianMixture)
 end

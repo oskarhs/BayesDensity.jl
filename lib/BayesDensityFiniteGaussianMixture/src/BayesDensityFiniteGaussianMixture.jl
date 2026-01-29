@@ -24,6 +24,6 @@ include("RandomFiniteGaussianMixture/RandomFiniteGaussianMixture.jl")
 export RandomFiniteGaussianMixture
 
 include("RandomFiniteGaussianMixture/variational.jl")
-export posterior_prob_components, maximum_a_posteriori
+export RandomFiniteGaussianMixtureVIPosterior, posterior_prob_components, maximum_a_posteriori
 
 end # module
