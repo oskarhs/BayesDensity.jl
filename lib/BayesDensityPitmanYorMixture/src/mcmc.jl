@@ -48,9 +48,9 @@ function StatsBase.sample(
     return _sample_posterior(rng, pym, initial_params, n_samples, n_burnin)
 end
 
-function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, D}
+function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T}
     # Unpack hyperparameters and data
-    (; data, discount, strength, location, inv_scale_fac, rate, shape) = pym
+    (; data, discount, strength, prior_location, prior_inv_scale_fac, prior_rate, prior_shape) = pym
     (; x, n) = data
 
     # Initialize μ, σ2
@@ -60,8 +60,8 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
     cluster_counts = StatsBase.counts(cluster_alloc)
     K = length(cluster_counts)
 
-    marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-    marginal_dist = TDistLocationScale(2.0*shape, location, marginal_scale)
+    marginal_scale = sqrt(prior_rate*(1 + 1/prior_inv_scale_fac)/prior_shape)
+    marginal_dist = TDistLocationScale(2.0*prior_shape, prior_location, marginal_scale)
 
     samples = Vector{NamedTuple{(:μ, :σ2, :cluster_counts), Tuple{Vector{T}, Vector{T}, Vector{Int}}}}(undef, n_samples)
 
@@ -95,10 +95,10 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
             
             if new_alloc == K+1
                 # Sample μ, σ2 from posterior
-                shape_new = shape + 1/2
-                inv_scale_fac_new = inv_scale_fac + 1
-                rate_new = rate + inv_scale_fac * abs2(x[i] - location) / (2*inv_scale_fac_new)
-                location_new = (x[i] + inv_scale_fac * location) / inv_scale_fac_new
+                shape_new = prior_shape + 1/2
+                inv_scale_fac_new = prior_inv_scale_fac + 1
+                rate_new = prior_rate + prior_inv_scale_fac * abs2(x[i] - prior_location) / (2*inv_scale_fac_new)
+                location_new = (x[i] + prior_inv_scale_fac * prior_location) / inv_scale_fac_new
                 push!(σ2, rand(rng, InverseGamma(shape_new, rate_new)))
                 push!(μ, rand(rng, Normal(location_new, sqrt(σ2[end] / inv_scale_fac_new))))
                 # Update cluster counts
@@ -113,10 +113,10 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T, D}, initia
             # Compute updated cluster-specific hyperparameters
             clust_k_ind = (cluster_alloc .== k)
             clust_mean = mean(view(x, clust_k_ind))
-            inv_scale_fac_post = inv_scale_fac + cluster_counts[k]
-            shape_post = shape + cluster_counts[k]/2
-            rate_post = rate + (sum(abs2, view(x, clust_k_ind) .- clust_mean) + cluster_counts[k] * inv_scale_fac / inv_scale_fac_post * sum(abs2, clust_mean - location)) / 2
-            location_post = (inv_scale_fac * location + cluster_counts[k] * clust_mean) / inv_scale_fac_post
+            inv_scale_fac_post = prior_inv_scale_fac + cluster_counts[k]
+            shape_post = prior_shape + cluster_counts[k]/2
+            rate_post = prior_rate + (sum(abs2, view(x, clust_k_ind) .- clust_mean) + cluster_counts[k] * prior_inv_scale_fac / inv_scale_fac_post * sum(abs2, clust_mean - prior_location)) / 2
+            location_post = (prior_inv_scale_fac * prior_location + cluster_counts[k] * clust_mean) / inv_scale_fac_post
 
             # Sample cluster parameters
             σ2[k] = rand(rng, InverseGamma(shape_post, rate_post))

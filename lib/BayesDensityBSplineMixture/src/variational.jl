@@ -6,33 +6,39 @@ Struct representing the variational posterior distribution of a [`BSplineMixture
 # Fields
 * `q_β`: Distribution representing the optimal variational density q*(β).
 * `q_τ`: Distribution representing the optimal variational density q*(τ²).
-* `q_δ`: Vector of distributions, with element `k` corresponding to the optimal variational density q*(δₖ²).
+* `q_δ`: Product distribution corresponding to the optimal variational density q*(δ²).
 * `bsm`: The `BSplineMixture` to which the variational posterior was fit.
 """
-struct BSplineMixtureVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, M<:BSplineMixture} <: AbstractVIPosterior{T}
+struct BSplineMixtureVIPosterior{T<:Real, A<:MvNormalCanon{T}, B<:InverseGamma{T}, C<:ContinuousDistribution, M<:BSplineMixture} <: AbstractVIPosterior{T}
     q_β::A
     q_τ::B
-    q_δ::Vector{B}
+    q_δ::C
     bsm::M
-    function BSplineMixtureVIPosterior{T}(μ_opt::Vector{T}, inv_Σ_opt::A, a_τ_opt::T, b_τ_opt::T, a_δ_opt::Vector{T}, b_δ_opt::Vector{T}, bsm::M) where {T<:Real, A<:AbstractMatrix{T}, M<:BSplineMixture}
-        K = length(basis(bsm))
+    function BSplineMixtureVIPosterior{T}(
+        μ_opt::AbstractVector{T},
+        inv_Σ_opt::A,
+        a_τ_opt::T,
+        b_τ_opt::T,
+        a_δ_opt::AbstractVector{T},
+        b_δ_opt::AbstractVector{T},
+        bsm::M
+    ) where {T<:Real, A<:AbstractMatrix{T}, M<:BSplineMixture}
         q_β = MvNormalCanon(inv_Σ_opt * μ_opt, inv_Σ_opt)
         q_τ = InverseGamma(a_τ_opt, b_τ_opt)
-        q_δ = Vector{InverseGamma{T}}(undef, K-3)
-        for k in 1:K-3
-            q_δ[k] = InverseGamma(a_δ_opt[k], b_δ_opt[k])
-        end
-        return new{T,MvNormalCanon{T},InverseGamma{T},M}(q_β, q_τ, q_δ, bsm)
+        q_δ = product_distribution([
+            InverseGamma(a_δ_opt[k], b_δ_opt[k]) for k in eachindex(a_δ_opt)
+        ])
+        return new{T,MvNormalCanon{T},InverseGamma{T}, typeof(q_δ), M}(q_β, q_τ, q_δ, bsm)
     end
 end
 
 BayesDensityCore.model(vip::BSplineMixtureVIPosterior) = vip.bsm
 
-function Base.show(io::IO, ::MIME"text/plain", vip::BSplineMixtureVIPosterior{T, A, B, M}) where {T, A, B, M}
+function Base.show(io::IO, ::MIME"text/plain", vip::BSplineMixtureVIPosterior{T, A, B, C}) where {T, A, B, C}
     println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
     println(io, " q_β::", A, ",")
     println(io, " q_τ::", B, ",")
-    println(io, " q_δ::", Vector{B}, ".")
+    println(io, " q_δ::", C, ".")
     println(io, "Model:")
     print(io, model(vip))
     nothing
@@ -40,10 +46,14 @@ end
 
 Base.show(io::IO, vip::BSplineMixtureVIPosterior) = show(io, MIME("text/plain"), vip)
 
-function StatsBase.sample(rng::AbstractRNG, vip::BSplineMixtureVIPosterior{T, A, B, M}, n_samples::Int) where {T<:Real, A, B, M}
+function StatsBase.sample(
+    rng::AbstractRNG,
+    vip::BSplineMixtureVIPosterior{T},
+    n_samples::Int
+) where {T<:Real}
     (; q_β, q_τ, q_δ, bsm) = vip
     K = length(basis(bsm))
-    samples = Vector{NamedTuple{(:spline_coefs, :θ, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
     δ2 = Vector{T}(undef, K-3)
 
     for m in 1:n_samples
@@ -52,11 +62,9 @@ function StatsBase.sample(rng::AbstractRNG, vip::BSplineMixtureVIPosterior{T, A,
         θ = θ / sum(θ)
         spline_coefs = theta_to_coef(θ, basis(bsm))
         τ2 = rand(rng, q_τ)
-        for k in 1:K-3
-            δ2[k] = rand(rng, q_δ[k])
-        end
+        δ2 = rand(rng, q_δ)
 
-        samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = copy(δ2))
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, 0)
 end
@@ -64,9 +72,9 @@ end
 """
     varinf(
         bsm::BSplineMixture{T};
-        initial_params::NamedTuple=get_default_initparams(bsm),
-        max_iter::Int=2000
-        rtol::Real=1e-6
+        initial_params::NamedTuple = _get_default_initparams(bsm),
+        max_iter::Int              = 2000
+        rtol::Real                 = 1e-6
     ) where {T} -> BSplineMixtureVIPosterior{T}
 
 Find a variational approximation to the posterior distribution of a [`BSplineMixture`](@ref) using mean-field variational inference.
@@ -105,7 +113,7 @@ julia> vip, info = varinf(bsm; rtol=1e-7, max_iter=3000);
 The criterion used to determine convergence is that the relative change in the ELBO falls below the given `rtol`.
 """
 function BayesDensityCore.varinf(bsm::BSplineMixture;
-    initial_params::NamedTuple=get_default_initparams(bsm),
+    initial_params::NamedTuple=_get_default_initparams(bsm),
     max_iter::Int=2000,
     rtol::Real=1e-6
 )
@@ -115,16 +123,16 @@ function BayesDensityCore.varinf(bsm::BSplineMixture;
 end
 
 # Can do something more sophisticated here at a later point in time if we get a good idea.
-function get_default_initparams(bsm::BSplineMixture{T, A, NT}) where {T, A, NT}
+function _get_default_initparams(bsm::BSplineMixture{T}) where {T}
     K = length(basis(bsm))
     P = sparse(bsm.data.P)
     #P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
-    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
-    a_τ_opt = a_τ + (K-3)/2
-    b_τ_opt = b_τ
-    a_δ_opt = fill(a_δ + 1/2, K-3)
-    b_δ_opt = fill(b_δ, K-3)
+    (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
+    a_τ_opt = prior_global_shape + (K-3)/2
+    b_τ_opt = prior_global_rate
+    a_δ_opt = fill(prior_local_shape + 1/2, K-3)
+    b_δ_opt = fill(prior_local_rate, K-3)
 
     μ_opt = compute_μ(basis(bsm))
     D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
@@ -141,8 +149,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     P = sparse(P)
 
     # Get hyperparameters
-    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
+    (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -155,8 +163,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
     # These two stay constant throughout the optimization loop.
-    a_τ_opt = a_τ + (K-3)/2
-    a_δ_opt = fill(a_δ + 1/2, K-3)
+    a_τ_opt = prior_global_shape + (K-3)/2
+    a_δ_opt = fill(prior_local_shape + 1/2, K-3)
 
     non_basis_term = Vector{T}(undef, K)
     logprobs = Vector{T}(undef, 4)
@@ -171,10 +179,10 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     converged = false
     while !converged && iter ≤ max_iter
         # Update q(δ²)
-        b_δ_opt = b_δ .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
+        b_δ_opt = prior_local_rate .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
 
         # Update q(τ²)
-        b_τ_opt = b_τ + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt)
+        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt)
 
         # Update q(z, ω)
         E_N = zeros(T, K)
@@ -210,8 +218,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         μ_opt = inv_Σ_opt \ h1
 
         # Compute ELBO:
-        KL_τ2 = (a_τ_opt - a_τ) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(a_τ) + a_τ*(log(b_τ_opt) - log(b_τ)) + a_τ_opt/b_τ_opt * (b_τ - b_τ_opt)
-        KL_δ2 = @. (a_δ_opt - a_δ) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(a_δ) + a_δ*(log(b_δ_opt) - log(b_δ)) + a_δ_opt / b_δ_opt * (b_δ - b_δ_opt)
+        KL_τ2 = (a_τ_opt - prior_global_shape) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(prior_global_shape) + prior_global_shape*(log(b_τ_opt) - log(prior_global_rate)) + a_τ_opt/b_τ_opt * (prior_global_rate - b_τ_opt)
+        KL_δ2 = @. (a_δ_opt - prior_local_shape) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(prior_local_shape) + prior_local_shape*(log(b_δ_opt) - log(prior_local_rate)) + a_δ_opt / b_δ_opt * (prior_local_rate - b_δ_opt)
         # Find the required posterior moments of q(β):
         Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
@@ -222,8 +230,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
         # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
-        term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(σ) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
-        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * σ^2)
+        term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
+        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * prior_stdev^2)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
         term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
 
@@ -248,8 +256,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     P = sparse(P)
 
     # Get prior hyperparameters
-    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
+    (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -262,8 +270,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
     # These two stay constant throughout the optimization loop.
-    a_τ_opt = a_τ + (K-3)/2
-    a_δ_opt = fill(a_δ + 1/2, K-3)
+    a_τ_opt = prior_global_shape + (K-3)/2
+    a_δ_opt = fill(prior_local_shape + 1/2, K-3)
 
     non_basis_term = Vector{T}(undef, K)
     logprobs = Vector{T}(undef, 4)
@@ -278,10 +286,10 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     converged = false
     while !converged && iter ≤ max_iter
         # Update q(δ²)
-        b_δ_opt = b_δ .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
+        b_δ_opt = prior_local_rate .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
 
         # Update q(τ²)
-        b_τ_opt = b_τ + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt)
+        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt)
 
         # Update q(z, ω)
         E_N = zeros(T, K)
@@ -317,8 +325,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         μ_opt = inv_Σ_opt \ h1
 
         # Compute ELBO:
-        KL_τ2 = (a_τ_opt - a_τ) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(a_τ) + a_τ*(log(b_τ_opt) - log(b_τ)) + a_τ_opt/b_τ_opt * (b_τ - b_τ_opt)
-        KL_δ2 = @. (a_δ_opt - a_δ) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(a_δ) + a_δ*(log(b_δ_opt) - log(b_δ)) + a_δ_opt / b_δ_opt * (b_δ - b_δ_opt)
+        KL_τ2 = (a_τ_opt - prior_global_shape) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(prior_global_shape) + prior_global_shape*(log(b_τ_opt) - log(prior_global_rate)) + a_τ_opt/b_τ_opt * (prior_global_rate - b_τ_opt)
+        KL_δ2 = @. (a_δ_opt - prior_local_shape) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(prior_local_shape) + prior_local_shape*(log(b_δ_opt) - log(prior_local_rate)) + a_δ_opt / b_δ_opt * (prior_local_rate - b_δ_opt)
         # Find the required posterior moments of q(β):
         Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
@@ -329,8 +337,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
         # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
-        term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(σ) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
-        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * σ^2)
+        term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
+        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * prior_stdev^2)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
         term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
 

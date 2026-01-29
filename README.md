@@ -66,7 +66,6 @@ To be able to use the latest features of the package, make sure that you current
 
 In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
 
-- Remove redundant type parameters
 - Switch to using ProductDistribution where this is possible.
 - Implement an MCMC algorithm for RandomFixedGaussianMixture
 - Finish writing the general documentation, including a primer on Bayesian nonparametric density estimation.

@@ -13,7 +13,7 @@ const rng = Random.Xoshiro(1)
     @test typeof(shs) <: HistSmoother{Float64, <:AbstractBSplineBasis, <:NamedTuple}
 
     # Check that we can retrieve hyerparameter defaults
-    @test hyperparams(shs) == (σ_β = 1e3, s_σ = 1e3)
+    @test hyperparams(shs) == (prior_scale_fixed = 1e3, prior_scale_random = 1e3)
 
     # Test equality method
     @test HistSmoother(x) == shs
@@ -32,7 +32,7 @@ end
     @test_throws ArgumentError HistSmoother(x; bounds=(-1, 1))
     @test_throws ArgumentError HistSmoother(x; bounds=(1, -1))
 
-    for hyp in [:σ_β, :s_σ]
+    for hyp in [:prior_scale_fixed, :prior_scale_random]
         @eval @test_throws ArgumentError $HistSmoother($x; $hyp = -1)
     end
 

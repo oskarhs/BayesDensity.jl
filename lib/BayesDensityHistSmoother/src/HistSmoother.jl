@@ -15,8 +15,8 @@ Struct representing a spline histogram smoothing model.
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to `52`.
 * `bounds`: A tuple giving the support of the B-spline mixture model.
 * `n_bins`: Number of bins used to construct the histogram likelihood. Defaults to `400`.
-* `σ_β`: Scale hyperparameter for 0th and 1st order (fixed effect) spline terms. Defaults to `1000.0`.
-* `s_σ`: Scale hyperparameter for the (higher order) mixed effects spline terms. Defaults to `1000.0`.
+* `prior_scale_fixed`: Scale hyperparameter for 0th and 1st order (fixed effect) spline terms. Defaults to `1000.0`.
+* `prior_scale_random`: Scale hyperparameter for the (higher order) mixed effects spline terms. Defaults to `1000.0`.
 
 # Returns
 * `shs`: A histogram spline smoother object.
@@ -30,10 +30,10 @@ julia> shs = HistSmoother(x)
 Using 5000 binned observations with 400 bins.
  support: (-0.105, 1.105)
 Hyperparameters:
- σ_β = 1000.0
- s_σ = 1000.0
+ prior_scale_fixed = 1000.0
+ prior_scale_random = 1000.0
 
-julia> shs = HistSmoother(x; K = 80, σ_β = 1e5);
+julia> shs = HistSmoother(x; K = 80, prior_scale_fixed = 1e5);
 ```
 
 # Extended help
@@ -50,10 +50,17 @@ Setting this to a smaller value leads to smoother estimates.
 struct HistSmoother{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::D
     bs::A
-    σ_β::T
-    s_σ::T
-    function HistSmoother{T}(x::AbstractVector{<:Real}; K::Int=52, n_bins::Int=400, bounds::Tuple{<:Real, <:Real}=get_default_bounds(x), σ_β::Real=1e3, s_σ::Real=1e3) where {T<:Real}
-        check_shskwargs(x, n_bins, bounds, σ_β, s_σ)
+    prior_scale_fixed::T
+    prior_scale_random::T
+    function HistSmoother{T}(
+        x::AbstractVector{<:Real};
+        K::Int                       = 52,
+        n_bins::Int                  = 400,
+        bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
+        prior_scale_fixed::Real                    = 1e3,
+        prior_scale_random::Real                    = 1e3
+    ) where {T<:Real}
+        _check_shskwargs(x, n_bins, bounds, prior_scale_fixed, prior_scale_random)
         n = length(x)
         T_x = T.(x)
         x_trans = (T_x .- bounds[1]) / (bounds[2] - bounds[1])
@@ -81,7 +88,7 @@ struct HistSmoother{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: Abstract
         Z = demmler_reinsch_basis_matrix(x_grid, bs, LZ)
         C = hcat(fill(T(1), n_bins), x_grid, Z)
         data = (x = T_x, n = n, x_grid = x_grid, N = N, C = C, LZ = LZ, bounds = bounds)
-        return new{T, typeof(bs), typeof(data)}(data, bs, T(σ_β), T(s_σ))
+        return new{T, typeof(bs), typeof(data)}(data, bs, T(prior_scale_fixed), T(prior_scale_random))
     end
 end
 HistSmoother(args...; kwargs...) = HistSmoother{Float64}(args...; kwargs...)
@@ -96,8 +103,8 @@ function Base.show(io::IO, ::MIME"text/plain", shs::HistSmoother{T, A, D}) where
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, " support: ", BayesDensityCore.support(shs))
         println(io, "Hyperparameters: ")
-        println(io, " σ_β = ", shs.σ_β)
-        print(io, " s_σ = ", shs.s_σ)
+        println(io, " prior_scale_fixed = ", shs.prior_scale_fixed)
+        print(io, " prior_scale_random = ", shs.prior_scale_random)
     end
     nothing
 end
@@ -119,11 +126,11 @@ end
 """
     hyperparams(
         shs::HistSmoother{T}
-    ) where {T} -> @NamedTuple{σ_β::T, s_σ::T}
+    ) where {T} -> @NamedTuple{prior_scale_fixed::T, prior_scale_random::T}
 
 Returns the hyperparameters of the spline histogram smoother `shs` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(shs::HistSmoother) = (σ_β = shs.σ_β, s_σ = shs.s_σ)
+BayesDensityCore.hyperparams(shs::HistSmoother) = (prior_scale_fixed = shs.prior_scale_fixed, prior_scale_random = shs.prior_scale_random)
 
 """
     pdf(
@@ -170,7 +177,7 @@ function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVec
     linpreds = C * params.β
     return exp.(linpreds) / (l1_norm*(bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
-function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _pdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
@@ -204,7 +211,7 @@ function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVec
     linpreds = C * params.β
     return exp.(linpreds) / (l1_norm * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
-function _pdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _pdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
@@ -257,7 +264,7 @@ function Distributions.cdf(shs::HistSmoother, params::AbstractVector{NamedTuple{
 end
 
 # If cdf has been evaluated on a grid, we use this to compute the linear interpolant:
-function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{true}) where {T, A, D, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{true}) where {T, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bs_min, bs_max = boundaries(shs.bs)
     bounds = shs.data.bounds
@@ -269,7 +276,7 @@ function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::Ab
     F_samp[t_trans .> bs_max, i] .= one(T)
     return F_samp
 end
-function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bs_min, bs_max = boundaries(shs.bs)
     bounds = shs.data.bounds
@@ -286,7 +293,7 @@ function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
 end
 
 # If cdf has not been evaluated on a grid, we must evaluate it first:
-function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
@@ -299,7 +306,7 @@ function _cdf(shs::HistSmoother{T, A, D}, params::NamedTuple{Names, Vals}, t::Ab
     F_samp[t_trans .> bs_max] .= one(T)
     return F_samp
 end
-function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, A, D, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
     R = promote_type(T, S)
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
@@ -316,29 +323,20 @@ function _cdf(shs::HistSmoother{T, A, D}, params::AbstractVector{NamedTuple{Name
     return F_samp
 end
 
-function get_default_bounds(x::AbstractVector{<:Real})
+function _get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin
     return xmin - 0.05*R, xmax + 0.05*R
 end
 
-# When sampling from these models (MCMC and VI), compute the normalization constant for each of the draws so we do not (can also provide method dispatch for the pdf method so the user also has the option of passing in custom params)
-
-function check_shskwargs(x::AbstractVector{<:Real}, n_bins::Int, bounds::Tuple{<:Real, <:Real}, σ_β::Real, s_σ::Real)
-    if !isnothing(n_bins) && n_bins ≤ 1
-        throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
-    end
+function _check_shskwargs(x::AbstractVector{<:Real}, n_bins::Int, bounds::Tuple{<:Real, <:Real}, prior_scale_fixed::Real, prior_scale_random::Real)
+    (isnothing(n_bins) || n_bins > 0) || throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
     xmin, xmax = extrema(x)
-    if bounds[1] ≥ bounds[2]
-        throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
-    elseif bounds[1] > xmin || bounds[2] < xmax
-        throw(ArgumentError("Data is not contained within supplied bounds."))
-    end
-    hyperpar = [σ_β, s_σ]
-    hyperpar_symb = [:σ_β, :s_σ]
+    (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
+    (bounds[1] ≤ xmin || bounds[2] ≥ xmax) || throw(ArgumentError("Data is not contained within supplied bounds."))
+    hyperpar = [prior_scale_fixed, prior_scale_random]
+    hyperpar_symb = [:prior_scale_fixed, :prior_scale_random]
     for i in eachindex(hyperpar)
-        if hyperpar[i] ≤ 0.0 || hyperpar[i] == Inf
-            throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
-        end
+        (hyperpar[i] > 0.0 && hyperpar[i] < Inf) || throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
     end
 end

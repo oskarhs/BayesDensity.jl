@@ -23,7 +23,7 @@ BayesDensityCore.model(vip::RandomFiniteGaussianMixtureVIPosterior) = vip.rfgm
 """
     posterior_prob_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T} -> Dict{Int, T}
 
-Get the variational posterior over the number of mixture components as a dictionary.
+Get the variational posterior probability mass function of the number of mixture components as a dictionary.
 """
 posterior_prob_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T} = Dict{Int, T}(key => val[1] for (key, val) in vip.mixture_fits)
 
@@ -60,7 +60,7 @@ function StatsBase.sample(
     n_samples::Int
 ) where {T<:Real}
     (; mixture_fits, rfgm) = vip
-    samples = Vector{NamedTuple{(:μ, :σ2, :w), Tuple{Vector{T}, Vector{T}, Vector{T}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
     # Extract posterior model probabilities
     q_K_probs = Vector{T}(undef, length(mixture_fits))
@@ -81,7 +81,7 @@ function StatsBase.sample(
     i0 = 1
     for (K, K_num_samples) in K_counts
         i1 = i0 + (K_num_samples-1)
-        # Sample (μ, σ2, w) from q(⋯|K)
+        # Sample (μ, σ2, w, β) from q(⋯|K)
         samples[i0:i1] .= sample(rng, mixture_fits[K][2], K_num_samples).samples
         i0 = i1 + 1
     end

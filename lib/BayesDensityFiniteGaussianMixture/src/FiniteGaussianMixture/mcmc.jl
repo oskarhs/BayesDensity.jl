@@ -84,7 +84,7 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
     cluster_sum = Vector{T}(undef, K)
     cluster_sumsq = Vector{T}(undef, K)
     logprobs = Vector{T}(undef, K)
-    samples = Vector{NamedTuple{(:μ, :σ2, :w), Tuple{Vector{T}, Vector{T}, Vector{T}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
     for m in 1:n_samples
         # Sample from p(cluster_alloc|⋯)
@@ -121,7 +121,7 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
         end
 
         # Store the samples
-        samples[m] = (μ = copy(μ), σ2 = copy(σ2), w = w)
+        samples[m] = (μ = copy(μ), σ2 = copy(σ2), w = w, β = β)
     end
     return PosteriorSamples{T}(samples, fgm, n_samples, n_burnin)
 end

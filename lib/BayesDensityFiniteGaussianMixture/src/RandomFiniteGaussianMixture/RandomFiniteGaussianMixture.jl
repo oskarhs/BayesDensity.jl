@@ -16,7 +16,23 @@ Struct representing a finite Gaussian mixture model with a variable (random) num
 * `prior_location`: Prior mean of the location parameters `μ[k]`. Defaults to the midpoint of the minimum and maximum values in the sample.
 * `prior_variance`: The prior variance of the location parameter `μ[k]`. Defaults to the sample range.
 * `prior_shape`: Prior shape parameter of the squared scale parameters `σ2[k]`: Defaults to `2.0`.
-* `prior_rate`: Prior rate parameter of the squared scale parameters `σ2[k]`. Defaults to `0.2*R^2`, where `R` is the sample range.
+* `hyperprior_shape`: Prior shape parameter of the hyperprior on the rate parameter of `σ2[k]`. Defaults to `0.2`.
+* `hyperprior_rate`: Prior rate parameter of the hyperprior on the rate parameter of `σ2[k]`. Defaults to `0.2*R^2`, where `R` is the sample range.
+
+# Examples
+```julia-repl
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
+
+julia> rfgm = RandomFiniteGaussianMixture(x)
+RandomFiniteGaussianMixture{Float64} with 20 values for the number mixture components.
+Using 5000 observations.
+Hyperparameters:
+ prior_location = 0.5, prior_variance = 1.0
+ prior_shape = 2.0, hyperprior_shape = 0.2, hyperprior_rate = 10.0
+ prior_strength = 1.0
+
+julia> fgm = RandomFiniteGaussianMixture(x; prior_components = Dict(K => -log(K) for K in 1:10));
+```
 """
 struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:AbstractDict{Int, T}} <: AbstractBayesDensityModel{T}
     data::NT
@@ -105,7 +121,7 @@ Base.show(io::IO, gm::RandomFiniteGaussianMixture) = show(io, MIME("text/plain")
 
 Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
-The named tuple should contain fields named `:μ`, `:σ2` and `:w`.
+The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
 Distributions.pdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(pym, params, t)
 Distributions.pdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
@@ -127,7 +143,7 @@ Distributions.pdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{Named
 
 Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
-The named tuple should contain fields named `:μ`, `:σ2` and `:w`.
+The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
 Distributions.cdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(pym, params, t)
 Distributions.cdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
@@ -135,44 +151,52 @@ Distributions.cdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{Named
 Distributions.cdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, t)
 
 for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
-    @eval begin
-        function $(funcs[1])(
-            ::RandomFiniteGaussianMixture{T},
-            params::NamedTuple{(:μ, :σ2, :w), V},
-            t::S
-        ) where {T<:Real, S<:Real, V<:Tuple}
-            (; μ, σ2, w) = params
-            val = zero(promote_type(T, S))
-            for k in eachindex(μ)
-                val += w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
-            end
-            return val
-        end
-        function $(funcs[1])(
-            ::RandomFiniteGaussianMixture{T},
-            params::NamedTuple{(:μ, :σ2, :w), V},
-            t::AbstractVector{S}
-        ) where {T<:Real, S<:Real, V<:Tuple}
-            (; μ, σ2, w) = params
-            val = zeros(promote_type(T, S), length(t))
-            for k in eachindex(μ)
-                val .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
-            end
-            return val
-        end
-        function $(funcs[1])(
-            ::RandomFiniteGaussianMixture{T},
-            params::AbstractVector{NamedTuple{(:μ, :σ2, :w), V}},
-            t::AbstractVector{S}
-        ) where {T<:Real, S<:Real, V<:Tuple}
-            val = zeros(promote_type(T, S), (length(t), length(params)))
-            for m in eachindex(params)
-                (; μ, σ2, w) = params[m]
+    for names in ((:μ, :σ2, :w), (:μ, :σ2, :w, :β))
+        @eval begin
+            function $(funcs[1])(
+                ::RandomFiniteGaussianMixture{T},
+                params::NamedTuple{$names, V},
+                t::S
+            ) where {T<:Real, S<:Real, V<:Tuple}
+                μ = params.μ
+                σ2 = params.σ2
+                w = params.w
+                val = zero(promote_type(T, S))
                 for k in eachindex(μ)
-                    val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                    val += w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
                 end
+                return val
             end
-            return val
+            function $(funcs[1])(
+                ::RandomFiniteGaussianMixture{T},
+                params::NamedTuple{$names, V},
+                t::AbstractVector{S}
+            ) where {T<:Real, S<:Real, V<:Tuple}
+                μ = params.μ
+                σ2 = params.σ2
+                w = params.w
+                val = zeros(promote_type(T, S), length(t))
+                for k in eachindex(μ)
+                    val .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                end
+                return val
+            end
+            function $(funcs[1])(
+                ::RandomFiniteGaussianMixture{T},
+                params::AbstractVector{NamedTuple{$names, V}},
+                t::AbstractVector{S}
+            ) where {T<:Real, S<:Real, V<:Tuple}
+                val = zeros(promote_type(T, S), (length(t), length(params)))
+                for m in eachindex(params)
+                    μ = params[m].μ
+                    σ2 = params[m].σ2
+                    w = params[m].w
+                    for k in eachindex(μ)
+                        val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                    end
+                end
+                return val
+            end
         end
     end
 end

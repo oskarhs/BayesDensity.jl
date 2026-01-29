@@ -21,16 +21,18 @@ function Distributions.cdf(tdist::TDistLocationScale, t::Union{Real, AbstractVec
     return cdf(TDist(df), @.((t-location)/scale))
 end
 
-struct NormalInverseGamma{T<:Real} <: ContinuousUnivariateDistribution
+struct NormalInverseGamma{T<:Real} <: ContinuousMultivariateDistribution
     location::T
     inv_scale_fac::T
     shape::T
     rate::T
 end
 
-function Distributions.rand(rng::AbstractRNG, dist::NormalInverseGamma)
+Base.length(::NormalInverseGamma) = 2
+
+function Distributions._rand!(rng::AbstractRNG, dist::NormalInverseGamma{<:Real}, θ::AbstractArray{<:Real})
     (; location, inv_scale_fac, shape, rate) = dist
-    σ2 = rand(rng, InverseGamma(shape, rate))
-    μ = rand(rng, Normal(location, sqrt(σ2 / inv_scale_fac)))
-    return μ, σ2
+    θ[2] = rand(rng, InverseGamma(shape, rate))
+    θ[1] = rand(rng, Normal(location, sqrt(θ[2] / inv_scale_fac)))
+    return θ
 end

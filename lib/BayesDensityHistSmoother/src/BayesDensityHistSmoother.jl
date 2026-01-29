@@ -20,7 +20,6 @@ using StatsBase
 import Distributions: support
 
 include("HistSmoother.jl")
-
 export HistSmoother
 
 include("spline_utils.jl")
@@ -28,7 +27,6 @@ include("spline_utils.jl")
 include("mcmc.jl")
 
 include("variational.jl")
-
 export HistSmootherVIPosterior
 
 end # module BayesDensitySHS

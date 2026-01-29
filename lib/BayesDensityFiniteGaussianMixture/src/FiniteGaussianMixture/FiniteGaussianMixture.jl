@@ -115,7 +115,7 @@ Base.show(io::IO, gm::FiniteGaussianMixture) = show(io, MIME("text/plain"), gm)
 
 Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `FiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
-The NamedTuple `params` should contain fields named `:μ`, `:σ2` and `:w`.
+The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
 Distributions.pdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(fgm, params, t)
 Distributions.pdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(fgm, params, t)
@@ -137,7 +137,7 @@ Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}
 
 Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `FiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
-The NamedTuple `params` should contain fields named `:μ`, `:σ2` and `:w`.
+The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
 Distributions.cdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(fgm, params, t)
 Distributions.cdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(fgm, params, t)
@@ -145,44 +145,52 @@ Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}
 Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(fgm, params, t)
 
 for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
-    @eval begin
-        function $(funcs[1])(
-            ::FiniteGaussianMixture{T},
-            params::NamedTuple{(:μ, :σ2, :w), V},
-            t::S
-        ) where {T<:Real, S<:Real, V<:Tuple}
-            (; μ, σ2, w) = params
-            val = zero(promote_type(T, S))
-            for k in eachindex(μ)
-                val += w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
-            end
-            return val
-        end
-        function $(funcs[1])(
-            ::FiniteGaussianMixture{T},
-            params::NamedTuple{(:μ, :σ2, :w), V},
-            t::AbstractVector{S}
-        ) where {T<:Real, S<:Real, V<:Tuple}
-            (; μ, σ2, w) = params
-            val = zeros(promote_type(T, S), length(t))
-            for k in eachindex(μ)
-                val .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
-            end
-            return val
-        end
-        function $(funcs[1])(
-            ::FiniteGaussianMixture{T},
-            params::AbstractVector{NamedTuple{(:μ, :σ2, :w), V}},
-            t::AbstractVector{S}
-        ) where {T<:Real, S<:Real, V<:Tuple}
-            val = zeros(promote_type(T, S), (length(t), length(params)))
-            for m in eachindex(params)
-                (; μ, σ2, w) = params[m]
+    for names in ((:μ, :σ2, :w), (:μ, :σ2, :w, :β))
+        @eval begin
+            function $(funcs[1])(
+                ::FiniteGaussianMixture{T},
+                params::NamedTuple{$names, V},
+                t::S
+            ) where {T<:Real, S<:Real, V<:Tuple}
+                μ = params.μ
+                σ2 = params.σ2
+                w = params.w
+                val = zero(promote_type(T, S))
                 for k in eachindex(μ)
-                    val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                    val += w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
                 end
+                return val
             end
-            return val
+            function $(funcs[1])(
+                ::FiniteGaussianMixture{T},
+                params::NamedTuple{$names, V},
+                t::AbstractVector{S}
+            ) where {T<:Real, S<:Real, V<:Tuple}
+                μ = params.μ
+                σ2 = params.σ2
+                w = params.w
+                val = zeros(promote_type(T, S), length(t))
+                for k in eachindex(μ)
+                    val .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                end
+                return val
+            end
+            function $(funcs[1])(
+                ::FiniteGaussianMixture{T},
+                params::AbstractVector{NamedTuple{$names, V}},
+                t::AbstractVector{S}
+            ) where {T<:Real, S<:Real, V<:Tuple}
+                val = zeros(promote_type(T, S), (length(t), length(params)))
+                for m in eachindex(params)
+                    μ = params[m].μ
+                    σ2 = params[m].σ2
+                    w = params[m].w
+                    for k in eachindex(μ)
+                        val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                    end
+                end
+                return val
+            end
         end
     end
 end

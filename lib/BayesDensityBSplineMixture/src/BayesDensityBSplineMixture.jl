@@ -3,25 +3,28 @@ module BayesDensityBSplineMixture
 using Reexport
 
 @reexport using BayesDensityCore
-
 import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, unitvector
-
+using BandedMatrices
 using BSplineKit
-
-using Random, Distributions, StatsBase, BandedMatrices, PolyaGammaHybridSamplers, LinearAlgebra, SparseArrays, SelectedInversion
-using SpecialFunctions
-
+using Distributions
 import Distributions: support
+using LinearAlgebra
+using PolyaGammaHybridSamplers
+using Random
+using SelectedInversion
+using SparseArrays
+using SpecialFunctions
+using StatsBase
+
 
 include("spline_utils.jl")
+
 include("BSplineMixture.jl")
+export BSplineMixture, order, knots, basis
+
 include("mcmc.jl")
 
-export BSplineMixture, sample, hyperparams, order, knots, basis
-
 include("variational.jl")
-
 export varinf, BSplineMixtureVIPosterior
-
 
 end # module

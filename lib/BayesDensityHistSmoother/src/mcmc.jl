@@ -3,7 +3,7 @@
         [rng::Random.AbstractRNG],
         hs::HistSmoother{T},
         n_samples::Int;
-        n_burnin::Int = min(100, div(n_samples, 5)),
+        n_burnin::Int              = min(100, div(n_samples, 5)),
         initial_params::NamedTuple = get_default_initparams_mcmc(hs)
     ) where {T} -> PosteriorSamples{T}
 
@@ -32,15 +32,21 @@ julia> hs = HistSmoother(x);
 julia> ps = sample(Xoshiro(1), hs, 1100);
  ```
 """
-function StatsBase.sample(rng::AbstractRNG, shs::HistSmoother, n_samples::Int; n_burnin::Int = min(div(n_samples, 5), 100), initial_params::NamedTuple=get_default_initparams_mcmc(shs))
+function StatsBase.sample(
+    rng::AbstractRNG,
+    shs::HistSmoother,
+    n_samples::Int;
+    n_burnin::Int = min(div(n_samples, 5), 100),
+    initial_params::NamedTuple=get_default_initparams_mcmc(shs)
+)
     (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
     (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
     n_samples ≥ n_burnin || @warn "Number of total samples is smaller than the number of burn-in samples."
-    check_initparams(shs, initial_params)
+    _check_initparams(shs, initial_params)
     return _sample_posterior(rng, shs, initial_params, n_samples, n_burnin)
 end
 
-function check_initparams(shs::HistSmoother, initial_params::NamedTuple{N, V}) where {N, V}
+function _check_initparams(shs::HistSmoother, initial_params::NamedTuple{N, V}) where {N, V}
     (:β in N && :σ2 in N) || throw(ArgumentError("Expected a NamedTuple with fields β and τ2"))
     K = length(shs.bs)
     (; β, σ2) = initial_params
@@ -50,25 +56,24 @@ function check_initparams(shs::HistSmoother, initial_params::NamedTuple{N, V}) w
 end
 
 # Lazy initialization
-function get_default_initparams_mcmc(shs::HistSmoother{T, A, D}) where {T, A, D}
+function get_default_initparams_mcmc(shs::HistSmoother{T}) where {T}
     K = length(shs.bs)
     β = zeros(T, K)
-    σ2 = shs.σ_β^2
+    σ2 = shs.prior_scale_fixed^2
     return (β = β, σ2 = σ2)
 end
 
-function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real, A, D}
+function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real}
     # Unpack model:
-    (; data, bs, σ_β, s_σ) = shs
+    (; data, bs, prior_scale_fixed, prior_scale_random) = shs
     (; x, n, x_grid, N, C, LZ, bounds) = data
-    σ_β2 = σ_β^2
+    prior_scaled_fixed2 = prior_scale_fixed^2
 
     n_bins = length(N)
     K = length(bs)
 
     # Initialize parameters:
-    β = zeros(T, K)
-    σ2 = σ_β2
+    (; β, σ2) = initial_params
 
     CTN = transpose(C) * N
     Cβ_k = C * β # Equal to Cbeta
@@ -76,7 +81,7 @@ function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, initial
     samples_temp = Vector{NamedTuple{(:β, :σ2), Tuple{Vector{T}, T}}}(undef, n_samples)
 
     for m in 1:n_samples
-        v = vcat([σ_β2, σ_β2], fill(σ2, K-2))
+        v = vcat([prior_scaled_fixed2, prior_scaled_fixed2], fill(σ2, K-2))
         
         # Sample beta (slice sampler) (consider trying ARS instead at a later point in time)
         for k in 1:K
@@ -88,7 +93,7 @@ function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T, A, D}, initial
 
         # Sample ξ
         a_ξ = T(1)
-        b_ξ = 1/σ2 + 1/s_σ
+        b_ξ = 1/σ2 + 1/prior_scale_random
         ξ = rand(rng, InverseGamma(a_ξ, b_ξ))
 
         # Sample σ2

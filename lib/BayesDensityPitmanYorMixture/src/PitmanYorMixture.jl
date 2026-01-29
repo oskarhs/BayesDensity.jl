@@ -13,10 +13,10 @@ Struct representing a Pitman-Yor mixture model with a normal kernel and a conjug
 # Keyword arguments
 * `discount`: Discount parameter of the Pitman-Yor process. Defaults to `0.0`, corresponding to a Dirichlet Process.
 * `strength`: Strength parameter of the Pitman-Yor process. Defaults to `1.0`.
-* `location`: Prior mean of the location parameter `μ`. Defaults to `mean(x)`.
-* `inv_scale_fac`: Factor by which the conditional prior variance `σ2` of `μ` is scaled. Defaults to `1`.
-* `shape`: Prior shape parameter of the squared scale parameter `σ2`: Defaults to `2.0`.
-* `rate`: Prior rate parameter of the squared scale parameter `σ2`. Defaults to `var(x)`.
+* `prior_location`: Prior mean of the location parameter `μ`. Defaults to `mean(x)`.
+* `prior_inv_scale_fac`: Factor by which the conditional prior variance `σ2` of `μ` is scaled. Defaults to `1`.
+* `prior_shape`: Prior shape parameter of the squared scale parameter `σ2`: Defaults to `2.0`.
+* `prior_rate`: Prior rate parameter of the squared scale parameter `σ2`. Defaults to `var(x)`.
 
 # Examples
 ```jldoctest
@@ -27,8 +27,8 @@ PitmanYorMixture{Float64}:
 Using 5000 observations.
 Hyperparameters:
  discount = 0.0, strength = 1.0
- location = 0.578555, inv_scale_fac = 1.0
- shape = 2.0, rate = 0.0334916
+ prior_location = 0.578555, prior_inv_scale_fac = 1.0
+ prior_shape = 2.0, prior_rate = 0.0334916
 
 julia> pym = PitmanYorMixture(x; strength = 2, discount = 0.5);
 ```
@@ -39,15 +39,15 @@ struct PitmanYorMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
     discount::T
     strength::T
-    location::T
-    inv_scale_fac::T
-    shape::T
-    rate::T
-    function PitmanYorMixture{T}(x::AbstractVector{<:Real}; discount::Real=0.0, strength::Real=1.0, location::Real=mean(x), inv_scale_fac::Real=1.0, shape::Real=2.0, rate::Real=var(x)) where {T<:Real}
-        _check_pitmanyorkwargs(discount, strength, inv_scale_fac, shape, rate)
+    prior_location::T
+    prior_inv_scale_fac::T
+    prior_shape::T
+    prior_rate::T
+    function PitmanYorMixture{T}(x::AbstractVector{<:Real}; discount::Real=0.0, strength::Real=1.0, prior_location::Real=mean(x), prior_inv_scale_fac::Real=1.0, prior_shape::Real=2.0, prior_rate::Real=var(x)) where {T<:Real}
+        _check_pitmanyorkwargs(discount, strength, prior_inv_scale_fac, prior_shape, prior_rate)
         data = (x = T.(x), n = length(x))
 
-        return new{T,typeof(data)}(data, T(discount), T(strength), T(location), T(inv_scale_fac), T(shape), T(rate))
+        return new{T,typeof(data)}(data, T(discount), T(strength), T(prior_location), T(prior_inv_scale_fac), T(prior_shape), T(prior_rate))
     end
 end
 PitmanYorMixture(args...; kwargs...) = PitmanYorMixture{Float64}(args...; kwargs...)
@@ -64,11 +64,11 @@ BayesDensityCore.support(::PitmanYorMixture{T}) where {T} = (-T(Inf), T(Inf))
 """
     hyperparams(
         pym::PitmanYorMixture{T}
-    ) where {T} -> @NamedTuple{discount::T, strength::T, location::T, inv_scale_fac::T, shape::T, rate::T}
+    ) where {T} -> @NamedTuple{discount::T, strength::T, prior_location::T, prior_inv_scale_fac::T, prior_shape::T, prior_rate::T}
 
 Returns the hyperparameters of the Pitman-Yor mixture model `pym` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(pym::PitmanYorMixture) = (discount=pym.discount, strength=pym.strength, location=pym.location, inv_scale_fac=pym.inv_scale_fac, shape=pym.shape, rate=pym.rate)
+BayesDensityCore.hyperparams(pym::PitmanYorMixture) = (discount=pym.discount, strength=pym.strength, prior_location=pym.prior_location, prior_inv_scale_fac=pym.prior_inv_scale_fac, prior_shape=pym.prior_shape, prior_rate=pym.prior_rate)
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", pym::PitmanYorMixture{T}) where {T}
@@ -77,8 +77,8 @@ function Base.show(io::IO, ::MIME"text/plain", pym::PitmanYorMixture{T}) where {
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, "Hyperparameters:")
         println(io, " discount = " , pym.discount, ", strength = ", pym.strength)
-        println(io, " location = " , pym.location, ", inv_scale_fac = ", pym.inv_scale_fac)
-        print(io, " shape = ", pym.shape, ", rate = ", pym.rate)
+        println(io, " prior_location = " , pym.prior_location, ", prior_inv_scale_fac = ", pym.prior_inv_scale_fac)
+        print(io, " prior_shape = ", pym.prior_shape, ", prior_rate = ", pym.prior_rate)
     end
     nothing
 end
@@ -141,7 +141,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             R = promote_type(T, S)
             (; μ, σ2, cluster_counts) = params
             n = pym.data.n
-            (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
+            (; discount, strength, prior_location, prior_inv_scale_fac, prior_shape, prior_rate) = hyperparams(pym)
             K = length(cluster_counts) # Number of existing clusters
 
             vals = zero(R)
@@ -150,8 +150,8 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             for k in eachindex(cluster_counts)
                 vals += (cluster_counts[k] - discount) / (strength + n) * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
             end
-            marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-            vals += (strength + K * discount) / (strength + n) * $(funcs[2])(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+            marginal_scale = sqrt(prior_rate*(1 + 1/prior_inv_scale_fac)/prior_shape)
+            vals += (strength + K * discount) / (strength + n) * $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
             return vals
         end
         function $(funcs[1])(
@@ -162,7 +162,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             R = promote_type(T, S)
             (; μ, σ2, cluster_counts) = params
             n = pym.data.n
-            (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
+            (; discount, strength, prior_location, prior_inv_scale_fac, prior_shape, prior_rate) = hyperparams(pym)
             K = length(cluster_counts) # Number of existing clusters
 
             vals = zeros(R, length(t))
@@ -171,8 +171,8 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             for k in eachindex(cluster_counts)
                 vals .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
             end
-            marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
-            vals .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+            marginal_scale = sqrt(prior_rate*(1 + 1/prior_inv_scale_fac)/prior_shape)
+            vals .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
             return vals
         end
         function $(funcs[1])(
@@ -182,9 +182,9 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
         ) where {T<:Real, S<:Real, V<:Tuple}
             R = promote_type(T, S)
             n = pym.data.n
-            (; discount, strength, location, inv_scale_fac, shape, rate) = hyperparams(pym)
+            (; discount, strength, prior_location, prior_inv_scale_fac, prior_shape, prior_rate) = hyperparams(pym)
             K = length(cluster_counts) # Number of existing clusters
-            marginal_scale = sqrt(rate*(1 + 1/inv_scale_fac)/shape)
+            marginal_scale = sqrt(prior_rate*(1 + 1/prior_inv_scale_fac)/prior_shape)
 
             vals = zeros(R, (length(t), length(params)))
             
@@ -194,7 +194,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
                 for k in eachindex(cluster_counts)
                     vals[:, j] .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
                 end
-                vals[:, j] .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*shape, location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+                vals[:, j] .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
             end
             return vals
         end
@@ -250,10 +250,10 @@ _pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(
 _cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, [t])
 
 
-function _check_pitmanyorkwargs(discount::Real, strength::Real, inv_scale_fac::Real, shape::Real, rate::Real)
+function _check_pitmanyorkwargs(discount::Real, strength::Real, prior_inv_scale_fac::Real, prior_shape::Real, prior_rate::Real)
     (0 ≤ discount < 1) || throw(ArgumentError("Discount parameter `discount` must lie in the interval [0,1)."))
     (strength > -discount) || throw(ArgumentError("Strength parameter `strength` must be greater than -discount."))
-    (inv_scale_fac > 0) || throw(ArgumentError("Prior standard deviation `inv_scale_fac` must be positive."))
-    (shape > 0) || throw(ArgumentError("Prior shape parameter `shape` must be positive."))
-    (rate > 0) || throw(ArgumentError("Prior rate parameter `rate` must be positive."))
+    (prior_inv_scale_fac > 0) || throw(ArgumentError("Prior inverse scale `prior_inv_scale_fac` must be positive."))
+    (prior_shape > 0) || throw(ArgumentError("Prior shape parameter `prior_shape` must be positive."))
+    (prior_rate > 0) || throw(ArgumentError("Prior rate parameter `prior_rate` must be positive."))
 end

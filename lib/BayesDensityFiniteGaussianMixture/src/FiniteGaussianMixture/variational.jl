@@ -7,12 +7,14 @@ Struct representing the variational posterior distribution of a [`FiniteGaussian
 * `q_w`: Distribution representing the optimal variational densities of the component weights q*(w|K).
 * `q_μ`: Product distribution representing the optimal variational densitiy of the component means q*(μ|K).
 * `q_σ2`: Product distribution representing the optimal variational densitiy of the component variances q*(σ2|K).
+* `q_β`: The optimal variational density q*(β|k) of the rate hyperparameter of the component variance σ2[k].
 * `fgm`: The `FiniteGaussianMixture` to which the variational posterior was fit.
 """
-struct FiniteGaussianMixtureVIPosterior{T<:Real, A<:Dirichlet, B<:ContinuousDistribution, C<:ContinuousDistribution, F<:FiniteGaussianMixture} <: AbstractVIPosterior{T}
+struct FiniteGaussianMixtureVIPosterior{T<:Real, A<:Dirichlet, B<:ContinuousDistribution, C<:ContinuousDistribution, D<:InverseGamma{T}, F<:FiniteGaussianMixture} <: AbstractVIPosterior{T}
     q_w::A
     q_μ::B
     q_σ2::C
+    q_β::D
     fgm::F
     function FiniteGaussianMixtureVIPosterior{T}(
         dirichlet_params::AbstractVector{T},
@@ -20,23 +22,27 @@ struct FiniteGaussianMixtureVIPosterior{T<:Real, A<:Dirichlet, B<:ContinuousDist
         variance_params::AbstractVector{T},
         shape_params::AbstractVector{T},
         rate_params::AbstractVector{T},
+        hyper_shape_param::T,
+        hyper_rate_param::T,
         fgm::FiniteGaussianMixture
     ) where {T<:Real}
         q_w = Dirichlet(dirichlet_params)
         q_μ = product_distribution([Normal(location_params[i], variance_params[i]) for i in eachindex(location_params)])
         q_σ2 = product_distribution([InverseGamma(shape_params[i], rate_params[i]) for i in eachindex(shape_params)])
-        return new{T,typeof(q_w), typeof(q_μ), typeof(q_σ2), typeof(fgm)}(q_w, q_μ, q_σ2, fgm)
+        q_β = InverseGamma(hyper_shape_param, hyper_rate_param)
+        return new{T,typeof(q_w), typeof(q_μ), typeof(q_σ2), typeof(q_β), typeof(fgm)}(q_w, q_μ, q_σ2, q_β, fgm)
     end
 end
 
 BayesDensityCore.model(vip::FiniteGaussianMixtureVIPosterior) = vip.fgm
 
-function Base.show(io::IO, ::MIME"text/plain", vip::FiniteGaussianMixtureVIPosterior{T, A, B, C, F}) where {T, A, B, C, F}
+function Base.show(io::IO, ::MIME"text/plain", vip::FiniteGaussianMixtureVIPosterior{T, A, B, C, D}) where {T, A, B, C, D}
     K = length(vip.q_w)
     println(io, "K-dimensional ", nameof(typeof(vip)), "{", T, "} vith variational densities:")
     println(io, " q_w::", A, ",")
     println(io, " q_μ::", B, ",")
     println(io, " q_σ2::", C, ",")
+    println(io, " q_β::", D, ",")
     println(io, "Model:")
     print(io, model(vip))
     nothing
@@ -44,14 +50,15 @@ end
 Base.show(io::IO, vip::FiniteGaussianMixtureVIPosterior) = show(io, MIME("text/plain"), vip)
 
 function StatsBase.sample(rng::AbstractRNG, vip::FiniteGaussianMixtureVIPosterior{T}, n_samples::Int) where {T<:Real}
-    (; q_w, q_μ, q_σ2, fgm) = vip
-    samples = Vector{NamedTuple{(:μ, :σ2, :w), Tuple{Vector{T}, Vector{T}, Vector{T}}}}(undef, n_samples)
+    (; q_w, q_μ, q_σ2, q_β, fgm) = vip
+    samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
     
     for m in 1:n_samples
         samples[m] = (
             μ = rand(rng, q_μ),
             σ2 = rand(rng, q_σ2),
-            w = rand(rng, q_w)
+            w = rand(rng, q_w),
+            β = rand(rng, q_β)
         )
     end
     return PosteriorSamples{T}(samples, fgm, n_samples, 0)
@@ -88,7 +95,7 @@ julia> using Random
 
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
-julia> fgm = FiniteGaussianMixture(x);
+julia> fgm = FiniteGaussianMixture(x, 10);
 
 julia> vip, info = varinf(fgm);
 
@@ -148,6 +155,8 @@ function _variational_inference(
     (; dirichlet_params, location_params, variance_params, shape_params, rate_params) = initial_params
 
     # Initialize relevant model quantitites
+    shape_hyperparam = zero(T)
+    rate_hyperparam = zero(T)
     prior_dirichlet_params = fill(prior_strength, K)
     q_mat = Matrix{T}(undef, (K, n))
     E_inv_σ2 = shape_params ./ rate_params 
@@ -247,6 +256,8 @@ function _variational_inference(
         variance_params,
         shape_params,
         rate_params,
+        shape_hyperparam,
+        rate_hyperparam,
         fgm
     )
     info = VariationalOptimizationResult{T}(ELBO[1:iter-1], converged, iter-1, rtol, variational_posterior)

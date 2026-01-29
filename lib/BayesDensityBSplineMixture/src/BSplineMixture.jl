@@ -15,11 +15,11 @@ Struct representing a B-spline mixture model.
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
 * `bounds`: A tuple giving the support of the B-spline mixture model.
 * `n_bins`: Lower bound on the number of bins used when fitting the `BSplineMixture` to data. Binned fitting can be disabled by setting this equal to `nothing`. The default setting uses unbinned fitting if `length(x) ≤ 1200` and `1000` bins otherwise.
-* `a_τ`: Shape hyperparameter for the global smoothing parameter τ². Defaults to `1.0`.
-* `b_τ`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
-* `a_δ`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
-* `b_δ`: Rate hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
-* `σ`: Prior standard deviation of the first two unconstrained spline parameters β₁ and β₂. Defaults to `1e5`.
+* `prior_global_shape`: Shape hyperparameter for the global smoothing parameter τ². Defaults to `1.0`.
+* `prior_global_rate`: Rate hyperparameter for the global smoothing parameter τ². Defaults to `1e-3`.
+* `prior_local_shape`: Shape hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
+* `prior_local_rate`: Rate hyperparameter for the local smoothing parameters δₖ². Defaults to `0.5`.
+* `prior_stdev`: Prior standard deviation of the first two unconstrained spline parameters β₁ and β₂. Defaults to `1e5`.
 
 # Returns
 * `bsm`: A B-Spline mixture model object.
@@ -33,10 +33,10 @@ julia> model = BSplineMixture(x)
 Using 5000 binned observations on a regular grid consisting of 1187 bins.
  support: (-0.05, 1.05)
 Hyperparameters:
- a_τ = 1.0, b_τ = 0.001
- a_δ = 0.5, b_δ = 0.5
+ prior_global_shape = 1.0, prior_global_rate = 0.001
+ prior_local_shape = 0.5, prior_local_rate = 0.5
 
-julia> model = BSplineMixture(x; K = 150, bounds=(0, 1), n_bins=nothing, b_τ = 5e-3);
+julia> model = BSplineMixture(x; K = 150, bounds=(0, 1), n_bins=nothing, prior_global_rate = 5e-3);
 ```
 
 # Extended help
@@ -51,7 +51,7 @@ For computational reasons, the supplied number of bins is rounded up to the near
 This is done to ensure that at most 4 cubic splines have positive integrals over each bin.
 
 ### Hyperparameter selection
-The hyperparameters `τ2` and `δ2[k]` govern the smoothness of the B-spline mixture prior through the centered random walk prior on β | τ2, δ2:
+The global variance parameter `τ2` and the local variance parameters `δ2[k]` govern the smoothness of the B-spline mixture prior through the centered random walk prior on β | τ2, δ2:
 
     β[k+2] = μ[k+2] + 2 {β[k+1] - μ[k+1]} - {β[k] - μ[k]} + τ * δ[k] * ϵ[k],
 
@@ -62,21 +62,30 @@ The prior distributions of the local and global smoothing parameters are given b
     τ² ∼ InverseGamma(a_τ, b_τ)
     δₖ² ∼ InverseGamma(a_δ, b_δ),   1 ≤ k ≤ K-3.
 
-As noninformative defaults, we suggest using `a_τ = 1`, `b_τ = 1e-3`, `a_δ = 0.5`, `b_δ = 0.5` and `σ = 1e5`.
-To control the smoothness in the resulting density estimates, we recommend adjusting the value of `b_τ` while keeping the other hyperparameters fixed.
-Setting `b_τ` to a smaller value generally yields smoother curves.
+As noninformative defaults, we suggest using `prior_global_shape = 1`, `prior_global_rate = 1e-3`, `prior_local_shape = 0.5`, `prior_local_rate = 0.5` and `prior_stdev = 1e5`.
+To control the smoothness in the resulting density estimates, we recommend adjusting the value of `prior_global_rate` while keeping the other hyperparameters fixed.
+Setting `prior_global_rate` to a smaller value generally yields smoother curves.
 Similar priors for regression models suggest that values in the range [5e-5, 5e-3] are reasonable.
 """
 struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
     basis::A
-    a_τ::T
-    b_τ::T
-    a_δ::T
-    b_δ::T
-    σ::T
-    function BSplineMixture{T}(x::AbstractVector{<:Real}; K::Int = _get_default_splinedim(x), bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x), n_bins::Union{Nothing,Int}=_get_default_bins(x), a_τ::Real=1.0, b_τ::Real=1e-3, a_δ::Real=0.5, b_δ::Real=0.5, σ::Real=1e5) where {T<:Real}
-        check_bsmkwargs(x, n_bins, bounds, a_τ, b_τ, a_δ, b_δ, σ) # verify that supplied parameters make sense
+    prior_global_shape::T
+    prior_global_rate::T
+    prior_local_shape::T
+    prior_local_rate::T
+    prior_stdev::T
+    function BSplineMixture{T}(x::AbstractVector{<:Real};
+        K::Int = _get_default_splinedim(x),
+        bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
+        n_bins::Union{Nothing,Int}=_get_default_bins(x),
+        prior_global_shape::Real=1.0,
+        prior_global_rate::Real=1e-3,
+        prior_local_shape::Real=0.5,
+        prior_local_rate::Real=0.5,
+        prior_stdev::Real=1e5
+    ) where {T<:Real}
+        _check_bsmkwargs(x, n_bins, bounds, prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) # verify that supplied parameters make sense
 
         bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
         K = length(bs)
@@ -87,11 +96,11 @@ struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: Abstr
         # Set up difference matrix:
         P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
 
-        T_a_τ = T(a_τ)
-        T_b_τ = T(b_τ)
-        T_a_δ = T(a_δ)
-        T_b_δ = T(b_δ)
-        T_σ = T(σ)
+        T_a_τ = T(prior_global_shape)
+        T_b_τ = T(prior_global_rate)
+        T_a_δ = T(prior_local_shape)
+        T_b_δ = T(prior_local_rate)
+        T_σ = T(prior_stdev)
         T_x = T.(x)
         
         n = length(x)
@@ -131,11 +140,11 @@ BayesDensityCore.support(bsm::BSplineMixture) = boundaries(bsm.basis)
 """
     hyperparams(
         bsm::BSplineMixture{T}
-    ) where {T} -> @NamedTuple{a_τ::T, b_τ::T, a_δ::T, b_δ::T, σ::T}
+    ) where {T} -> @NamedTuple{prior_global_shape::T, prior_global_rate::T, prior_local_shape::T, prior_local_rate::T, prior_stdev::T}
 
 Returns the hyperparameters of the B-Spline mixture model `bsm` as a `NamedTuple`.
 """
-BayesDensityCore.hyperparams(bsm::BSplineMixture) = (a_τ=bsm.a_τ, b_τ=bsm.b_τ, a_δ=bsm.a_δ, b_δ=bsm.b_δ, σ=bsm.σ)
+BayesDensityCore.hyperparams(bsm::BSplineMixture) = (prior_global_shape=bsm.prior_global_shape, prior_global_rate=bsm.prior_global_rate, prior_local_shape=bsm.prior_local_shape, prior_local_rate=bsm.prior_local_rate, prior_stdev=bsm.prior_stdev)
 
 Base.eltype(::BSplineMixture{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
 
@@ -147,9 +156,9 @@ function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTu
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, " support: ", BayesDensityCore.support(bsm))
         println(io, "Hyperparameters: ")
-        println(io, " a_τ = " , bsm.a_τ, ", b_τ = ", bsm.b_τ)
-        println(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
-        print(io, "σ = ", bsm.σ)
+        println(io, " prior_global_shape = " , bsm.prior_global_shape, ", prior_global_rate = ", bsm.prior_global_rate)
+        println(io, " prior_local_shape = " , bsm.prior_local_shape, ", prior_local_rate = ", bsm.prior_local_rate)
+        print(io, "prior_stdev = ", bsm.prior_stdev)
     end
     nothing
 end
@@ -161,9 +170,9 @@ function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTu
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, " support: ", BayesDensityCore.support(bsm))
         println(io, "Hyperparameters: ")
-        println(io, " a_τ = " , bsm.a_τ, ", b_τ = ", bsm.b_τ)
-        println(io, " a_δ = " , bsm.a_δ, ", b_δ = ", bsm.b_δ)
-        print(io, "σ = ", bsm.σ)
+        println(io, " prior_global_shape = " , bsm.prior_global_shape, ", prior_global_rate = ", bsm.prior_global_rate)
+        println(io, " prior_local_shape = " , bsm.prior_local_shape, ", prior_local_rate = ", bsm.prior_local_rate)
+        print(io, "prior_stdev = ", bsm.prior_stdev)
     end
     nothing
 end
@@ -212,7 +221,7 @@ function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{fal
     spline_coefs = theta_to_coef(θ, basis)
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
+function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs are given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -220,7 +229,7 @@ function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Na
     end
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
+function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs not given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -291,7 +300,7 @@ function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{fal
     spline_coefs = theta_to_coef(θ, basis)
     return _cdf(bsm, spline_coefs, t)
 end
-function _cdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, A, N, Names, Vals, S<:Real}
+function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs are given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -299,7 +308,7 @@ function _cdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Na
     end
     return _cdf(bsm, spline_coefs, t)
 end
-function _cdf(bsm::BSplineMixture{T, A, N}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, A, N, Names, Vals, S<:Real}
+function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, Names, Vals, S<:Real}
     # Build coefficient matrix (coefs not given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -326,10 +335,10 @@ function _cdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Unio
 end
 
 # More efficient version of the posterior mean (we only need to average the coefficients)
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}, A}, t::S) where {T<:Real, A<:AbstractVector, M<:BSplineMixture, Names<:Tuple, Vals<:Tuple, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}, A}, t::S) where {T<:Real, A<:AbstractVector, M<:BSplineMixture, Names<:Tuple, Vals<:Tuple, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names<:Tuple, Vals<:Tuple, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names<:Tuple, Vals<:Tuple, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
 
-function _mean(ps::PosteriorSamples{T, V, M, <:AbstractVector}, t::S, ::Val{true}) where {T<:Real, V, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples{T}, t::S, ::Val{true}) where {T<:Real, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))
     samples = ps.samples[ps.non_burnin_ind]
     for i in eachindex(samples)
@@ -338,7 +347,7 @@ function _mean(ps::PosteriorSamples{T, V, M, <:AbstractVector}, t::S, ::Val{true
     mean_spline_coefs /= length(samples)
     return _mean(ps, mean_spline_coefs, t)
 end
-function _mean(ps::PosteriorSamples{T, V, M, <:AbstractVector}, t::S, ::Val{false}) where {T<:Real, V, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples{T}, t::S, ::Val{false}) where {T<:Real, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))
     samples = ps.samples[ps.non_burnin_ind]
     bs = basis(model(ps))
@@ -349,7 +358,7 @@ function _mean(ps::PosteriorSamples{T, V, M, <:AbstractVector}, t::S, ::Val{fals
     mean_spline_coefs /= length(samples)
     return _mean(ps, mean_spline_coefs, t)
 end
-function _mean(ps::PosteriorSamples{T, V, M, <:AbstractVector}, mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, V, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples, mean_spline_coefs::AbstractVector{<:Real}, t::S) where {S<:Union{Real, AbstractVector{<:Real}}}
     meanfunc = Spline(basis(model(ps)), mean_spline_coefs)
     return meanfunc.(t)
 end
@@ -364,13 +373,13 @@ end
 
 _get_default_bins(x::AbstractVector{<:Real}) = ifelse(length(x) ≤ 1200, nothing, 1000)
 
-function check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, a_τ::Real, b_τ::Real, a_δ::Real, b_δ::Real, σ::Real)
+function _check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, prior_global_shape::Real, prior_global_rate::Real, prior_local_shape::Real, prior_local_rate::Real, prior_stdev::Real)
     (isnothing(n_bins) || n_bins ≥ 1) || throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
     xmin, xmax = extrema(x)
     (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
     (bounds[1] ≤ xmin ≤ xmax ≤ bounds[2]) || throw(ArgumentError("Data is not contained within supplied bounds."))
-    hyperpar = [a_τ, b_τ, a_δ, b_δ, σ]
-    hyperpar_symb = [:a_τ, :b_τ, :a_δ, :b_δ, :σ]
+    hyperpar = [prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev]
+    hyperpar_symb = [:prior_global_shape, :prior_global_rate, :prior_local_shape, :prior_local_rate, :prior_stdev]
     for i in eachindex(hyperpar)
         (0 < hyperpar[i] < Inf) || throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
     end

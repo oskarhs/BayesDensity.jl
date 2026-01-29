@@ -71,21 +71,21 @@ end
     for gm in (FiniteGaussianMixture(x, 2; prior_strength = 1), RandomFiniteGaussianMixture(x; prior_strength = 1))
 
         n_rep = 10
-        parameters = (μ = [0.0], σ2 = [1.0], w = [1.0])
-        parameters_vec = fill(parameters, n_rep)
+        for parameters in ((μ = [0.0], σ2 = [1.0], w = [1.0]), (μ = [0.0], σ2 = [1.0], w = [1.0], β=[1.0]))
+            parameters_vec = fill(parameters, n_rep)
+            # Evaluate at single point:
+            @test isapprox(pdf(gm, parameters, 0.0), pdf(Normal(0, 1), 0.0))
+            @test isapprox(pdf(gm, parameters_vec, 0.0), fill(pdf(Normal(0, 1), 0.0), (1, n_rep)))
+            @test isapprox(cdf(gm, parameters, 0.0), cdf(Normal(0, 1), 0.0))
+            @test isapprox(cdf(gm, parameters_vec, 0.0), fill(cdf(Normal(0, 1), 0.0), (1, n_rep)))
 
-        # Evaluate at single point:
-        @test isapprox(pdf(gm, parameters, 0.0), pdf(Normal(0, 1), 0.0))
-        @test isapprox(pdf(gm, parameters_vec, 0.0), fill(pdf(Normal(0, 1), 0.0), (1, n_rep)))
-        @test isapprox(cdf(gm, parameters, 0.0), cdf(Normal(0, 1), 0.0))
-        @test isapprox(cdf(gm, parameters_vec, 0.0), fill(cdf(Normal(0, 1), 0.0), (1, n_rep)))
-
-        # Evaluate at multiple points:
-        t = LinRange(-5, 5, 11)
-        @test isapprox(pdf(gm, parameters, t), pdf(Normal(0, 1), t))
-        @test isapprox(pdf(gm, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
-        @test isapprox(cdf(gm, parameters, t), cdf(Normal(0, 1), t))
-        @test isapprox(cdf(gm, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+            # Evaluate at multiple points:
+            t = LinRange(-5, 5, 11)
+            @test isapprox(pdf(gm, parameters, t), pdf(Normal(0, 1), t))
+            @test isapprox(pdf(gm, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+            @test isapprox(cdf(gm, parameters, t), cdf(Normal(0, 1), t))
+            @test isapprox(cdf(gm, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+        end
     end
 end
 
@@ -118,6 +118,8 @@ end
         fill(1e-12, 3),       # variance_params
         fill(1e12, 3),        # shape_params
         1e12*[1.0, 2.0, 3.0], # rate_params
+        1.0,                  # shape hyperparam (irrelevant for pdf)
+        1.0,                  # rate hyperparam (irrelevant for pdf)
         fgm
     )
 
@@ -147,6 +149,8 @@ end
         fill(1e-12, 3),       # variance_params
         fill(1e12, 3),        # shape_params
         1e12*[1.0, 2.0, 3.0], # rate_params
+        1.0,                  # shape hyperparam (irrelevant for pdf)
+        1.0,                  # rate hyperparam (irrelevant for pdf)
         fgm
     )
     vip = RandomFiniteGaussianMixtureVIPosterior{Float64}(Dict(3=>(1.0, vip_fgm)), rfgm)

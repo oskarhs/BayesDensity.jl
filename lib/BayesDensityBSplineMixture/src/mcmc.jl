@@ -3,7 +3,7 @@
         [rng::Random.AbstractRNG],
         bsm::BSplineMixture{T},
         n_samples::Int;
-        n_burnin::Int = min(1000, div(n_samples, 5)),
+        n_burnin::Int              = min(1000, div(n_samples, 5)),
         initial_params::NamedTuple = get_default_initparams_mcmc(bsm)
     ) where {T} -> PosteriorSamples{T}
 
@@ -56,7 +56,7 @@ function _check_initparams(bsm::BSplineMixture, initial_params::NamedTuple{N, V}
 end
 
 # Lazy initialization
-function get_default_initparams_mcmc(bsm::BSplineMixture{T, A, D}) where {T, A, D}
+function get_default_initparams_mcmc(bsm::BSplineMixture{T}) where {T}
     β = copy(bsm.data.μ)
     τ2 = one(T)                # Global smoothing parameter
     return (β = β, τ2 = τ2)
@@ -70,8 +70,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     n_bins = length(bincounts)
 
     # Prior Hyperparameters
-    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
+    (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
 
     # Initial parameters
     (; β, τ2) = initial_params
@@ -88,20 +88,20 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     log_θ = log.(θ)
     
     # Initialize vector of samples
-    samples = Vector{NamedTuple{(:spline_coefs, :θ, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
 
     for m in 1:n_samples
 
         # Update δ2: (some inefficiencies here, but okay for now)
         for k in 1:K-3
-            a_δ_k_new = a_δ + T(0.5)
-            b_δ_k_new = b_δ + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
+            a_δ_k_new = prior_local_shape + T(0.5)
+            b_δ_k_new = prior_local_rate + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
             δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
         end
 
         # Update τ2
-        a_τ_new = a_τ + T(0.5) * (K - 3)
-        b_τ_new = b_τ
+        a_τ_new = prior_global_shape + T(0.5) * (K - 3)
+        b_τ_new = prior_global_rate
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -148,7 +148,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Compute coefficients in terms of unnormalized B-spline basis
         spline_coefs = theta_to_coef(θ, basis)
-        samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end
@@ -160,8 +160,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     (; x, log_B, b_ind, μ, P, n) = bsm.data
 
     # Prior Hyperparameters
-    (; a_τ, b_τ, a_δ, b_δ, σ) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/σ^2, 1/σ^2], zeros(T, K-3)))
+    (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
     
     # Initial parameters
     (; β, τ2) = initial_params
@@ -178,22 +178,22 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     log_θ = log.(θ)
     
     # Initialize vector of samples
-    samples = Vector{NamedTuple{(:spline_coefs, :θ, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
+    samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
     spline_coefs = theta_to_coef(θ, basis)
-    samples[1] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
+    samples[1] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
 
     for m in 2:n_samples
 
         # Update δ2: (some inefficiencies here, but okay for now)
         for k in 1:K-3
-            a_δ_k_new = a_δ + T(0.5)
-            b_δ_k_new = b_δ + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
+            a_δ_k_new = prior_local_shape + T(0.5)
+            b_δ_k_new = prior_local_rate + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
             δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
         end
 
         # Update τ2
-        a_τ_new = a_τ + T(0.5) * (K - 3)
-        b_τ_new = b_τ
+        a_τ_new = prior_global_shape + T(0.5) * (K - 3)
+        b_τ_new = prior_global_rate
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -240,7 +240,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         
         # Compute coefficients in terms of unnormalized B-spline basis
         spline_coefs = theta_to_coef(θ, basis)
-        samples[m] = (spline_coefs = spline_coefs, θ = θ, β = β, τ2 = τ2, δ2 = δ2)
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end

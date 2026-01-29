@@ -21,7 +21,7 @@ end
 
 BayesDensityCore.model(vip::HistSmootherVIPosterior) = vip.shs
 
-function Base.show(io::IO, ::MIME"text/plain", vip::HistSmootherVIPosterior{T, A, B, M}) where {T, A, B, M}
+function Base.show(io::IO, ::MIME"text/plain", vip::HistSmootherVIPosterior{T, A, B}) where {T, A, B}
     println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
     println(io, " q_β::", A, ",")
     println(io, " q_σ::", B, ",")
@@ -32,7 +32,11 @@ end
 
 Base.show(io::IO, vip::HistSmootherVIPosterior) = show(io, MIME("text/plain"), vip)
 
-function StatsBase.sample(rng::AbstractRNG, vip::HistSmootherVIPosterior{T, A, B, M}, n_samples::Int) where {T, A, B, M}
+function StatsBase.sample(
+    rng::AbstractRNG,
+    vip::HistSmootherVIPosterior{T, A, B},
+    n_samples::Int
+) where {T, A, B}
     (; q_β, q_σ, shs) = vip
     samples_temp = Vector{NamedTuple{(:β, :σ2), Tuple{Vector{T}, T}}}(undef, n_samples)
     for m in 1:n_samples
@@ -53,9 +57,9 @@ end
 """
     varinf(
         hs::HistSmoother{T};
-        initial_params::NamedTuple=get_default_initparams(hs),
-        max_iter::Int=500,
-        rtol::Real=1e-5
+        initial_params::NamedTuple = _get_default_initparams_varinf(hs),
+        max_iter::Int              = 500,
+        rtol::Real                 = 1e-5
     ) where {T} -> HistSmootherVIPosterior{T}
 
 Find a variational approximation to the posterior distribution of a [`HistSmoother`](@ref) using mean-field variational inference.
@@ -92,7 +96,7 @@ julia> vip, info = varinf(hs; rtol=1e-6);
 The criterion used to determine convergence is that the relative change in the expectation of ``\\mathbb{E}(\\sigma^{-2})`` falls below the given `rtol`.
 """
 function BayesDensityCore.varinf(shs::HistSmoother;
-    initial_params::NamedTuple=get_default_initparams(shs),
+    initial_params::NamedTuple=_get_default_initparams_varinf(shs),
     max_iter::Int=500,
     rtol::Real=1e-5
 )
@@ -101,8 +105,8 @@ function BayesDensityCore.varinf(shs::HistSmoother;
     return _variational_inference(shs, initial_params, max_iter, rtol)
 end
 
-function get_default_initparams(shs::HistSmoother{T, A, D}) where {T, A, D}
-    (; data, bs, σ_β, s_σ) = shs
+function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T}
+    (; data, bs, prior_scale_fixed, prior_scale_random) = shs
     (; x, n, x_grid, N, C, LZ, bounds) = data
     # Use MixedModels.jl to find initial parameter estimate:
     Z = C[:, 3:end]
@@ -138,13 +142,13 @@ function get_default_initparams(shs::HistSmoother{T, A, D}) where {T, A, D}
     end
 
     # Initialize q(σ²)
-    b_σ_opt = T(1) * s_σ + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ_opt[3:end])) / 2
+    b_σ_opt = T(1) * prior_scale_random + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ_opt[3:end])) / 2
     
     return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt)
 end
 
 function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::NamedTuple, max_iter::Int, rtol::Real) where {T, A, D}
-    (; data, bs, σ_β, s_σ) = shs
+    (; data, bs, prior_scale_fixed, prior_scale_random) = shs
     (; x, n, x_grid, N, C, LZ, bounds) = data
     (; μ_opt, Σ_opt, b_σ_opt) = initial_params
 
@@ -155,7 +159,7 @@ function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::Name
 
     converged = false
     iter = 1
-    ELBO_const_terms_sum = 1/2 * (K - one(T)) + loggamma(1/2 * (K - one(T))) - log(T(pi)) - log(s_σ) - sum(loggamma.(N .+ 1)) - log(σ_β)
+    ELBO_const_terms_sum = 1/2 * (K - one(T)) + loggamma(1/2 * (K - one(T))) - log(T(pi)) - log(prior_scale_random) - sum(loggamma.(N .+ 1)) - log(prior_scale_fixed)
     ELBO = fill(ELBO_const_terms_sum, max_iter)
 
     w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
@@ -163,7 +167,7 @@ function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::Name
 
     while !converged && iter ≤ max_iter
         # Update q(a)
-        b_a_opt = a_σ_opt / b_σ_opt + 1/s_σ^2
+        b_a_opt = a_σ_opt / b_σ_opt + 1/prior_scale_random^2
 
         # Update q(σ²)
         b_σ_new = a_a_opt / b_a_opt + @views(tr(Σ_opt[3:end, 3:end]) + sum(abs2, μ_opt[3:end])) / 2
@@ -172,7 +176,7 @@ function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::Name
 
         # Update q(β)
         #w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
-        Λ = Diagonal(vcat(fill(1/σ_β^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
+        Λ = Diagonal(vcat(fill(1/prior_scale_fixed^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
         inv_Σ_opt = transpose(C) * (C .* w) + Λ
         Σ_opt = inv(inv_Σ_opt)
         μ_opt = μ_opt + Σ_opt * (transpose(C) * (N - w) - Λ * μ_opt) 
@@ -184,9 +188,9 @@ function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::Name
         # Compute the ELBO:
         w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
         ELBO[iter] += N_transpose_C * μ_opt - sum(w)
-        ELBO[iter] += -1/(2*σ_β^2) * @views(sum(abs2, μ_opt[1:2]) + tr(Σ_opt[1:2, 1:2])) + 1/2 * logabsdet(Σ_opt)[1]
+        ELBO[iter] += -1/(2*prior_scale_fixed^2) * @views(sum(abs2, μ_opt[1:2]) + tr(Σ_opt[1:2, 1:2])) + 1/2 * logabsdet(Σ_opt)[1]
         ELBO[iter] += -1/2 * (K - one(T)) * log(a_a_opt/b_a_opt + 1/2 * @views(sum(abs2, μ_opt[3:end]) + tr(Σ_opt[3:end, 3:end])))
-        ELBO[iter] += -log(a_σ_opt / b_σ_opt+1/s_σ^2) + a_a_opt * a_σ_opt / (b_a_opt * b_σ_opt)
+        ELBO[iter] += -log(a_σ_opt / b_σ_opt+1/prior_scale_random^2) + a_a_opt * a_σ_opt / (b_a_opt * b_σ_opt)
         
         # Increment iteration counter
         iter += 1
