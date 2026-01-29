@@ -11,6 +11,9 @@ const rng = Random.Xoshiro(1)
 
     pym = PitmanYorMixture(x)
 
+    # Test equality
+    @test pym == PitmanYorMixture(x)
+
     # Test that we have subtyped AbstractBayesDensityModel
     @test typeof(pym) <: AbstractBayesDensityModel{Float64}
 

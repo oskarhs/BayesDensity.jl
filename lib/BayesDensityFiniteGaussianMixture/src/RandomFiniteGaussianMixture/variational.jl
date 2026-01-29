@@ -7,7 +7,7 @@ Struct representing the variational posterior distribution of a [`RandomFiniteGa
 * `mixture_fits`: Dictionary consisting of 2-tuples, where the values are the posterior probability for a given `K` and the corresponding [`FiniteGaussianMixtureVIPosterior`](@ref), containing the fitted variational posterior distributions for differing values of mixture components.
 * `rgfm`: The `RandomFiniteGaussianMixture` to which the variational posterior was fit.
 """
-struct RandomFiniteGaussianMixtureVIPosterior{T<:Real, M, R} <: AbstractVIPosterior{T}
+struct RandomFiniteGaussianMixtureVIPosterior{T<:Real, M<:AbstractDict, R<:RandomFiniteGaussianMixture{T}} <: AbstractVIPosterior{T}
     mixture_fits::M
     rfgm::R
     function RandomFiniteGaussianMixtureVIPosterior{T}(
@@ -91,8 +91,8 @@ end
 """
     varinf(
         rfgm::RandomFiniteGaussianMixture{T};
-        max_iter::Int              = 2000
-        rtol::Real                 = 1e-6
+        max_iter::Int = 2000
+        rtol::Real    = 1e-6
     ) where {T} -> PitmanYorMixtureVIPosterior{T}
 
 Find a variational approximation to the posterior distribution of a [`RandomFiniteGaussianMixture`](@ref) using mean-field variational inference.

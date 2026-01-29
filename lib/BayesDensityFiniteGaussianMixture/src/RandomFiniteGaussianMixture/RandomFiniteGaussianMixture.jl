@@ -29,7 +29,7 @@ struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:AbstractDict{Int,
     hyperprior_shape::T
     function RandomFiniteGaussianMixture{T}(
         x::AbstractVector{<:Real};
-        prior_components::AbstractDict{Int, <:Real}=Dict{Int, T}(K => one(T) for K in 2:20),
+        prior_components::AbstractDict{Int,<:Real}=Dict{Int,T}(K => one(T) for K in 1:20),
         prior_strength::Real=1.0,
         prior_location::Real=_get_default_location(x),
         prior_variance::Real=_get_default_variance(x),

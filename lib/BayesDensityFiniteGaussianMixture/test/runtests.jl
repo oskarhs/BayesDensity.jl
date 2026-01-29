@@ -12,7 +12,7 @@ const rng = Random.Xoshiro(1)
     gm = FiniteGaussianMixture(x, 2)
 
     # Test equality
-    @test gm == FiniteGaussianMixture(x)
+    @test gm == FiniteGaussianMixture(x, 2)
 
     # Test that we have subtyped AbstractBayesDensityModel
     @test typeof(gm) <: AbstractBayesDensityModel{Float64}

@@ -93,7 +93,7 @@ julia> fgm = FiniteGaussianMixture(x);
 julia> vip, info = varinf(fgm);
 
 julia> vip, info = varinf(fgm; rtol=1e-7, max_iter=3000);
- ```
+```
 
 # Extended help
 ## Convergence
