@@ -3,7 +3,7 @@
         bdm::AbstractBayesDensityModel{T},
         args...;
         kwargs...
-    ) where {T} -> AbstractVIPosterior{T}
+    ) where {T}
 
 Compute a variational approximation to the posterior distribution.
 

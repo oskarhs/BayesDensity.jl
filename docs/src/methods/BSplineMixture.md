@@ -18,7 +18,6 @@ BayesDensityBSplineMixture.cdf(::BSplineMixture, ::NamedTuple{Names, Vals}, ::Re
 
 ### Utility functions
 ```@docs
-support(::BSplineMixture)
 hyperparams(::BSplineMixture)
 ```
 

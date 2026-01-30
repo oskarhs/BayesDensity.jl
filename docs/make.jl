@@ -1,20 +1,21 @@
+using BayesDensity
 using BayesDensityBSplineMixture
 using BayesDensityCore
 using BayesDensityFiniteGaussianMixture
 using BayesDensityHistSmoother
-using BayesDensityHistSmoother
+using BayesDensityPitmanYorMixture
 using Documenter, DocumenterCitations
 using Random
 
 bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:authoryear)
 
-DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(
+#= DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(
     using BayesDensityBSplineMixture;
     using BayesDensityCore;
     using BayesDensityFiniteGaussianMixture;
     using BayesDensityHistSmoother;
     using BayesDensityHistSmoother
-    ); recursive=true)
+    ); recursive=true) =#
 
 makedocs(;
     modules=[

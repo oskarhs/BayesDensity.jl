@@ -17,8 +17,8 @@ BayesDensityHistSmoother.cdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) 
 ```
 
 ### Utility functions
+
 ```@docs
-support(::HistSmoother)
 hyperparams(::HistSmoother)
 ```
 

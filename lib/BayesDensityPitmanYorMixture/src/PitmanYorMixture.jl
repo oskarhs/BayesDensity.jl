@@ -54,11 +54,6 @@ PitmanYorMixture(args...; kwargs...) = PitmanYorMixture{Float64}(args...; kwargs
 
 Base.:(==)(pym1::PitmanYorMixture, pym2::PitmanYorMixture) = (pym1.data == pym2.data) && (hyperparams(pym1) == hyperparams(pym2))
 
-"""
-    support(pym::PitmanYorMixture{T}) where {T} -> NTuple{2, T}
-
-Get the support of the Pitman-Yor mixture model `pym`.
-"""
 BayesDensityCore.support(::PitmanYorMixture{T}) where {T} = (-T(Inf), T(Inf))
 
 """
@@ -98,7 +93,7 @@ Base.show(io::IO, pym::PitmanYorMixture) = show(io, MIME("text/plain"), pym)
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `PitmanYorMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``f(t\\, |\\, \\boldsymbol{\\eta})`` for a given `PitmanYorMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain fields named `:μ`, `:σ2` and a third field named `:cluster_counts` or `:w`, depending on whether the marginal or stickbreaking parameterization is used.
 """
@@ -120,7 +115,7 @@ Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `PitmanYorMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``F(t\\, |\\, \\boldsymbol{\\eta})`` for a given `PitmanYorMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain fields named `:μ`, `:σ2` and a third field named `:cluster_counts` or `:w`, depending on whether the marginal or stickbreaking parameterization is used.
 """
@@ -189,12 +184,12 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             vals = zeros(R, (length(t), length(params)))
             
             # Compute relative weight of (μ, σ²) belonging to a new cluster
-            for j in eachindex(params)
+            for m in eachindex(params)
                 (; μ, σ2, cluster_counts) = params[j]
                 for k in eachindex(cluster_counts)
-                    vals[:, j] .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
+                    vals[:, m] .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
                 end
-                vals[:, j] .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+                vals[:, m] .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
             end
             return vals
         end
@@ -238,7 +233,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             for m in eachindex(params)
                 (; μ, σ2, w) = params[m]
                 for k in eachindex(μ)
-                    val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                    val[:, m] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
                 end
             end
             return val

@@ -130,12 +130,7 @@ BSplineKit.order(bsm::BSplineMixture) = order(bsm.basis)
 BSplineKit.length(bsm::BSplineMixture) = length(bsm.basis)
 BSplineKit.knots(bsm::BSplineMixture) = knots(bsm.basis)
 
-"""
-    support(bsm::BSplineMixture{T}) where {T} -> NTuple{2, T}
-
-Get the support of the B-Spline mixture model `bsm`.
-"""
-BayesDensityCore.support(bsm::BSplineMixture) = boundaries(bsm.basis)
+BayesDensityCore.support(bsm::BSplineMixture{T}) where {T} = boundaries(bsm.basis)
 
 """
     hyperparams(
@@ -192,7 +187,7 @@ Base.show(io::IO, bsm::BSplineMixture) = show(io, MIME("text/plain"), bsm)
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``f(t\\, |\\, \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """
@@ -268,7 +263,7 @@ end
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``F(t\\, |\\, \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain a field named `:spline_coefs` or `:β`.
 """

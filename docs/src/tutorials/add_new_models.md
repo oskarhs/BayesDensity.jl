@@ -111,6 +111,16 @@ end
 BernsteinDensity(args...; kwargs...) = BernsteinDensity{Float64}(args...; kwargs...) # For convenience
 ```
 In the above implementation, we store the values of ``\varphi_k(x_i)`` for ``1 \leq i \leq n`` and ``1 \leq k \leq K``, as these values are reused repeatedly in the model fitting processes later.
+We also mantain a copy of the original dataset `x` in the `data` field.
+By default, the original data stored under the field `bdm.data.x` is used to select a default grid for the first coordinate axis when plotting fitted model objects via the fallback implementation of [`default_grid_points`](@ref).
+If the original data cannot be found under `bdm.data.x`, then trying to plot a [`PosteriorSamples`](@ref) or [`AbstractVIPosterior`](@ref) object without supplying a plotting grid as the second argument will fail, in which case implementing `default_plot_grid` for this model class will resolve this issue.
+
+Returning to our specific example, we note that the Bernstein model is always supported on ``[0, 1]``, so it may make more sense to use a default grid spanning this entire interval.
+A possible implementation of `default_grid_points` for this purpose is as follows:
+
+```@example Bernstein; continued = true
+BayesDensityCore.default_grid_points(::BernsteinDensity{T}) where {T} = LinRange{T}(0, 1, 2001)
+```
 
 In order to be able use all the functionality of `BayesDensityCore`, we also need to implement an equality method for our new type.
 In this case, this is just a matter of checking that all the fields of two such objects are equal:
@@ -222,11 +232,11 @@ median(ps, 0.5) # Compute the posterior median of f(0.5)
 ```
 
 For instance, we can visualize the posterior fit by plotting the posterior means of ``f(t)`` and ``F(t)`` along with 95 % pointwise credible bands:
-```@example Bernstein
+```julia
 using CairoMakie
 t = LinRange(0, 1, 1001) # Grid for plotting
 
-fig = Figure(size=(670, 320))
+fig = Figure(size=(600, 320))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
 plot!(ax1, ps, t, label="MCMC") # Plot the posterior mean and credible bands:
 lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
@@ -239,6 +249,8 @@ Legend(fig[1,3], ax1, framevisible=false)
 
 fig
 ```
+
+![Bernstein MCMC fit](../assets/bernstein_tutorial/bernstein_mcmc.svg)
 
 ### Mean-field variational inference
 Before getting started on implementing a variational inference algorithm, we first need to define a new struct that represents the variational posterior distribution.
@@ -371,11 +383,11 @@ mean(vip, 0.2) # Compute the posterior mean of f(0.2)
 ```
 
 For instance, we can visualize the variational posterior fit by displaying the (variational) posterior means of ``f(t)`` and ``F(t)`` along with 95 % pointwise credible bands:
-```@example Bernstein
+```julia
 using CairoMakie
 t = LinRange(0, 1, 1001) # Grid for plotting
 
-fig = Figure(size=(500, 320))
+fig = Figure(size=(600, 320))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
 plot!(ax1, vip, t, label="VI") # Plot the posterior mean and credible bands:
 lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
@@ -389,10 +401,15 @@ Legend(fig[1,3], ax1, framevisible=false)
 fig
 ```
 
+![Bernstein variational fit](../assets/bernstein_tutorial/bernstein_varinf.svg)
+
+
 We can also verify that the ELBO has converged:
-```@example Bernstein
-fig = Figure(size=(500, 500))
+```julia
+fig = Figure(size=(400, 350))
 ax = Axis(fig[1,1], xlabel="Iteration", ylabel="ELBO")
 lines!(ax, info)
 fig
 ```
+
+![Bernstein elbo](../assets/bernstein_tutorial/bernstein_elbo.svg)

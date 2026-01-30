@@ -3,7 +3,7 @@
         [rng::Random.AbstractRNG],
         pym::PitmanYorMixture{T},
         n_samples::Int;
-        n_burnin::Int = min(1000, div(n_samples, 5)),
+        n_burnin::Int              = min(1000, div(n_samples, 5)),
         initial_params::NamedTuple = _get_default_initparams_mcmc(pym)
     ) where {T} -> PosteriorSamples{T}
 

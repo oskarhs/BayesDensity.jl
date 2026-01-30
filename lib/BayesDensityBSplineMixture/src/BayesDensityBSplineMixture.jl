@@ -3,11 +3,10 @@ module BayesDensityBSplineMixture
 using Reexport
 
 @reexport using BayesDensityCore
-import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, unitvector
+import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, unitvector, support
 using BandedMatrices
 using BSplineKit
 using Distributions
-import Distributions: support
 using LinearAlgebra
 using PolyaGammaHybridSamplers
 using Random

@@ -48,12 +48,17 @@ For the exact format of the returned hyperparameters for a specific Bayesian den
 
 To compute the support of a given model, the `support` method is provided.
 ```@docs
-support(::AbstractBayesDensityModel)
+BayesDensityCore.support(::AbstractBayesDensityModel{T}, ::Any) where {T}
 ```
 
 The element type of the model object can be determined via the `eltype` method:
 ```@docs
-eltype(::AbstractBayesDensityModel)
+BayesDensityCore.eltype(::AbstractBayesDensityModel{T}) where {T}
+```
+
+The following function is used to select a grid used for plotting of fitted model objects. A default fallback is provided, but it may be necessary to overload this method when implementing new models in order to make plotting functions work without having to supply an explicit grid of values for the first coordinate axis.
+```@docs
+default_grid_points
 ```
 
 ## Markov chain Monte Carlo

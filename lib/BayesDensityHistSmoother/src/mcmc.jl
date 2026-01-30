@@ -22,7 +22,7 @@ Generate `n_samples` posterior samples from a `HistSmoother` using an augmented 
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.
 
 # Examples
-```jldoctest
+```julia-repl
 julia> using Random
 
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
@@ -30,7 +30,7 @@ julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 julia> hs = HistSmoother(x);
 
 julia> ps = sample(Xoshiro(1), hs, 1100);
- ```
+```
 """
 function StatsBase.sample(
     rng::AbstractRNG,

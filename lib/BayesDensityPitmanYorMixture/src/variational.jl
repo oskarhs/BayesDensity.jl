@@ -39,7 +39,7 @@ end
 BayesDensityCore.model(vip::PitmanYorMixtureVIPosterior) = vip.pym
 
 function Base.show(io::IO, ::MIME"text/plain", vip::PitmanYorMixtureVIPosterior{T, A, B}) where {T, A, B}
-    K = length(vip.q_θ)
+    K = length(vip.q_v)+1
     println(io, nameof(typeof(vip)), "{", T, "} vith truncation level ", K, " and variational densities:")
     println(io, " q_v::", A, ",")
     println(io, " q_θ::", B, ",")
@@ -66,10 +66,10 @@ end
 """
     varinf(
         pym::PitmanYorMixture{T};
-        truncation_level::Int=30,
-        initial_params::Union{NamedTuple,Nothing}=nothing,
-        max_iter::Int=3000
-        rtol::Real=1e-6
+        truncation_level::Int      = 25,
+        initial_params::NamedTuple = _get_default_initparams(pym, truncation_level),
+        max_iter::Int              = 3000
+        rtol::Real                 = 1e-6
     ) where {T} -> PitmanYorMixtureVIPosterior{T}
 
 Find a variational approximation to the posterior distribution of a [`PitmanYorMixture`](@ref) using mean-field variational inference based on a truncated stickbreaking-approach.
@@ -78,8 +78,8 @@ Find a variational approximation to the posterior distribution of a [`PitmanYorM
 * `pym`: The `PitmanYorMixture` whose posterior we want to approximate.
 
 # Keyword arguments
-* `truncation level`: Positive integer specifying the truncation level of the variational approximation. Defaults to `30`. This parameter is ignored `initial_params` is set to another value than nothing. 
-* `initial_params`: Initial values of the VI parameters `a_v` `b_v`, `locations` and `inv_scale_facs`, `shapes` and `rates`, supplied as a NamedTuple.
+* `truncation level`: Positive integer specifying the truncation level of the variational approximation. Defaults to `25`.
+* `initial_params`: Initial values of the VI parameters `a_v` `b_v`, `locations` and `inv_scale_facs`, `shapes` and `rates`, supplied as a NamedTuple. Must have dimensions matching the supplied truncation level.
 * `max_iter`: Maximal number of VI iterations. Defaults to `3000`.
 * `rtol`: Relative tolerance used to determine convergence. Defaults to `1e-6`.
 
@@ -101,7 +101,7 @@ Generally, setting the truncation level to a higher value leads to an approximat
 """
 function BayesDensityCore.varinf(
     pym::PitmanYorMixture;
-    truncation_level::Int=30,
+    truncation_level::Int=25,
     initial_params::NamedTuple=_get_default_initparams(pym, truncation_level),
     max_iter::Int=3000,
     rtol::Real=1e-6

@@ -42,7 +42,7 @@ export hyperparams
 
 Return the support of the model `bdm` as an 2-dimensional tuple.
 """
-function support(::AbstractBayesDensityModel) end
+function Distributions.support(::AbstractBayesDensityModel{T}) where {T} end
 
 export support
 
@@ -134,5 +134,22 @@ export PosteriorSamples, sample, quantile, mean, median, var, std, model, n_burn
 include("variational.jl")
 export AbstractVIPosterior, varinf
 export VariationalOptimizationResult, n_iter, elbo, tolerance, converged, posterior
+
+"""
+    default_grid_points(bdm::AbstractBayesDensityModel{T}) where {T} -> AbstractVector{T}
+
+Get the default grid used for plotting of density estimates.
+
+Defaults to returning constructing a grid based on the extrema of `bdm.data.x`.
+If a given struct does not store a copy of the original data used to construct the model object as `bdm.data.x`, this method should be implemented.
+"""
+function default_grid_points(bdm::AbstractBayesDensityModel{T}) where {T}
+    xmin, xmax = extrema(bdm.data.x)
+    R = xmax - xmin
+    x = LinRange{T}(xmin - 0.05*R, xmax + 0.05*R, 2001)
+    return x
+end
+
+export default_grid_points
 
 end # module

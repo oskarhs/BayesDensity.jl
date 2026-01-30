@@ -3,8 +3,7 @@ module BayesDensityHistSmoother
 using Reexport
 
 @reexport using BayesDensityCore
-
-import BayesDensityCore: linear_binning
+import BayesDensityCore: linear_binning, support
 
 using BSplineKit
 using DataFrames
@@ -16,8 +15,6 @@ using Random
 using SparseArrays
 using SpecialFunctions
 using StatsBase
-
-import Distributions: support
 
 include("HistSmoother.jl")
 export HistSmoother

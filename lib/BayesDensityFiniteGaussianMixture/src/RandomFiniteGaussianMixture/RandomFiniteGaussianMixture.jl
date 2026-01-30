@@ -67,11 +67,6 @@ RandomFiniteGaussianMixture(args...; kwargs...) =  RandomFiniteGaussianMixture{F
 
 Base.:(==)(gm1::RandomFiniteGaussianMixture, gm2::RandomFiniteGaussianMixture) = (gm1.data == gm2.data) && (hyperparams(gm1) == hyperparams(gm2))
 
-"""
-    support(gm::RandomFiniteGaussianMixture{T}) where {T} -> NTuple{2, T}
-
-Get the support of the finite Gaussian mixture model `gm`.
-"""
 BayesDensityCore.support(::RandomFiniteGaussianMixture{T}) where {T} = (-T(Inf), T(Inf))
 
 """
@@ -119,7 +114,7 @@ Base.show(io::IO, gm::RandomFiniteGaussianMixture) = show(io, MIME("text/plain")
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``f(t | \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``f(t\\, |\\, \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
@@ -141,7 +136,7 @@ Distributions.pdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{Named
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
 
-Evaluate ``F(t | \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+Evaluate ``F(t\\, |\\, \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
 
 The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """

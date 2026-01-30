@@ -106,7 +106,7 @@ julia> bsm = BSplineMixture(x);
 julia> vip, info = varinf(bsm);
 
 julia> vip, info = varinf(bsm; rtol=1e-7, max_iter=3000);
- ```
+```
 
 # Extended help
 ## Convergence

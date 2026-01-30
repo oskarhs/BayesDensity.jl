@@ -16,13 +16,12 @@ PitmanYorMixture
 
 ### Evaluating the pdf and cdf
 ```@docs
-BayesDensityPitmanYorMixture.pdf(::PitmanYorMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
-BayesDensityPitmanYorMixture.cdf(::PitmanYorMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
+BayesDensityPitmanYorMixture.pdf(::PitmanYorMixture, ::NamedTuple, ::Real)
+BayesDensityPitmanYorMixture.cdf(::PitmanYorMixture, ::NamedTuple, ::Real)
 ```
 
 ### Utility functions
 ```@docs
-support(::PitmanYorMixture)
 hyperparams(::PitmanYorMixture)
 ```
 

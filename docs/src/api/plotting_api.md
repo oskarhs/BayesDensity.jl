@@ -35,7 +35,7 @@ The line width of the density estimate is controlled through the `:strokewidth` 
 ### Example
 
 To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
-```@example Makie; continued = true
+```julia
 using BayesDensityHistSmoother, CairoMakie, Distributions, Random
 rng = Random.Xoshiro(1)
 
@@ -56,11 +56,11 @@ Having fitted the model, we can use the extended plot function to generate vario
 The most basic usage of the is to simply call `plot(posterior_sample)` or `plot(vi_posterior)`, which both generate a plot of the estimated posterior mean of ``f``, along with 95 % pointwise credible bands.
 The code snippet below illustrates how one can customize the posterior plots:
 
-```@example Makie
+```julia
 t = LinRange(-3.5, 3.5, 4001)
 
 # Create figure, axes
-fig = Figure(size=(500, 500))
+fig = Figure(size=(550, 550))
 ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
 ax2 = Axis(fig[1,2], xlabel="x", ylabel="Density")
 ax3 = Axis(fig[2,1], xlabel="x", ylabel="Cumulative density")
@@ -94,6 +94,8 @@ end
 fig
 ```
 
+![Makie showcase](../assets/plotting_api/makie.svg)
+
 Makie.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.
 
 ## Plotting with Plots.jl
@@ -123,7 +125,7 @@ The `fillalpha` keyword argument controls the transparency of the credible bands
 ### Example
 
 To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
-```@example Plots; continued = true
+```julia
 using BayesDensityHistSmoother, Plots, Distributions, Random
 rng = Random.Xoshiro(1)
 
@@ -144,7 +146,7 @@ Having fitted the model, we can use the extended plot function to generate vario
 The most basic usage of the is to simply call `plot(posterior_sample)` or `plot(vi_posterior)`, which both generate a plot of the estimated posterior mean of ``f``, along with 95 % pointwise credible bands.
 The code snippet below illustrates how one can customize the posterior plots:
 
-```@example Plots
+```julia
 t = LinRange(-3.5, 3.5, 4001)
 
 # Create subplots
@@ -175,7 +177,10 @@ plot!(p4, t, cdf(d_true, t),
       color = :black, label="True cdf", linestyle=:dash)
 xlims!(p4, -2.2, 2.2)
 
-plot(p1, p2, p3, p4, layout=(2,2), size=(670, 670))
+plot(p1, p2, p3, p4, layout=(2,2), size=(550, 550))
 ```
+
+![Plots showcase](../assets/plotting_api/plots.svg)
+
 
 Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `plot(elbo(info))`.

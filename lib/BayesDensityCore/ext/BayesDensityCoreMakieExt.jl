@@ -36,9 +36,7 @@ end
 for func in (:pdf, :cdf)
     @eval begin
         function Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::PosteriorSamples, ::typeof($func))
-            xmin, xmax = extrema(model(ps).data.x)
-            R = xmax - xmin
-            t = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
+            t = default_grid_points(model(ps))
             Makie.to_plotspec(P, Makie.convert_arguments(P, ps, $func, t))
         end
 

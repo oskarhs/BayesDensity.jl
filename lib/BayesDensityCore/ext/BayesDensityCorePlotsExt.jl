@@ -25,10 +25,8 @@ end
 for func in (:pdf, :cdf)
     @eval begin
         @recipe function f(ps::PosteriorSamples, ::typeof($func)) # Plotting when no grid is given
-            xmin, xmax = extrema(model(ps).data.x)
-            R = xmax - xmin
-            x = LinRange(xmin - 0.05*R, xmax + 0.05*R, 2001)
-            return ps, $func, x
+            t = default_grid_points(model(ps))
+            return ps, $func, t
         end
     end
 end

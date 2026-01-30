@@ -97,7 +97,7 @@ function Base.:(==)(shs1::HistSmoother, shs2::HistSmoother)
     return shs1.bs == shs2.bs && shs1.data == shs2.data && hyperparams(shs1) == hyperparams(shs2)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", shs::HistSmoother{T, A, D}) where {T, A, D}
+function Base.show(io::IO, ::MIME"text/plain", shs::HistSmoother{T}) where {T}
     println(io, length(shs.bs), "-dimensional ", nameof(typeof(shs)), '{', T, "}:")
     println(io, "Using ", shs.data.n, " binned observations with ", length(shs.data.N), " bins.")
     let io = IOContext(io, :compact => true, :limit => true)
@@ -111,12 +111,7 @@ end
 
 Base.show(io::IO, shs::HistSmoother) = show(io, MIME("text/plain"), shs)
 
-"""
-    support(shs::HistSmoother{T}) where {T} -> NTuple{2, T}
-
-Get the support of the spline histogram smoother model `shs`.
-"""
-function BayesDensityCore.support(shs::HistSmoother)
+function BayesDensityCore.support(shs::HistSmoother{T}) where {T}
     bounds = shs.data.bounds
     bs_min = bounds[1] - 0.05 * (bounds[2] - bounds[1])
     bs_max = bounds[2] + 0.05 * (bounds[2] - bounds[1])

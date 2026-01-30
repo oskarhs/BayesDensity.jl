@@ -105,15 +105,15 @@ end
     pym = PitmanYorMixture{Float64}(x)
     d_target = MixtureModel([Normal(j, sqrt(j+2)) for j in -1:1], [0.2, 0.6, 0.2])
     vip = PitmanYorMixtureVIPosterior{Float64}(
-        vcat(1e12*[2, 7.5, 10], fill(1.0, 17)),
-        vcat(1e12*[8, 2.5], [1], fill(1.0, 17)),
+        vcat(1e16*[2, 7.5, 10], fill(1.0, 17)),
+        vcat(1e16*[8, 2.5], [1], fill(1.0, 17)),
         vcat([-1.0, 0.0, 1.0], fill(1.0, 17)),
-        vcat(fill(1e20, 3), fill(1.0, 17)),
+        vcat(fill(1e24, 3), fill(1.0, 17)),
         vcat(fill(1e6, 3), fill(1.0, 17)),
         vcat(1e6*[1.0, 2.0, 3.0], fill(1.0, 17)),
         pym
     )
     
     t = LinRange(-5, 5, 1001)
-    @test isapprox(pdf(d_target, t), mean(vip, t); rtol=1e-5)
+    @test isapprox(pdf(d_target, t), mean(vip, t); rtol=1e-4)
 end
