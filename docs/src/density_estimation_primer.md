@@ -22,7 +22,7 @@ To illustrate the role of the smoothing parameter, we generated a sample of size
 
 ![kernel density bandwidth](../assets/introduction_to_density_estimation/kernel.svg)
 
-For the smallest choice of the bandwidth parameter, the estimate ``\hat{f}`` ends up being very wiggly, severly distorting the shape of ``f`` with many small bumps. On the other hand, the largest bandwidth results in far too much smoothing, and the resulting density estimate fails to resemble ``f``. A good choice of the bandwidth parameter needs to strike a balance between these two extremes.
+For the smallest choice of the bandwidth parameter, the estimate ``\hat{f}`` is very wiggly, severly distorting the shape of ``f`` with many small bumps. On the other hand, the largest bandwidth results in far too much smoothing, and the resulting density estimate fails to resemble ``f``. A good choice of the bandwidth parameter needs to strike a balance between these two extremes.
 
 In practical applications, the true density is of course not known, and one has to select the smoothing parameter in a data-driven manner. Frequentist approaches to selecting the smoothing parameter are often based on optimizing some criterion that balances representational capacity against model complexity. Examples include the optimization of a cross-validation criterion or the minimization of an asymptotic expansion of a risk function.
 
@@ -32,9 +32,14 @@ Bayesian statistics offers a fundamentally different approach to nonparametric d
 p(f\,|\, x_1, \ldots, x_n) \propto p(f)\prod_{i=1}^n f(x_i).
 ```
 
-Unlike frequentist approaches to smoothing parameter selection, where they are typically chosen via an optimization, the Bayesian approach implicitly introduces smoothing through the prior distribution. The key challenge to constructing successful Bayesian nonparametric density estimators is to find a model with a very large representational capacity, combined with a prior distribution that results in smooth density estimates.
+Unlike frequentist approaches to smoothing parameter selection, where they are typically chosen via an optimization, the Bayesian approach implicitly introduces smoothing through the prior distribution. By utilizing a prior distribution that allows for ``f`` to be of varying degrees of smoothness, Bayesian procedures lead to data-driven choices to smoothing parameter(s) through the posterior distribution ``p(f\,|\, x_1, \ldots, x_n)``. Although the posterior gives a full distribution over the density ``f``, statisticians are often interested in providing a point estimate ``\hat{f}(x)``, with a popular being the posterior mean, ``\hat{f}(x) = \mathbb{E}[f(x)\,|\, x_1, \ldots, x_n]``. A key challenge in the Bayesian approach to density estimation is that for most genuinely nonparametric models, the posterior distribution ``p(f\,|\, x_1, \ldots, x_n)`` is often not tractable analytically, and as such, posterior summaries cannot be computed exactly. Instead, inference is mostly based on Monte Carlo approximations, where one generates samples ``f^{(1)}, \ldots, f^{(M)}`` from the posterior distribution of ``f``, and uses them to approximate key posterior quantities. For instance, the posterior mean can be approximated by
+```math
+    \mathbb{E}[f(x)\,|\, x_1, \ldots, x_n] \approx \frac{1}{M}\sum_{m=1}^M f^{(m)}(x).
+```
 
-### Computation
-A key challenge in the Bayesian approach to density estimation is that for most genuinely nonparametric models, the posterior distribution ``p(f\,|\, x_1, \ldots, x_n)`` is often not tractable analytically. Instead, inference is often based on Monte Carlo approximations.
+The key challenge to constructing successful Bayesian nonparametric density estimators is to find a model that not only has a very large representational capacity, a prior distribution that results in smooth density estimates and a combination of prior and model for which efficient approximate posterior inference is possible.
 
-However, the high- to infinite dimensional nature of nonparametric procedures further complicate this issue, as the techniques employed for approximate inference in lower-dimensional Bayesian models often do not scale well to higher dimensions.
+### Markov chain Monte Carlo
+Although the Monte Carlo method is a powerful technique for approximating key quantities of interest, the process of generating samples from the posterior distribution is less straightforward. Moreover, the high- to infinite dimensional nature of nonparametric procedures further complicate this issue, as the techniques employed for approximate inference in lower-dimensional Bayesian models often do not scale well to higher dimensions. The Bayesian methods used to generate samples from the posterior distribution in the `BayesDensity` package are so-called Markov chain Monte Carlo methods, where one constructs a Markov chain ``f^{(1)}, \ldots, f^{(M)}``, where the distribution of ``f^{(m+1)}`` is in general dependent on the previous state ``f^{(m)}``. Although the sequence of densities generated from such a sampler are dependent in general, it can be shown under rather mild regularity conditions that Monte Carlo approximations based on these samples approach their corresponding true values as the number of samples diverges to infinity.
+
+To illustrate the appliation of Markov chain Monte Carlo methods to Bayesian density estimation, we consider the simulated sample from the two-component Gaussian mixture treated previously.

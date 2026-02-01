@@ -66,7 +66,7 @@ To be able to use the latest features of the package, make sure that you current
 
 In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
 
-- Switch to using ProductDistribution where this is possible.
-- Implement an MCMC algorithm for RandomFixedGaussianMixture
 - Finish writing the general documentation, including a primer on Bayesian nonparametric density estimation.
+- Write introductions to all models which have been implemented so far.
+- Implement an MCMC algorithm for RandomFixedGaussianMixture
 - Implement Bernstein polynomial model (variable K)
