@@ -17,9 +17,14 @@ Although the increased flexibility of nonparametric approaches is an attractive 
 ```math
 \hat{f}(x)\frac{1}{nh}\sum_{i=1}^n \phi\Big(\frac{x - x_i}{h}\Big),
 ```
-where ``\phi(\cdot)`` is the probability density function of the standard normal distribution and the bandwidth ``h > 0`` is a parameter which controls the smoothness of the estimate. If ``h`` is set too a small value relative to the number of samples ``n``, the estimate ``\hat{f}`` ends up being very wiggly, severly distorting the shape of ``f`` with many small bumps. On the other hand, if ``h`` is set to a very large value, the estimate will be much too smooth, and one will miss finer details present in the data. A good choice of the bandwidth parameter needs to strike a balance between these two extremes.
+where ``\phi(\cdot)`` is the probability density function of the standard normal distribution and the bandwidth ``h > 0`` is a parameter which controls the smoothness of the estimate.
+To illustrate the role of the smoothing parameter, we generated a sample of size ``n = 1000`` from the mixture density ``f(x) = 0.4 \phi\big((x+0.2)/0.25\big) / 0.25 + 0.6 \phi\big((x-0.5)/0.15\big) / 0.15``, and fitted a kernel density estimator for three different choices of the bandwidth parameter. The resulting density estimates are shown in the figure below:
 
-Frequentist approaches to selecting the smoothing parameter are often based on optimizing some criterion that balances representational capacity against model complexity. Examples include the optimization of a cross-validation criterion or the minimization of an asymptotic expansion of a risk function.
+![kernel density bandwidth](../assets/introduction_to_density_estimation/kernel.svg)
+
+For the smallest choice of the bandwidth parameter, the estimate ``\hat{f}`` ends up being very wiggly, severly distorting the shape of ``f`` with many small bumps. On the other hand, the largest bandwidth results in far too much smoothing, and the resulting density estimate fails to resemble ``f``. A good choice of the bandwidth parameter needs to strike a balance between these two extremes.
+
+In practical applications, the true density is of course not known, and one has to select the smoothing parameter in a data-driven manner. Frequentist approaches to selecting the smoothing parameter are often based on optimizing some criterion that balances representational capacity against model complexity. Examples include the optimization of a cross-validation criterion or the minimization of an asymptotic expansion of a risk function.
 
 ## The Bayesian approach
 Bayesian statistics offers a fundamentally different approach to nonparametric density estimation. Here, the density ``f`` is itself treated as a random quantity, and is assigned a prior distribution ``p(f)``. Density estimates in Bayesian models are based on the posterior distribution,
@@ -27,7 +32,9 @@ Bayesian statistics offers a fundamentally different approach to nonparametric d
 p(f\,|\, x_1, \ldots, x_n) \propto p(f)\prod_{i=1}^n f(x_i).
 ```
 
-Unlike frequentist approaches to smoothing parameter selection, where they are typically chosen via an optimization, the Bayesian approach implicitly introduces smoothing through the specification of prior distributions. The key challenge to constructing succesfull Bayesian nonparametric density estimators is to find a model with a very large representational capacity, combined with a prior distribution that results in regular density estimates.
+Unlike frequentist approaches to smoothing parameter selection, where they are typically chosen via an optimization, the Bayesian approach implicitly introduces smoothing through the prior distribution. The key challenge to constructing successful Bayesian nonparametric density estimators is to find a model with a very large representational capacity, combined with a prior distribution that results in smooth density estimates.
 
 ### Computation
-A key challenge in the Bayesian approach to density estimation is that for most genuinely nonparametric models, the posterior distribution ``p(f\,|\, x_1, \ldots, x_n)`` is often not tractable analytically. Fortunately, there are techniques to handle simulation in such models.
+A key challenge in the Bayesian approach to density estimation is that for most genuinely nonparametric models, the posterior distribution ``p(f\,|\, x_1, \ldots, x_n)`` is often not tractable analytically. Instead, inference is often based on Monte Carlo approximations.
+
+However, the high- to infinite dimensional nature of nonparametric procedures further complicate this issue, as the techniques employed for approximate inference in lower-dimensional Bayesian models often do not scale well to higher dimensions.
