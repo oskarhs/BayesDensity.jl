@@ -62,12 +62,13 @@ jobs:
           julia --project=. -e '
             import Pkg
             Pkg.instantiate()
-            Pkg.test("${{ matrix.package }}"; coverage=true)
+            Pkg.test("lib/${{ matrix.package }}"; coverage=true)
           '
 
       - name: Process coverage
         uses: julia-actions/julia-processcoverage@v1
-
+        with:
+          directories: lib/${{matrix.package}}/src
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         env:
@@ -75,41 +76,30 @@ jobs:
         with:
           file: lcov.info
 
-  docs:
-    name: Documentation
-    runs-on: ubuntu-latest
-
+  build:
+    # These permissions are needed to:
+    # - Deploy the documentation: https://documenter.juliadocs.org/stable/man/hosting/#Permissions
+    # - Delete old caches: https://github.com/julia-actions/cache#usage
     permissions:
       actions: write
       contents: write
+      pull-requests: read
       statuses: write
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
-
       - uses: julia-actions/cache@v2
-
-      - name: Instantiate workspace
+      - name: Install dependencies
+        shell: julia --color=yes --project=docs {0}
         run: |
-          julia --project=. -e '
-            import Pkg
-            Pkg.instantiate()
-          '
-
-      - name: Build and deploy docs
-        uses: julia-actions/julia-docdeploy@v1
+          using Pkg
+          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.instantiate()
+      - name: Build and deploy
+        run: julia --color=yes --project=docs docs/make.jl
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-
-      - name: Run doctests
-        shell: julia --project=. --color=yes {0}
-        run: |
-          using Documenter: DocMeta, doctest
-          using BayesDensity
-          DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
-          doctest(BayesDensity)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
