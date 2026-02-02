@@ -48,7 +48,7 @@ For the exact format of the returned hyperparameters for a specific Bayesian den
 
 To compute the support of a given model, the `support` method is provided.
 ```@docs
-BayesDensityCore.support(::AbstractBayesDensityModel{T}, ::Any) where {T}
+BayesDensityCore.support(::AbstractBayesDensityModel{T}) where {T}
 ```
 
 The element type of the model object can be determined via the `eltype` method:

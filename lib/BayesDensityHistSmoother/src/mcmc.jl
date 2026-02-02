@@ -115,10 +115,6 @@ function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T}, initial_param
     return PosteriorSamples{T}(samples, shs, n_samples, n_burnin)
 end
 
-function logdensity_βk(β_k, CTN_k, v_k, C_k, Cβ_k)
-    return CTN_k * β_k - β_k^2 / (2*v_k^2) - sum(exp, β_k*C_k + Cβ_k)
-end
-
 # Adopted from SliceSampling.jl under the MIT license (accessed on 23. Dec. 2025): https://github.com/TuringLang/SliceSampling.jl/blob/main/src/univariate/univariate.jl
 function slice_sampling_univariate(
     rng::Random.AbstractRNG, w, logdensity, θ::F

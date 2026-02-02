@@ -13,6 +13,10 @@ const x = rand(rng, d_true, n)
 # Evalutation grid
 const ts = LinRange(-1, 1, 1001)
 
+# HistSmoother
+const hs = HistSmoother(x)
+const posterior_samples = sample(rng, hs, 2100; n_burnin=100)
+
 # Kernel example
 function kernel_example()
     bandwidths = [1e-2, 5e-2, 2.5e-1]
@@ -39,13 +43,11 @@ end
 
 # MCMC animation
 function mcmc_animation()
-    hs = HistSmoother(x)
-    posterior_samples = sample(rng, hs, 1100)
     fs = pdf(hs, posterior_samples.samples, ts)
     running_means = cumsum(fs, dims = 2) ./ (1:size(fs, 2))'
 
     # Actual animation code:
-    anim_path = joinpath("src", "assets", "introduction_to_density_estimation", "mcmc_animation.mp4")
+    anim_path = joinpath("src", "assets", "introduction_to_density_estimation", "mcmc_animation.gif")
     f = Observable(fs[:,1])
     running_mean = Observable(fs[:,1])
     iteration = Observable(0)
@@ -58,7 +60,8 @@ function mcmc_animation()
     ylims!(ax, -0.1, 1.8)
     Legend(fig[1,2], ax, framevisible=false)
 
-    record(fig, anim_path, 1:200; framerate=10) do iter
+    record(fig, anim_path, 1:220; framerate=10) do frame
+        iter = clamp(frame - 10, 1, 200)
         f[] = fs[:,iter]
         running_mean[] = running_means[:,iter]
         iteration[] = iter
@@ -66,4 +69,30 @@ function mcmc_animation()
     
 end
 
-mcmc_animation()
+# mcmc_animation()
+
+function mcmc_estimate()
+    fig = Figure(size=(550, 380))
+    ax = Axis(fig[1,1], title="MCMC estimate and true density", xlabel=L"x", ylabel="Density", xlabelsize=20, ylabelsize=20)
+    lines!(ax, ts, pdf(d_true, ts), label="True density", linewidth=1.5, linestyle=:dash, color=:black, alpha=0.5)
+    plot!(ax, posterior_samples, ts, label="MCMC")
+    ylims!(ax, -0.1, 1.8)
+    Legend(fig[1,2], ax, framevisible=false)
+    save(joinpath("src", "assets", "introduction_to_density_estimation", "mcmc_estimate.svg"), fig)
+end
+
+mcmc_estimate()
+
+function varinf_estimate()
+    viposterior, _ = varinf(hs; max_iter=1_000)
+    posterior_samples = sample(rng, hs, 2_000)
+    fig = Figure(size=(550, 380))
+    ax = Axis(fig[1,1], title="VI estimate and true density", xlabel=L"x", ylabel="Density", xlabelsize=20, ylabelsize=20)
+    lines!(ax, ts, pdf(d_true, ts), label="True density", linewidth=1.5, linestyle=:dash, color=:black, alpha=0.5)
+    plot!(ax, posterior_samples, ts, label="VI")
+    ylims!(ax, -0.1, 1.8)
+    Legend(fig[1,2], ax, framevisible=false)
+    save(joinpath("src", "assets", "introduction_to_density_estimation", "varinf_estimate.svg"), fig) 
+end
+
+varinf_estimate()
