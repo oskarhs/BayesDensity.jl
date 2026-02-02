@@ -70,7 +70,7 @@ sample(::AbstractBayesDensityModel, ::Int)
 All of the implemented MCMC methods return an object of type `PosteriorSamples`:
 ```@docs
 PosteriorSamples
-samples(::PosteriorSamples  )
+samples(::PosteriorSamples)
 ```
 
 The following methods can be used to extract useful information about the model object, such as the underlying model object and the number of samples.
