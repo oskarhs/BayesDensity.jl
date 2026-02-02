@@ -1,7 +1,7 @@
 """
     HistSmoother{T<:Real} <: AbstractBayesDensityModel{T}
 
-Struct representing a spline histogram smoothing model.
+Struct representing a spline histogram smoother model.
 
 # Constructors
     

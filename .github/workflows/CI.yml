@@ -23,7 +23,6 @@ jobs:
     timeout-minutes: 60
 
     permissions:
-      # needed to allow julia-actions/cache to proactively delete old caches that it has created
       actions: write
       contents: read
 
@@ -66,7 +65,6 @@ jobs:
             Pkg.test("${{ matrix.package }}"; coverage=true)
           '
 
-
       - name: Process coverage
         uses: julia-actions/julia-processcoverage@v1
 
@@ -97,7 +95,7 @@ jobs:
 
       - name: Instantiate workspace
         run: |
-          julia -e '
+          julia --project=. -e '
             import Pkg
             Pkg.instantiate()
           '
@@ -109,9 +107,9 @@ jobs:
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
 
       - name: Run doctests
-          shell: julia --project=docs --color=yes {0}
-          run: |
-            using Documenter: DocMeta, doctest
-            using BayesDensity
-            DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
-            doctest(BayesDensity)
+        shell: julia --project=. --color=yes {0}
+        run: |
+          using Documenter: DocMeta, doctest
+          using BayesDensity
+          DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
+          doctest(BayesDensity)
