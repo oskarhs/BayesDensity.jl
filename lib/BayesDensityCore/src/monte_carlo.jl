@@ -84,15 +84,15 @@ function Base.vcat(ps::PosteriorSamples...)
     end
 
     samples = similar(ps[1].samples, 0)
-    n_samples = 0
+    n_samples_tot = 0
     non_burnin_ind = Int[]
     for ps_i in ps
         append!(non_burnin_ind, ps_i.non_burnin_ind .+ length(samples))
         append!(samples, ps_i.samples)
-        n_samples += n_samples(ps_i)
+        n_samples_tot += n_samples(ps_i)
     end
     
-    return PosteriorSamples{eltype(ps[1])}(samples, model(ps[1]), n_samples, non_burnin_ind)
+    return PosteriorSamples{eltype(ps[1])}(samples, model(ps[1]), n_samples_tot, non_burnin_ind)
 end
 
 """
