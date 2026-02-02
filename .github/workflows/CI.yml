@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
     tags: ['*']
   pull_request:
   workflow_dispatch:
@@ -60,6 +60,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using BayesianDensityEstimation
-          DocMeta.setdocmeta!(BayesianDensityEstimation, :DocTestSetup, :(using BayesianDensityEstimation); recursive=true)
-          doctest(BayesianDensityEstimation)
+          using BayesDensity
+          DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
+          doctest(BayesDensity)

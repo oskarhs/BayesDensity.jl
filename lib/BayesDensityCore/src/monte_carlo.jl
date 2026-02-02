@@ -18,8 +18,22 @@ struct PosteriorSamples{T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel
         return new{T,V,M,A}(samples, model, n_samples, non_burnin_ind)
     end
 end
-# Convenience constructor which makes the first `n_burnin` samples as burn-in
+# Convenience constructor that records the first `n_burnin` samples as burn-in
 PosteriorSamples{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel} = PosteriorSamples{T}(samples, model, n_samples, collect(n_burnin+1:n_samples))
+
+"""
+    samples(ps::PosteriorSamples{T, V}) where {T, V<:AbstractVector} -> V
+
+Get the posterior samples of a `PosteriorSamples` object as a vector.
+"""
+samples(ps::PosteriorSamples) = ps.samples
+
+"""
+    n_samples(ps::PosteriorSamples) -> Int
+
+Get the total number of samples of a `PosteriorSamples` object, including burn-in samples.
+"""
+n_samples(ps::PosteriorSamples) = ps.n_samples
 
 """
     n_burnin(ps::PosteriorSamples) -> Int
@@ -52,11 +66,11 @@ end
 Base.show(io::IO, ps::PosteriorSamples) = show(io, MIME("text/plain"), ps)
 
 """
-    drop_burnin(ps::PosteriorSamples) -> PosteriorSamples
+    drop_burnin(ps::PosteriorSamples{T}) where {T} -> PosteriorSamples{T}
 
 Create a new `PosteriorSamples` object where the burn-in samples have been discarded.
 """
-drop_burnin(ps::PosteriorSamples{T,V,M,A}) where {T,V,M,A} = PosteriorSamples{T}(ps.samples[ps.non_burnin_ind], ps.model, ps.n_samples, 0)
+drop_burnin(ps::PosteriorSamples{T}) where {T} = PosteriorSamples{T}(samples(ps)[ps.non_burnin_ind], model(ps), n_samples(ps), 0)
 
 """
     vcat(ps::PosteriorSamples...) -> PosteriorSamples
@@ -75,7 +89,7 @@ function Base.vcat(ps::PosteriorSamples...)
     for ps_i in ps
         append!(non_burnin_ind, ps_i.non_burnin_ind .+ length(samples))
         append!(samples, ps_i.samples)
-        n_samples += ps_i.n_samples
+        n_samples += n_samples(ps_i)
     end
     
     return PosteriorSamples{eltype(ps[1])}(samples, model(ps[1]), n_samples, non_burnin_ind)

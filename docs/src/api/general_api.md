@@ -70,11 +70,14 @@ sample(::AbstractBayesDensityModel, ::Int)
 All of the implemented MCMC methods return an object of type `PosteriorSamples`:
 ```@docs
 PosteriorSamples
+samples(::PosteriorSamples  )
 ```
 
-The following methods can be used to extract useful information about the model object, such as the underlying model object or the element type.
+The following methods can be used to extract useful information about the model object, such as the underlying model object and the number of samples.
 ```@docs
 model(::PosteriorSamples)
+n_samples(::PosteriorSamples)
+n_burnin(::PosteriorSamples)
 ```
 
 By default, `PosteriorSamples` objects also store the burn-in samples from the MCMC routine. These can be discarded via the following method:

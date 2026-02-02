@@ -59,7 +59,7 @@ For the Bernstein density , it is relatively straightforward to implement a mean
 ```math
 q(\boldsymbol{\theta}, \boldsymbol{z}) = q(\boldsymbol{\theta})\, q(\boldsymbol{z}).
 ```
-It can be shown (see e.g. [Ormerod2010explaining](@citet)) that the optimal ``q`` densities are given by
+It can be shown [see e.g. [Ormerod2010explaining](@citet)] that the optimal ``q`` densities are given by
 ```math
 \begin{aligned}
   q(\boldsymbol{\theta}) &\propto \exp\big\{\mathbb{E}_{\boldsymbol{z}}\big[\log p(\boldsymbol{\theta}, \boldsymbol{z})\big]\big\},\\

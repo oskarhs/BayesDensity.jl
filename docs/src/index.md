@@ -40,7 +40,7 @@ rng = Random.Xoshiro(1) # for reproducibility
 d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
 x = rand(rng, d_true, 1000)
 
-# Create a B-Spline mixture model object:
+# Create a HistSmoother model object:
 smoother = HistSmoother(x)
 ```
 
@@ -54,5 +54,6 @@ vi_fit = varinf(smoother) # VI
 The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Makie as follows:
 ```julia
 using CairoMakie
-plot(mcmc_fit)
+plot(mcmc_fit) # Based on MCMC
+plit(vi_fit) # Based on VI
 ```

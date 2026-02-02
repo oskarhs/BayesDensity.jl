@@ -46,7 +46,7 @@ julia> vps = sample(Random.Xoshiro(1812), vip, 5000);
 StatsBase.sample(vip::AbstractVIPosterior, n_samples::Int) = sample(Random.default_rng(), vip, n_samples)
 
 """
-    model(vip::AbstractVIPosterior)
+    model(vip::AbstractVIPosterior{T}) where {T} -> AbstractBayesDensityModel{T}
 
 Get the model object to which the variational posterior `vip` was fitted.
 """
