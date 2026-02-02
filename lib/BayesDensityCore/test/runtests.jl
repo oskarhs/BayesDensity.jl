@@ -187,7 +187,7 @@ end
     @test isapprox(posterior_mean_cdf[1], mean(posterior, cdf, t[1]))
 
     # Test vector version (std)
-    @test all(posterior_std_pdf .== std(posterior, t[1]))
+    @test posterior_std_pdf[1] == std(posterior, t[1])
     @test posterior_std_cdf[1] == std(posterior, cdf, t[1])
 
     # Test vector version (median)

@@ -60,11 +60,12 @@ jobs:
 
       - name: Instantiate and test ${{ matrix.package }}
         run: |
-          julia --project=lib/${{ matrix.package }} -e '
+          julia --project=. -e '
             import Pkg
             Pkg.instantiate()
-            Pkg.test(; coverage=true)
+            Pkg.test("${{ matrix.package }}"; coverage=true)
           '
+
 
       - name: Process coverage
         uses: julia-actions/julia-processcoverage@v1
@@ -79,25 +80,38 @@ jobs:
   docs:
     name: Documentation
     runs-on: ubuntu-latest
+
     permissions:
-      actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
+      actions: write
       contents: write
       statuses: write
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
+
       - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-docdeploy@v1
+
+      - name: Instantiate workspace
+        run: |
+          julia -e '
+            import Pkg
+            Pkg.instantiate()
+          '
+
+      - name: Build and deploy docs
+        uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+
       - name: Run doctests
-        shell: julia --project=docs --color=yes {0}
-        run: |
-          using Documenter: DocMeta, doctest
-          using BayesDensity
-          DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
-          doctest(BayesDensity)
+          shell: julia --project=docs --color=yes {0}
+          run: |
+            using Documenter: DocMeta, doctest
+            using BayesDensity
+            DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(using BayesDensity); recursive=true)
+            doctest(BayesDensity)
