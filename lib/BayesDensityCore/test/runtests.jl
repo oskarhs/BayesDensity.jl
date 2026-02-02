@@ -1,5 +1,7 @@
 using BayesDensityCore
-using Distributions, Random, StatsBase
+using Distributions
+using Random
+using StatsBase
 using Test
 
 const rng = Random.Xoshiro(1)
