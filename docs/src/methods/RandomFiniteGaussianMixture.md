@@ -11,7 +11,7 @@ q(K) \propto p(K)\,\exp\big\{\mathrm{ELBO}(K)\big\}.
 ```
 This approximation can be justified in light of the fact that the ELBO is a lower bound on the log-marginal likelihood ``p(\boldsymbol{x}, K)``. The approximate posterior for the number of mixture components together with the optimal variational densities given ``K`` defines a distribution over a space of mixture of variable dimension, which is then used to make inferences about the density of the given sample.
 
-The algorithm used to compute the conditional variational posterior ``q(\boldsymbol{\mu}|k)\,q(\boldsymbol{\sigma}^2|k)\,q(\boldsymbol{w}|k)`` is variant of the algorithm 5 in [Ormerod2010explaining](@citet). Note that our version also includes an additional hyperprior on the rate parameters of the mixture scales.
+The algorithm used to compute the conditional variational posterior ``q(\boldsymbol{\mu}|k)\,q(\boldsymbol{\sigma}^2|k)\,q(\boldsymbol{w}|k)`` is a variant of the algorithm 5 in [Ormerod2010explaining](@citet). Note that our version also includes an additional hyperprior on the rate parameters of the mixture scales and that the algorithm has been adjusted to account for this fact.
 
 There are two main ways of proceeding with Bayesian inference for the variational posterior. One possibility is to proceed with the single value ``\hat{K}`` that maximizes the variational probability ``q(K)``, the so-called maximum a posteriori model. Posterior inference then proceeds via the conditional variational posterior ``q\big(\boldsymbol{\mu}, \boldsymbol{\sigma}^2, \boldsymbol{w} | \hat{K}\big)``. This model can be retrieved by utilizing the [`maximum_a_posteriori`](@ref) method on a fitted variational posterior, which can then be used for posterior inference.
 

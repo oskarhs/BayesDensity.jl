@@ -55,7 +55,7 @@ p(\boldsymbol{z}\, |\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \prod_{i=1}^
 Hence, we see that ``z_1, \ldots, z_n`` are independent given ``\boldsymbol{\theta}, \boldsymbol{x}``, with ``p(z_i = k \,|\, \boldsymbol{\theta}, \boldsymbol{x}) \propto \theta_k\, \varphi_k(x_i)``.
 
 ### Variational inference
-For the Bernstein density , it is relatively straightforward to implement a mean-field variational inference scheme. Here, we approximate the joint posterior ``p(\boldsymbol{\theta}, \boldsymbol{z}\,|\, \boldsymbol{x})`` via a distribution ``q`` which satisfies
+For the Bernstein density , it is relatively straightforward to implement a mean-field variational inference scheme. Here, we approximate the joint posterior ``p(\boldsymbol{\theta}, \boldsymbol{z}\,|\, \boldsymbol{x})`` via a distribution ``q`` which satisfies the following independence assumption:
 ```math
 q(\boldsymbol{\theta}, \boldsymbol{z}) = q(\boldsymbol{\theta})\, q(\boldsymbol{z}).
 ```
@@ -66,7 +66,7 @@ It can be shown [see e.g. [Ormerod2010explaining](@citet)] that the optimal ``q`
   q(\boldsymbol{z}) &\propto \exp\big\{\mathbb{E}_{\boldsymbol{\theta}}\big[\log p(\boldsymbol{\theta}, \boldsymbol{z})\big]\big\},
 \end{aligned}
 ```
-where the expectations are taken with respect to ``q(\boldsymbol{\theta})`` and ``q(\boldsymbol{z})``, respectively. This result leads to the iterative coordinate-wise ascent variational inference algorithm (CAVI) for finding the optimal ``q`` densities, where we cyclically update ``q(\boldsymbol{\theta})`` and ``q(\boldsymbol{z})`` until some convergence criterion has been met. An oft-used convergence criterion for this purpose is the evidence lower bound, (ELBO):
+where the expectations are taken with respect to ``q(\boldsymbol{z})`` and ``q(\boldsymbol{\theta})``, respectively. This result leads to the iterative coordinate-wise ascent variational inference algorithm (CAVI) for finding the optimal ``q`` densities, where we cyclically update ``q(\boldsymbol{\theta})`` and ``q(\boldsymbol{z})`` until some convergence criterion has been met. An oft-used convergence criterion for this purpose is the evidence lower bound, (ELBO):
 ```math
 \mathrm{ELBO}(q) = \exp \Big\{\mathbb{E}_{\boldsymbol{\theta}, \boldsymbol{z}}\Big(\log \frac{p(\boldsymbol{x}, \boldsymbol{\theta}, \boldsymbol{z})}{q(\boldsymbol{\theta}, \boldsymbol{z})}\Big)\Big\}.
 ```

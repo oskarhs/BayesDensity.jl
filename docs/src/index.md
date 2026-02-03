@@ -48,12 +48,12 @@ Having specified a model for the data, we can perform posterior inference throug
 
 ```julia
 mcmc_fit = sample(rng, smoother, 2100; n_burnin=100) # MCMC
-vi_fit = varinf(smoother) # VI
+vi_fit = varinf(smoother)                            # VI
 ```
 
 The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Makie as follows:
 ```julia
 using CairoMakie
 plot(mcmc_fit) # Based on MCMC
-plit(vi_fit) # Based on VI
+plit(vi_fit)   # Based on VI
 ```

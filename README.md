@@ -48,17 +48,18 @@ Having specified a model for the data, we can perform posterior inference throug
 
 ```julia
 mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
-vi_fit = varinf(bsm) # VI
+vi_fit = varinf(bsm)                             # VI
 ```
 
-The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of $f(t)$ through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval with Makie as follows:
+The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of the density evaluated at given point(s) `t` through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval with Makie as follows:
 
 ```julia
 using CairoMakie
-plot(mcmc_fit)
+plot(mcmc_fit) # Based on MCMC
+plot(vi_fit)   # Based on VI
 ```
 
-For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the DOCUMENTATION
+For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the [documentation](https://oskarhs.github.io/BayesDensity.jl).
 
 ## Development phase
 The package is currently under a period of heavy development, and new features will as such be added in rapid succession.
@@ -66,7 +67,6 @@ To be able to use the latest features of the package, make sure that you current
 
 In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
 
-- Finish writing the general documentation, including a primer on Bayesian nonparametric density estimation.
 - Write introductions to all models which have been implemented so far.
 - Implement an MCMC algorithm for RandomFixedGaussianMixture
 - Implement Bernstein polynomial model (variable K)
