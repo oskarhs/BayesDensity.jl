@@ -10,7 +10,7 @@ include("aqua.jl")
     x = randn(rng, 10)
 
     shs = HistSmoother(x)
-    @test typeof(shs) <: HistSmoother{Float64, <:AbstractBSplineBasis, <:NamedTuple}
+    @test shs isa HistSmoother{Float64, <:AbstractBSplineBasis, <:NamedTuple}
 
     # Check that we can retrieve hyerparameter defaults
     @test hyperparams(shs) == (prior_scale_fixed = 1e3, prior_scale_random = 1e3)
@@ -18,12 +18,10 @@ include("aqua.jl")
     # Test equality method
     @test HistSmoother(x) == shs
 
-    for model in (HistSmoother(x),)
-        io = IOBuffer() # just checks that we can call the show method
-        show(io, model)
-        output = String(take!(io))
-        @test typeof(output) == String
-    end
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, shs)
+    output = String(take!(io))
+    @test output isa String
 end
 
 @testset "HistSmoother: Constructor throws error" begin
@@ -84,7 +82,7 @@ end
     x = collect(-5:0.1:5)
 
     shs = HistSmoother(x; K = K, n_bins = 20)
-    @test typeof(sample(rng, shs, 100)) <: PosteriorSamples{Float64}
+    @test sample(rng, shs, 100) isa PosteriorSamples{Float64}
 end
 
 @testset "HistSmoother: varinf" begin
@@ -93,8 +91,13 @@ end
 
     shs = HistSmoother(x; K = K, n_bins = 20)
     vip, _ = varinf(shs)
-    @test typeof(vip) <: AbstractVIPosterior{Float64}
-    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
+    @test vip isa AbstractVIPosterior{Float64}
+    @test sample(rng, vip, 100) isa PosteriorSamples{Float64}
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, vip)
+    output = String(take!(io))
+    @test output isa String
 end
 
 @testset "HistSmoother: HistSmootherVIPosterior" begin
@@ -109,6 +112,12 @@ end
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     L = 11
     t = LinRange(bs_min, bs_max, L)
+
+    ps = sample(rng, vip, 1)
+
+    # Test pdf evlauation when eval_grid, val_cdf are present
+    @test isapprox(pdf(model(ps), samples(ps)[1], t), fill(1/(bs_max - bs_min), length(t)); rtol=1e-5)
+    @test isapprox(cdf(model(ps), samples(ps)[1], t), collect((t .- bs_min)/(bs_max - bs_min)); rtol=1e-5)
 
     # Vector
     @test isapprox(mean(vip, t), fill(1/(bs_max - bs_min), length(t)); rtol=1e-5)

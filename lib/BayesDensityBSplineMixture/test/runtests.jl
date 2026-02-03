@@ -14,7 +14,7 @@ include("aqua.jl")
 
     @test order(BSplineMixture(x)) == 4
 
-    @test typeof(hyperparams(BSplineMixture(x))) <: NamedTuple
+    @test hyperparams(BSplineMixture(x)) isa NamedTuple
 
     @test Distributions.support(BSplineMixture(LinRange(-0.5, 0.5, 11); bounds = (-1.0, 1.0))) == (-1.0, 1.0)
 
@@ -24,7 +24,7 @@ include("aqua.jl")
         io = IOBuffer() # just checks that we can call the show method
         show(io, model)
         output = String(take!(io))
-        @test typeof(output) == String
+        @test output isa String
     end
 end
 
@@ -47,10 +47,10 @@ end
     x = collect(-5:0.1:5)
 
     bsm1 = BSplineMixture(x; n_bins = 20)
-    @test typeof(sample(rng, bsm1, 100)) <: PosteriorSamples{Float64}
+    @test sample(rng, bsm1, 100) isa PosteriorSamples{Float64}
 
     bsm2 = BSplineMixture(x; n_bins = nothing)
-    @test typeof(sample(rng, bsm2, 100)) <: PosteriorSamples{Float64}
+    @test sample(rng, bsm2, 100) isa PosteriorSamples{Float64}
 end
 
 @testset "BSplineMixture: MC: pdf, cdf and mean" begin
@@ -78,6 +78,8 @@ end
     ps2 = PosteriorSamples{Float64}(samples2, bsm, 10, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
     @test isapprox(cdf(bsm, samples2, t), [j/(L-1) for j in 0:(L-1), i in eachindex(samples2)])
+    @test isapprox(pdf(bsm, samples2[1], t), ones(length(t)))
+    @test isapprox(cdf(bsm, samples2[1], t), [j/(L-1) for j in 0:(L-1)])
     @test isapprox(mean(ps2, t), ones(length(t)))
 end
 
@@ -86,21 +88,21 @@ end
     x = collect(0:0.1:1)
     t = LinRange(0, 1, 11)
 
-    bsm1 = BSplineMixture(x; K=K, bounds=(0,1))
+    bsm1 = BSplineMixture(x; K=K, bounds=(0,1), n_bins=10)
     vip1, _ = @suppress varinf(bsm1; max_iter = 10)
     
-    @test typeof(vip1) <: AbstractVIPosterior
-    @test typeof(sample(vip1, 10)) <: PosteriorSamples{Float64}
+    @test vip1 isa AbstractVIPosterior
+    @test sample(vip1, 10) isa PosteriorSamples{Float64}
 
     bsm2 = BSplineMixture(x; K=K, bounds=(0,1), n_bins=nothing)
     vip2, _ = @suppress varinf(bsm2; max_iter = 10)
-    @test typeof(vip1) <: AbstractVIPosterior
-    @test typeof(sample(vip1, 10)) <: PosteriorSamples{Float64}
+    @test vip1 isa AbstractVIPosterior
+    @test sample(vip1, 10) isa PosteriorSamples{Float64}
 
     io = IOBuffer() # just checks that we can call the show method
     show(io, vip1)
     output = String(take!(io))
-    @test typeof(output) == String
+    @test output isa String
 end
 
 @testset "BSplineMixture: VI: mean" begin

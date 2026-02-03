@@ -92,6 +92,33 @@ function BayesDensityCore.varinf(rhm::RandomHistogram{T, NT}) where {T, NT}
     return posterior, info
 end
 
+@testset "Core: Utils" begin
+    # Softplus
+    @test isapprox(BayesDensityCore.softplus(0.0), log(2.0))
+
+    # Sigmoid
+    @test isapprox(BayesDensityCore.sigmoid(0.0), 0.5)
+
+    # Softmax
+    @test isapprox(BayesDensityCore.softmax([0.0, 0.0]), [0.5, 0.5])
+
+    # Logit
+    @test isapprox(BayesDensityCore.logit(0.5), 0.0; atol=1e-4)
+
+    # logistic_stickbreaking
+    @test isapprox(BayesDensityCore.logistic_stickbreaking([0.0, 0.0]), [0.5, 0.25, 0.25])
+
+    # truncated_stickbreaking
+    @test isapprox(BayesDensityCore.truncated_stickbreaking([0.5, 0.5]), [0.5, 0.25, 0.25])
+
+    # linear_binning
+    @test isapprox(BayesDensityCore.linear_binning([1/3, 0.75], 2, 0.0, 1.0), [1, 1])
+
+    # irregular binning
+    @test isapprox(BayesDensityCore.bin_irregular([0.2, 0.4, 0.8], [0.0, 0.5, 1.0], true), [2, 1])
+    @test isapprox(BayesDensityCore.bin_irregular([0.2, 0.4, 0.8], [0.0, 0.5, 1.0], false), [2, 1])
+end
+
 @testset "Core: pdf and cdf fallback methods" begin
     K = 15
     a = 1.0
@@ -132,11 +159,11 @@ end
     n_samples = 2000
     model_fit = sample(rng, rhm, n_samples)
 
-    @test typeof(model_fit) <: PosteriorSamples{Float64}
+    @test model_fit isa PosteriorSamples{Float64}
     @test length(model_fit.samples) == n_samples
 end
 
-@testset "Core: PosteriorSamples: drop_burnin, vcat" begin
+@testset "Core: PosteriorSamples: drop_burnin, vcat, print" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -149,11 +176,16 @@ end
 
     @test n_burnin(drop_burnin(model_fit1)) == 0
 
-    @test typeof(model_fit1) <: PosteriorSamples{Float64}
+    @test model_fit1 isa PosteriorSamples{Float64}
     @test length(model_fit1.samples) == n_samples
 
     @test_throws ArgumentError vcat(model_fit1, model_fit3)
-    @test typeof(vcat(model_fit1, model_fit2)) <: PosteriorSamples{Float64}
+    @test vcat(model_fit1, model_fit2) isa PosteriorSamples{Float64}
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, model_fit1)
+    output = String(take!(io))
+    @test output isa String
 end
 
 @testset "Core: MC mean, var, std and quantile fallback methods" begin
@@ -213,12 +245,19 @@ end
     
     n_samples = 100
 
-    @test typeof(rhp) <: AbstractVIPosterior
+    @test rhp isa AbstractVIPosterior
 
     ps = sample(rng, rhp, n_samples)
 
-    @test typeof(ps) <: PosteriorSamples{Float64}
+    @test ps isa PosteriorSamples{Float64}
     @test length(ps.samples) == n_samples
+
+    @test posterior(info) isa AbstractVIPosterior{Float64}
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, info)
+    output = String(take!(io))
+    @test output isa String
 end
 
 @testset "Core: VI mean, var, std and quantile fallback methods" begin
@@ -234,6 +273,9 @@ end
 
     t = LinRange(0, 1, 11)
     qs = [0.2, 0.8]
+
+    @test isapprox(quantile(rng, rhp, t[end], 0.2), 1.0; atol=1e-3)
+    @test isapprox(quantile(rng, rhp, cdf, t[end], 0.2), t[end]; atol=1e-3)
 
     @test isapprox(quantile(rng, rhp, t, 0.2), ones(length(t)); atol=1e-3)
     @test isapprox(quantile(rng, rhp, cdf, t, 0.2), collect(t); atol=1e-3)

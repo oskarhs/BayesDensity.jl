@@ -213,7 +213,7 @@ end
 function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
     # Coefs not given, compute them from β
     θ = logistic_stickbreaking(params.β)
-    spline_coefs = theta_to_coef(θ, basis)
+    spline_coefs = theta_to_coef(θ, basis(bsm))
     return _pdf(bsm, spline_coefs, t)
 end
 function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
@@ -292,7 +292,7 @@ end
 function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
     # Coefs not given, compute them from β
     θ = logistic_stickbreaking(params.β)
-    spline_coefs = theta_to_coef(θ, basis)
+    spline_coefs = theta_to_coef(θ, basis(bsm))
     return _cdf(bsm, spline_coefs, t)
 end
 function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
@@ -330,8 +330,14 @@ function _cdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Unio
 end
 
 # More efficient version of the posterior mean (we only need to average the coefficients)
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names<:Tuple, Vals<:Tuple, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
-Distributions.mean(ps::PosteriorSamples{T, M, <:AbstractVector{NamedTuple{Names, Vals}}}, t::S) where {T<:Real, M<:BSplineMixture, Names<:Tuple, Vals<:Tuple, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(
+    ps::PosteriorSamples{T, M, V},
+    t::S
+) where {T<:Real, M<:BSplineMixture, V<:AbstractVector{<:NamedTuple}, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
+Distributions.mean(
+    ps::PosteriorSamples{T, M, V},
+    t::S
+) where {T<:Real, M<:BSplineMixture, V<:AbstractVector{<:NamedTuple}, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
 
 function _mean(ps::PosteriorSamples{T}, t::S, ::Val{true}) where {T<:Real, S<:Union{Real, AbstractVector{<:Real}}}
     mean_spline_coefs = zeros(T, length(model(ps)))

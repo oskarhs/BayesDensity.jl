@@ -6,6 +6,10 @@ const rng = Random.Xoshiro(1)
 
 include("aqua.jl")
 
+@testset "PitmanYorMixture: Utils" begin
+    @test length(BayesDensityPitmanYorMixture.NormalInverseGamma{Float64}(1.0, 1.0, 1.0, 1.0)) == 2
+end
+
 @testset "PitmanYorMixture: Constructor and model object" begin
     x = [1.0, -1.0]
 
@@ -94,8 +98,9 @@ end
 
     pym = PitmanYorMixture(x)
     vip, _ = varinf(pym)
-    @test typeof(vip) <: AbstractVIPosterior{Float64}
-    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
+    @test vip isa AbstractVIPosterior{Float64}
+    @test sample(rng, vip, 100) isa PosteriorSamples{Float64}
+    @test model(vip) isa PitmanYorMixture{Float64}
 end
 
 @testset "PitmanYorMixture: VIPosterior" begin
@@ -116,4 +121,9 @@ end
     
     t = LinRange(-5, 5, 1001)
     @test isapprox(pdf(d_target, t), mean(vip, t); rtol=1e-4)
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, vip)
+    output = String(take!(io))
+    @test typeof(output) == String
 end

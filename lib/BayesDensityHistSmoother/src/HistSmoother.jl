@@ -267,8 +267,9 @@ function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::Abstract
 
     # Perform linear interpolation
     F_interp = interpolate(params.eval_grid, params.val_cdf, BSplineOrder(2))
-    F_samp[:, i] = F_interp.(t_trans)
-    F_samp[t_trans .> bs_max, i] .= one(T)
+    F_samp = F_interp.(t_trans)
+    F_samp[t_trans .> bs_max] .= one(T)
+    F_samp[t_trans .< bs_min] .= zero(T)
     return F_samp
 end
 function _cdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
