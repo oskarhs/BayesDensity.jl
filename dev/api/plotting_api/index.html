@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Plotting API · BayesDensity.jl</title><meta name="title" content="Plotting API · BayesDensity.jl"/><meta property="og:title" content="Plotting API · BayesDensity.jl"/><meta property="twitter:title" content="Plotting API · BayesDensity.jl"/><meta name="description" content="Documentation for BayesDensity.jl."/><meta property="og:description" content="Documentation for BayesDensity.jl."/><meta property="twitter:description" content="Documentation for BayesDensity.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="BayesDensity.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">BayesDensity.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../density_estimation_primer/">A primer on Bayesian nonparametric density estimation</a></li><li><span class="tocitem">API</span><ul><li><a class="tocitem" href="../general_api/">General API</a></li><li class="is-active"><a class="tocitem" href>Plotting API</a><ul class="internal"><li><a class="tocitem" href="#Plotting-with-Makie.jl"><span>Plotting with Makie.jl</span></a></li><li><a class="tocitem" href="#Plotting-with-Plots.jl"><span>Plotting with Plots.jl</span></a></li></ul></li></ul></li><li><span class="tocitem">Methods</span><ul><li><a class="tocitem" href="../../methods/">Index</a></li><li><a class="tocitem" href="../../methods/BSplineMixture/">BSplineMixture</a></li><li><a class="tocitem" href="../../methods/HistSmoother/">HistSmoother</a></li><li><a class="tocitem" href="../../methods/PitmanYorMixture/">PitmanYorMixture</a></li><li><a class="tocitem" href="../../methods/FiniteGaussianMixture/">FiniteGaussianMixture</a></li><li><a class="tocitem" href="../../methods/RandomFiniteGaussianMixture/">RandomFiniteGaussianMixture</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/add_new_models/">Implementing new Bayesian density estimators</a></li></ul></li><li><a class="tocitem" href="../../contributing/">Contributing</a></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">API</a></li><li class="is-active"><a href>Plotting API</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Plotting API</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/oskarhs/BayesDensity.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/oskarhs/BayesDensity.jl/blob/main/docs/src/api/plotting_api.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Plotting-API"><a class="docs-heading-anchor" href="#Plotting-API">Plotting API</a><a id="Plotting-API-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-API" title="Permalink"></a></h1><p>Graphical displays are a powerful tool for providing informative vizual summaries of the result of a given Bayesian inference procedure for a univariate density. <code>BayesDensity</code> makes it easy to plot posterior summaries for <span>$f$</span> using the results from Markov chain Monte Carlo sampling or variational inference through its extensions for the <a href="https://github.com/MakieOrg/Makie.jl">Makie.jl</a> and <a href="https://github.com/JuliaPlots/Plots.jl">Plots.jl</a> packages.</p><p>In addition to documenting the plotting-related public API, this page also showcases the plotting capabilities of the <code>BayesDensityCore</code> package through examples. Although we will not delve deep into implementational details here, some familiarity with <code>Makie.jl</code> or <code>Plots.jl</code> is an advantage when reading this part of the documentation.</p><p>The following sections are structured so that the <code>Makie</code>- and the <code>Plots</code>-portions of the tutorial can be read independently of one another. As such, there is no need for a <code>Makie</code> power-user to read the <code>Plots</code> sections of this page.</p><h2 id="Plotting-with-Makie.jl"><a class="docs-heading-anchor" href="#Plotting-with-Makie.jl">Plotting with Makie.jl</a><a id="Plotting-with-Makie.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-with-Makie.jl" title="Permalink"></a></h2><p>In general, the available plot method for <a href="../general_api/#BayesDensityCore.PosteriorSamples"><code>PosteriorSamples</code></a> and <a href="../general_api/#BayesDensityCore.AbstractVIPosterior"><code>AbstractVIPosterior</code></a> objects has the following signature:</p><pre><code class="language-julia hljs">plot(
+    ps::Union{PosteriorSamples, AbstractVIPosterior},
+    [func = pdf],
+    [t::AbstractVector{&lt;:Real}];
+    ci::Bool = true,
+    level::Real = 0.95,
+    estimate = mean,
+    alpha::Real = 0.25,
+    kwargs...
+)</code></pre><p>The first argument to <code>plot</code> is the posterior distribution, fitted via either Markov chain Monte Carlo or variational inference. The second (optional) positional argument indicates whether to plot estimates of the <code>pdf</code> or the <code>cdf</code>. By default, the estimated pdf is shown. The third (optional) positional argument is the grid at which the <code>pdf</code> or <code>cdf</code> is evaluated to draw the grid. The <code>ci</code> keyword is a boolean, controlling whether or not a credible interval should be drawn (enabled by default). To control the level of the drawn credible interval, set the <code>level</code> keyword argument to the desired confidence level.</p><p>Other keyword arguments mostly control the appearance of the drawn lines and credible bands. Of particular note are <code>strokecolor</code>, which controls the color of the density estimate, and <code>color</code>, which controls the color of the credible bands.  The <code>alpha</code> keyword argument controls the transparency of the credible bands. The line width of the density estimate is controlled through the <code>:strokewidth</code> keyword argument.</p><h3 id="Example"><a class="docs-heading-anchor" href="#Example">Example</a><a id="Example-1"></a><a class="docs-heading-anchor-permalink" href="#Example" title="Permalink"></a></h3><p>To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a <code>BayesDensity</code> model to some simulated data:</p><pre><code class="language-julia hljs">using BayesDensityHistSmoother, CairoMakie, Distributions, Random
+rng = Random.Xoshiro(1)
+
+# Simulate some data from the &quot;Claw&quot; density
+d_true = MixtureModel(
+    vcat(Normal(0, 1), [Normal(0.5*j, 0.1) for j in -2:2]),
+    [0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
+)
+x = rand(rng, d_true, 1000)
+
+# Fit the model via MCMC and VI
+histsmoother = HistSmoother(x)
+posterior_sample = sample(rng, histsmoother, 1100)
+vi_posterior, info = varinf(histsmoother)</code></pre><p>Having fitted the model, we can use the extended plot function to generate various plots from the fitted model objects, be it the variational posterior or the MCMC samples. The most basic usage of the is to simply call <code>plot(posterior_sample)</code> or <code>plot(vi_posterior)</code>, which both generate a plot of the estimated posterior mean of <span>$f$</span>, along with 95 % pointwise credible bands. The code snippet below illustrates how one can customize the posterior plots:</p><pre><code class="language-julia hljs">t = LinRange(-3.5, 3.5, 4001)
+
+# Create figure, axes
+fig = Figure(size=(550, 550))
+ax1 = Axis(fig[1,1], xlabel=&quot;x&quot;, ylabel=&quot;Density&quot;)
+ax2 = Axis(fig[1,2], xlabel=&quot;x&quot;, ylabel=&quot;Density&quot;)
+ax3 = Axis(fig[2,1], xlabel=&quot;x&quot;, ylabel=&quot;Cumulative density&quot;)
+ax4 = Axis(fig[2,2], xlabel=&quot;x&quot;, ylabel=&quot;Cumulative density&quot;)
+
+# Plot estimated density and CI from MCMC samples
+plot!(ax1, posterior_sample, color=:red, strokecolor=:red, label=&quot;Estimate (CI)&quot;, alpha=0.1)
+ylims!(ax1, 0.0, 0.85)
+
+# Compare the posterior median of the VI fit to the true density (without CI)
+plot!(ax2, vi_posterior, pdf, t; ci=false,
+      estimate=median, label=&quot;Estimate&quot;) # NB! Supplying pdf is redundant here
+lines!(ax2, t, pdf(d_true, t), color=:black, label=&quot;True pdf&quot;,
+       linestyle=:dash)
+xlims!(ax2, -2.5, 2.5)
+ylims!(ax2, 0.0, 0.85)
+
+# Plot the estimated cdf and the CI
+plot!(ax3, posterior_sample, cdf, level=0.99, color=:red, strokecolor=:red, label=&quot;Estimate (CI)&quot;)
+
+# Compare estimated cdf of the VI fit to the true cdf (without CI)
+plot!(ax4, vi_posterior, cdf, ci=false, label=&quot;Estimate&quot;)
+lines!(ax4, t, cdf(d_true, t),
+      color = :black, label=&quot;True cdf&quot;, linestyle=:dash)
+xlims!(ax4, -2.2, 2.2)
+
+for ax in (ax1, ax2, ax3, ax4)
+    axislegend(ax; position=:lt, framevisible=false, labelsize=10)
+end
+
+fig</code></pre><p><img src="../../assets/plotting_api/makie.svg" alt="Makie showcase"/></p><p>Makie.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling <code>plot(info)</code> on a <a href="../general_api/#BayesDensityCore.VariationalOptimizationResult"><code>VariationalOptimizationResult</code></a>. Note that this is effectively just a thin wrapper around <code>lines(elbo(info))</code>.</p><h2 id="Plotting-with-Plots.jl"><a class="docs-heading-anchor" href="#Plotting-with-Plots.jl">Plotting with Plots.jl</a><a id="Plotting-with-Plots.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-with-Plots.jl" title="Permalink"></a></h2><p>In general, the available plot method for <a href="../general_api/#BayesDensityCore.PosteriorSamples"><code>PosteriorSamples</code></a> and <a href="../general_api/#BayesDensityCore.AbstractVIPosterior"><code>AbstractVIPosterior</code></a> objects has the following signature:</p><pre><code class="language-julia hljs">plot(
+    ps::Union{PosteriorSamples, AbstractVIPosterior},
+    [func = pdf],
+    [t::AbstractVector{&lt;:Real}];
+    ci::Bool = true,
+    level::Real = 0.95,
+    estimate = mean,
+    alpha::Real = 0.25,
+    kwargs...
+)</code></pre><p>The first argument to <code>plot</code> is the posterior distribution, fitted via either Markov chain Monte Carlo or variational inference. The second (optional) positional argument indicates whether to plot estimates of the <code>pdf</code> or the <code>cdf</code>. By default, the estimated pdf is shown. The third (optional) positional argument is the grid at which the <code>pdf</code> or <code>cdf</code> is evaluated to draw the grid. The <code>ci</code> keyword is a boolean, controlling whether or not a credible interval should be drawn (enabled by default). To control the level of the drawn credible interval, set the <code>level</code> keyword argument to the desired confidence level.</p><p>Other keyword arguments mostly control the appearance of the drawn lines and credible bands. Of particular note are <code>color</code>, which controls the color of the density estimate, and <code>fillcolor</code>, which controls the color of the credible bands.  The <code>fillalpha</code> keyword argument controls the transparency of the credible bands.</p><h3 id="Example-2"><a class="docs-heading-anchor" href="#Example-2">Example</a><a class="docs-heading-anchor-permalink" href="#Example-2" title="Permalink"></a></h3><p>To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a <code>BayesDensity</code> model to some simulated data:</p><pre><code class="language-julia hljs">using BayesDensityHistSmoother, Plots, Distributions, Random
+rng = Random.Xoshiro(1)
+
+# Simulate some data from the &quot;Claw&quot; density
+d_true = MixtureModel(
+    vcat(Normal(0, 1), [Normal(0.5*j, 0.1) for j in -2:2]),
+    [0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
+)
+x = rand(rng, d_true, 1000)
+
+# Fit the model via MCMC and VI
+histsmoother = HistSmoother(x)
+posterior_sample = sample(rng, histsmoother, 1100)
+vi_posterior, info = varinf(histsmoother)</code></pre><p>Having fitted the model, we can use the extended plot function to generate various plots from the fitted model objects, be it the variational posterior or the MCMC samples. The most basic usage of the is to simply call <code>plot(posterior_sample)</code> or <code>plot(vi_posterior)</code>, which both generate a plot of the estimated posterior mean of <span>$f$</span>, along with 95 % pointwise credible bands. The code snippet below illustrates how one can customize the posterior plots:</p><pre><code class="language-julia hljs">t = LinRange(-3.5, 3.5, 4001)
+
+# Create subplots
+p1 = plot(xlabel=&quot;x&quot;, ylabel=&quot;Density&quot;)
+p2 = plot(xlabel=&quot;x&quot;, ylabel=&quot;Density&quot;)
+p3 = plot(xlabel=&quot;x&quot;, ylabel=&quot;Cumulative density&quot;)
+p4 = plot(xlabel=&quot;x&quot;, ylabel=&quot;Cumulative density&quot;)
+
+# Plot estimated density and CI from MCMC samples
+plot!(p1, posterior_sample, color=:red, fillcolor=:red,
+      label=&quot;Estimate (CI)&quot;, fillalpha=0.1)
+ylims!(p1, 0.0, 0.7)
+
+# Compare the posterior median of the VI fit to the true density (without CI)
+plot!(p2, vi_posterior, pdf, t; ci=false,
+      estimate=median, label=&quot;Estimate&quot;) # NB! Supplying pdf is redundant here
+plot!(p2, t, pdf(d_true, t), color=:black, label=&quot;True pdf&quot;,
+       linestyle=:dash)
+xlims!(p2, -2.5, 2.5)
+ylims!(p2, 0.0, 0.7)
+
+# Plot the estimated cdf and the CI
+plot!(p3, posterior_sample, cdf, level=0.99, color=:red, fillcolor=:red, label=&quot;Estimate (CI)&quot;)
+
+# Compare estimated cdf of the VI fit to the true cdf (without CI)
+plot!(p4, vi_posterior, cdf, ci=false, label=&quot;Estimate&quot;)
+plot!(p4, t, cdf(d_true, t),
+      color = :black, label=&quot;True cdf&quot;, linestyle=:dash)
+xlims!(p4, -2.2, 2.2)
+
+plot(p1, p2, p3, p4, layout=(2,2), size=(550, 550))</code></pre><p><img src="../../assets/plotting_api/plots.svg" alt="Plots showcase"/></p><p>Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling <code>plot(info)</code> on a <a href="../general_api/#BayesDensityCore.VariationalOptimizationResult"><code>VariationalOptimizationResult</code></a>. Note that this is effectively just a thin wrapper around <code>plot(elbo(info))</code>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../general_api/">« General API</a><a class="docs-footer-nextpage" href="../../methods/">Index »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 3 February 2026 07:24">Tuesday 3 February 2026</span>. Using Julia version 1.12.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
