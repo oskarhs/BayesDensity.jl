@@ -38,7 +38,7 @@ BayesDensityCore.model(vip::FiniteGaussianMixtureVIPosterior) = vip.fgm
 
 function Base.show(io::IO, ::MIME"text/plain", vip::FiniteGaussianMixtureVIPosterior{T, A, B, C, D}) where {T, A, B, C, D}
     K = length(vip.q_w)
-    println(io, "K-dimensional ", nameof(typeof(vip)), "{", T, "} vith variational densities:")
+    println(io, nameof(typeof(vip)), "{", T, "} vith variational densities:")
     println(io, " q_w::", A, ",")
     println(io, " q_μ::", B, ",")
     println(io, " q_σ2::", C, ",")

@@ -330,38 +330,42 @@ function _cdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Unio
 end
 
 # More efficient version of the posterior mean (we only need to average the coefficients)
-Distributions.mean(
-    ps::PosteriorSamples{T, M, V},
-    t::S
-) where {T<:Real, M<:BSplineMixture, V<:AbstractVector{<:NamedTuple}, S<:Real} = _mean(ps, t, Val(:spline_coefs in Names))
-Distributions.mean(
-    ps::PosteriorSamples{T, M, V},
-    t::S
-) where {T<:Real, M<:BSplineMixture, V<:AbstractVector{<:NamedTuple}, S<:AbstractVector{<:Real}} = _mean(ps, t, Val(:spline_coefs in Names))
+for func in (:pdf, :cdf)
+    @eval begin
+        Distributions.mean(ps::PosteriorSamples{<:Real, <:BSplineMixture}, ::typeof($func), t::Real) = _mean(ps, $func, t, Val(:spline_coefs in Names))
+        Distributions.mean(ps::PosteriorSamples{<:Real, <:BSplineMixture}, ::typeof($func), t::AbstractVector{<:Real}) = _mean(ps, $func, t, Val(:spline_coefs in Names))
 
-function _mean(ps::PosteriorSamples{T}, t::S, ::Val{true}) where {T<:Real, S<:Union{Real, AbstractVector{<:Real}}}
-    mean_spline_coefs = zeros(T, length(model(ps)))
-    samples = ps.samples[ps.non_burnin_ind]
-    for i in eachindex(samples)
-        mean_spline_coefs += samples[i].spline_coefs
+        function _mean(ps::PosteriorSamples{T, M}, ::typeof($func), t::S, ::Val{true}) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
+            mean_spline_coefs = zeros(T, length(model(ps)))
+            samples = ps.samples[ps.non_burnin_ind]
+            for i in eachindex(samples)
+                mean_spline_coefs += samples[i].spline_coefs
+            end
+            mean_spline_coefs /= length(samples)
+            return _mean(ps, $func, mean_spline_coefs, t)
+        end
+        function _mean(ps::PosteriorSamples{T, M}, ::typeof($func), t::S, ::Val{false}) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
+            mean_spline_coefs = zeros(T, length(model(ps)))
+            samples = ps.samples[ps.non_burnin_ind]
+            bs = basis(model(ps))
+            for i in eachindex(samples)
+                θ = logistic_stickbreaking(samples[i].β)
+                mean_spline_coefs += theta_to_coef(θ, bs)
+            end
+            mean_spline_coefs /= length(samples)
+            return _mean(ps, $func, mean_spline_coefs, t)
+        end
     end
-    mean_spline_coefs /= length(samples)
-    return _mean(ps, mean_spline_coefs, t)
 end
-function _mean(ps::PosteriorSamples{T}, t::S, ::Val{false}) where {T<:Real, S<:Union{Real, AbstractVector{<:Real}}}
-    mean_spline_coefs = zeros(T, length(model(ps)))
-    samples = ps.samples[ps.non_burnin_ind]
-    bs = basis(model(ps))
-    for i in eachindex(samples)
-        θ = logistic_stickbreaking(samples[i].β)
-        mean_spline_coefs += theta_to_coef(θ, bs)
-    end
-    mean_spline_coefs /= length(samples)
-    return _mean(ps, mean_spline_coefs, t)
-end
-function _mean(ps::PosteriorSamples, mean_spline_coefs::AbstractVector{<:Real}, t::S) where {S<:Union{Real, AbstractVector{<:Real}}}
+function _mean(ps::PosteriorSamples{T, M}, ::typeof(pdf), mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
     meanfunc = Spline(basis(model(ps)), mean_spline_coefs)
     return meanfunc.(t)
+end
+function _mean(ps::PosteriorSamples{T, M}, ::typeof(cdf), mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, M<:BSplineMixture, S<:Union{Real, AbstractVector{<:Real}}}
+    meanfunc = Spline(basis(model(ps)), mean_spline_coefs)
+    bmin, _ = support(model(ps))
+    F_bar = Integral(meanfunc)
+    return F_bar.(t) .- F_bar(bmin)
 end
 
 _get_default_splinedim(x::AbstractVector{<:Real}) = max(min(200, ceil(Int, length(x)/10)), 100)

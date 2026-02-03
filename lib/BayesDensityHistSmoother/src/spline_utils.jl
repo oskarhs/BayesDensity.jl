@@ -1,3 +1,28 @@
+function linear_binning(x::AbstractVector{T}, n_bins::Int, xmin::T, xmax::T) where {T<:Real}
+    N = zeros(T, n_bins)
+    delta = (xmax - xmin) / n_bins
+    
+    # Compute first midpoint
+    mid_first = delta / 2
+
+    for i in eachindex(x)
+        # Intervals 0 and n_bins are valid
+        lxi = ((x[i] - mid_first) / delta) + 1
+        li = floor(Int, lxi)
+        rem = lxi - li
+
+        if 1 <= li < n_bins
+            N[li] += 1 - rem
+            N[li + 1] += rem
+        elseif li == n_bins
+            N[end] += one(T)
+        else
+            N[begin] += one(T)
+        end
+    end
+    return round.(Int, N)
+end
+
 # Compute the normalization constant of `shs` for given parameters using Simpson's method
 # NB! Computes the normalization constant on [0, 1] and not on the original scale.
 function compute_norm_constants_cdf_grid(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}) where {T<:Real, Names, Vals<:Tuple}

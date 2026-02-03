@@ -61,12 +61,11 @@ end
 function create_spline_basis_matrix_binned(x::AbstractVector{T}, basis::AbstractBSplineBasis{N, S}, n_bins::Integer) where {T<:Real, N, S<:Real}
     R = promote_type(T, S)
     K = length(basis)
-    deg = order(basis) - 1
 
     bounds = boundaries(basis)
 
     n_bins = (fld(n_bins, K-2)+1)*(K-2)-1 # Make the number of bins a multiple of K-2 so that at most 4 basis functions are nonzero at a time
-    bincounts = bin_regular(x, bounds[1], bounds[2], n_bins, true)
+    bincounts = bin_regular(x, bounds[1], bounds[2], n_bins)
     binedges = LinRange(bounds[1], bounds[2], n_bins+1)
     n = length(x)
     b_ind = Vector{Int}(undef, n_bins)

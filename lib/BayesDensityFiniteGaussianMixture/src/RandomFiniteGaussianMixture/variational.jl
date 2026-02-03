@@ -4,28 +4,31 @@
 Struct representing the variational posterior distribution of a [`RandomFiniteGaussianMixture`](@ref).
 
 # Fields
-* `mixture_fits`: Dictionary consisting of 2-tuples, where the values are the posterior probability for a given `K` and the corresponding [`FiniteGaussianMixtureVIPosterior`](@ref), containing the fitted variational posterior distributions for differing values of mixture components.
+* `posterior_components`: The posterior probabilities on the number of components. Note that `support(posterior_components)[K]` corresponds to the posterior probability of model `K`.
+* `mixture_fits`: Vector of [`FiniteGaussianMixtureVIPosterior`](@ref) objects, containing the fitted variational posterior distributions for differing values of mixture components.
 * `rgfm`: The `RandomFiniteGaussianMixture` to which the variational posterior was fit.
 """
-struct RandomFiniteGaussianMixtureVIPosterior{T<:Real, M<:AbstractDict, R<:RandomFiniteGaussianMixture{T}} <: AbstractVIPosterior{T}
+struct RandomFiniteGaussianMixtureVIPosterior{T<:Real, D<:DiscreteNonParametric, M<:AbstractVector, R<:RandomFiniteGaussianMixture{T}} <: AbstractVIPosterior{T}
+    posterior_components::D
     mixture_fits::M
     rfgm::R
     function RandomFiniteGaussianMixtureVIPosterior{T}(
-        mixture_fits::AbstractDict,
+        posterior_components::DiscreteNonParametric,
+        mixture_fits::AbstractVector,
         rfgm::RandomFiniteGaussianMixture
     ) where {T<:Real}
-        return new{T, typeof(mixture_fits), typeof(rfgm)}(mixture_fits, rfgm)
+        return new{T, typeof(posterior_components), typeof(mixture_fits), typeof(rfgm)}(posterior_components, mixture_fits, rfgm)
     end
 end
 
 BayesDensityCore.model(vip::RandomFiniteGaussianMixtureVIPosterior) = vip.rfgm
 
 """
-    posterior_prob_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T} -> Dict{Int, T}
+    posterior_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T} -> DiscreteNonParametric{Int, T}
 
-Get the variational posterior probability mass function of the number of mixture components as a dictionary.
+Get the variational posterior probability mass function of the number of mixture components as a `DiscreteNonParametric` instance.
 """
-posterior_prob_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T} = Dict{Int, T}(key => val[1] for (key, val) in vip.mixture_fits)
+posterior_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T} = vip.posterior_components
 
 """
     maximum_a_posteriori(
@@ -34,17 +37,7 @@ posterior_prob_components(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where 
 
 Get the variational posterior distribution that maximizes the approximate posterior probability on the number of components q(K).
 """
-function maximum_a_posteriori(vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T}
-    highest_prob = -T(Inf)
-    best_model = nothing
-    for (key, val) in vip.mixture_fits
-        if val[1] > highest_prob
-            highest_prob = val[1]
-            best_model = val[2]
-        end
-    end
-    return best_model
-end
+maximum_a_posteriori(vip::RandomFiniteGaussianMixtureVIPosterior) = vip.mixture_fits[argmax(probs(posterior_components(vip)))]
 
 function Base.show(io::IO, ::MIME"text/plain", vip::RandomFiniteGaussianMixtureVIPosterior{T}) where {T}
     println(io, nameof(typeof(vip)), "{", T, "}.")
@@ -59,30 +52,23 @@ function StatsBase.sample(
     vip::RandomFiniteGaussianMixtureVIPosterior{T},
     n_samples::Int
 ) where {T<:Real}
-    (; mixture_fits, rfgm) = vip
+    (; posterior_components, mixture_fits, rfgm) = vip
     samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
+    K_support = support(posterior_components)
     # Extract posterior model probabilities
-    q_K_probs = Vector{T}(undef, length(mixture_fits))
-    multinomial_index = Dict{Int, Int}()
-    iter = 0
-    for (K, val) in mixture_fits
-        iter += 1
-        q_K_probs[iter] = val[1]
-        multinomial_index[iter] = K
-    end
+    posterior_probs_components = probs(posterior_components)
     # Draw K ~ q(K) n_samples times, record the counts
-    K_samples = rand(rng, Multinomial(n_samples, q_K_probs))
-
-    # Map the computed counts to the correpsonding index and prune K's with 0 draws
-    K_counts = Dict{Int, Int}(multinomial_index[i] => K_samples[i] for i in 1:length(mixture_fits) if K_samples[i] > 0)
+    K_samples = rand(rng, Multinomial(n_samples, posterior_probs_components))
 
     # Generate samples conditional on the drawn K's
     i0 = 1
-    for (K, K_num_samples) in K_counts
-        i1 = i0 + (K_num_samples-1)
+    for i in eachindex(K_samples)
+        i1 = i0 + (K_samples[i]-1)
         # Sample (μ, σ2, w, β) from q(⋯|K)
-        samples[i0:i1] .= sample(rng, mixture_fits[K][2], K_num_samples).samples
+        if K_samples[i] >= 1
+            samples[i0:i1] .= sample(rng, mixture_fits[i], K_samples[i]).samples
+        end
         i0 = i1 + 1
     end
     return PosteriorSamples{T}(samples, rfgm, n_samples, 0)
@@ -143,16 +129,17 @@ function _variational_inference(
     (; data, prior_components, prior_strength, prior_location, prior_variance, prior_shape, hyperprior_shape, hyperprior_rate) = rfgm
     (; x, n) = data
 
+    probs_prior_components = probs(prior_components)
+    K_support = support(prior_components)
+
     # Fit models and store the value of the posterior probability on the logscale
-    mixture_fits_logprobs = Dict{Int, Tuple{T, Any}}()
-    logprobs = Vector{T}(undef, length(prior_components)) # Store logprobabilities in a separate vector for normalization purposes
+    mixture_fits_any = Vector{Any}(undef, length(probs(prior_components)))
+    logprobs = Vector{T}(undef, length(probs(prior_components))) # Store logprobabilities in a separate vector for normalization purposes
     vi_type = Any
-    iter = 0
-    for (K, val) in prior_components
-        iter += 1
+    for i in eachindex(probs_prior_components)
         fgm = FiniteGaussianMixture(
             x,
-            K;
+            K_support[i];
             prior_strength = prior_strength,
             prior_location = prior_location,
             prior_variance = prior_variance,
@@ -161,23 +148,22 @@ function _variational_inference(
             hyperprior_rate = hyperprior_rate
         )
         vip, info = varinf(fgm; max_iter = max_iter, rtol = rtol)
-        logprobs[iter] = log(val) + last(elbo(info))
-        mixture_fits_logprobs[K] = (logprobs[iter], vip)
+        logprobs[i] = log(probs_prior_components[i]) + last(elbo(info))
+        mixture_fits_any[i] = vip
         vi_type = typeof(vip)
     end
 
     # Get quantities for numerically stable normalization of probabilities
-    max_logprobs = maximum(logprobs)
-    sum_probs_stable = sum(exp, logprobs .- max_logprobs)
+    probs_posterior_components = softmax(logprobs)
+    posterior_components = DiscreteNonParametric(K_support, probs_posterior_components)
 
     # Create a new dictionary containing the normalized posterior probabilities and the corresponding model.
-    mixture_fits = Dict{Int, Tuple{T, vi_type}}()
-    for (K, val) in mixture_fits_logprobs
-        logprob, vip = val
-        prob = exp(logprob - max_logprobs) / sum_probs_stable
-        mixture_fits[K] = (prob, vip)
+    mixture_fits = Vector{vi_type}(undef, length(probs(prior_components)))
+    for i in eachindex(probs(prior_components))
+        mixture_fits[i] = mixture_fits_any[i]
     end
     return RandomFiniteGaussianMixtureVIPosterior{T}(
+        posterior_components,
         mixture_fits,
         rfgm
     )
