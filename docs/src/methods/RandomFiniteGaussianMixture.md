@@ -38,6 +38,6 @@ hyperparams(::RandomFiniteGaussianMixture)
 ```@docs
 RandomFiniteGaussianMixtureVIPosterior
 varinf(::RandomFiniteGaussianMixture)
-posterior_prob_components
+posterior_components
 maximum_a_posteriori
 ```

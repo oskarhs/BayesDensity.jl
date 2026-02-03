@@ -86,6 +86,9 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     θ = max.(eps(), logistic_stickbreaking(β))
     θ = θ / sum(θ)
     log_θ = log.(θ)
+
+    # Get normalization factor
+    norm_fac = compute_norm_fac(basis, T)
     
     # Initialize vector of samples
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
@@ -147,7 +150,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         log_θ = log.(θ)
 
         # Compute coefficients in terms of unnormalized B-spline basis
-        spline_coefs = theta_to_coef(θ, basis)
+        spline_coefs = θ .* norm_fac
         samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
@@ -176,6 +179,9 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     θ = max.(eps(), logistic_stickbreaking(β))
     θ = θ / sum(θ)
     log_θ = log.(θ)
+
+    # Get normalization factor
+    norm_fac = compute_norm_fac(basis, T)
     
     # Initialize vector of samples
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
@@ -239,7 +245,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         log_θ = log.(θ)
         
         # Compute coefficients in terms of unnormalized B-spline basis
-        spline_coefs = theta_to_coef(θ, basis)
+        spline_coefs = θ .* norm_fac
         samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)

@@ -3,7 +3,7 @@ module BayesDensityHistSmoother
 using Reexport
 
 @reexport using BayesDensityCore
-import BayesDensityCore: linear_binning, support
+import BayesDensityCore: support
 
 using BSplineKit
 using DataFrames

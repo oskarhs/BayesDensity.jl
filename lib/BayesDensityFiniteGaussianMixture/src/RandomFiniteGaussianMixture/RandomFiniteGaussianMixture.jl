@@ -11,7 +11,7 @@ Struct representing a finite Gaussian mixture model with a variable (random) num
 * `x`: The data vector.
 
 # Keyword arguments
-* `prior_components`: A dictionary containing the models with nonzero prior probabilities as keys and the corresponding prior probabilities (up to proportionality) as values. Defaults to `Dict(K => 1.0 for K in 1:20)`, corresponding to a uniform prior on the set {1, …, 20}.
+* `prior_components`: A `DiscreteNonParametric` distribution containing the models with nonzero prior probabilities as keys and the corresponding prior probabilities (up to proportionality) as values. Defaults to `DiscreteNonParametric(1:20, fill(T(1/20), 20))`, corresponding to a uniform prior on the set {1, …, 20}.
 * `prior_strength`: Strength parameter of the symmetric Dirichlet prior on the mixture weights. E.g. the prior is Dirichlet(strength, ..., strength). Defaults to `1.0`.
 * `prior_location`: Prior mean of the location parameters `μ[k]`. Defaults to the midpoint of the minimum and maximum values in the sample.
 * `prior_variance`: The prior variance of the location parameter `μ[k]`. Defaults to the sample range.
@@ -31,10 +31,10 @@ Hyperparameters:
  prior_shape = 2.0, hyperprior_shape = 0.2, hyperprior_rate = 10.0
  prior_strength = 1.0
 
-julia> fgm = RandomFiniteGaussianMixture(x; prior_components = Dict(K => -log(K) for K in 1:10));
+julia> fgm = RandomFiniteGaussianMixture(x; prior_components = DiscreteNonParametric(1:12, fill(1/12)));
 ```
 """
-struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:AbstractDict{Int, T}} <: AbstractBayesDensityModel{T}
+struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:DiscreteNonParametric{Int, T}} <: AbstractBayesDensityModel{T}
     data::NT
     prior_components::W
     prior_strength::T
@@ -45,7 +45,7 @@ struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:AbstractDict{Int,
     hyperprior_shape::T
     function RandomFiniteGaussianMixture{T}(
         x::AbstractVector{<:Real};
-        prior_components::AbstractDict{Int,<:Real}=Dict{Int,T}(K => one(T) for K in 1:20),
+        prior_components::DiscreteNonParametric=DiscreteNonParametric(1:20, fill(T(1/20), 20)),
         prior_strength::Real=1.0,
         prior_location::Real=_get_default_location(x),
         prior_variance::Real=_get_default_variance(x),
@@ -54,11 +54,8 @@ struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:AbstractDict{Int,
         hyperprior_rate::Real=_get_default_hyperprior_rate(x)
     ) where {T<:Real}
         _check_finitegaussianmixturekwargs(prior_strength, prior_variance, prior_shape, hyperprior_rate, hyperprior_shape)
-        for (key, val) in prior_components
-            (key > 0) || throw(ArgumentError("Number of mixture components must be a positive integer."))
-            (val ≥ 0) || throw(ArgumentError("Prior probabilities for mixture components must all be positive."))
-        end
-        prior_components = Dict{Int, T}(key => T(val) for (key, val) in prior_components)
+        all(support(prior_components) .>= 1) || throw(ArgumentError("Prior on the number of mixture components must have strictly positive support."))
+        prior_components = DiscreteNonParametric(support(prior_components), T.(probs(prior_components)))
         data = (x = T.(x), n  = length(x))
         return new{T, typeof(data), typeof(prior_components)}(data, prior_components, T(prior_strength), T(prior_location), T(prior_variance), T(prior_shape), T(hyperprior_rate), T(hyperprior_shape))
     end
@@ -72,7 +69,7 @@ BayesDensityCore.support(::RandomFiniteGaussianMixture{T}) where {T} = (-T(Inf),
 """
     hyperparams(
         gm::RandomFiniteGaussianMixture{T}
-    ) where {T} -> @NamedTuple{prior_strength::T, prior_location::T, prior_variance::T, prior_shape::T, prior_rate::T}
+    ) where {T} -> @NamedTuple{prior_components::DiscreteNonParametric{Int, T}, prior_strength::T, prior_location::T, prior_variance::T, prior_shape::T, prior_rate::T}
 
 Returns the hyperparameters of the finite Gaussian mixture model `gm` as a `NamedTuple`.
 """
@@ -88,7 +85,7 @@ BayesDensityCore.hyperparams(gm::RandomFiniteGaussianMixture) = (
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", gm::RandomFiniteGaussianMixture{T}) where {T}
-    println(io, nameof(typeof(gm)), '{', T, "} with ", length(gm.prior_components), " values for the number mixture components.")
+    println(io, nameof(typeof(gm)), '{', T, "} with ", length(probs(gm.prior_components)), " values for the number mixture components.")
     println(io, "Using ", gm.data.n, " observations.")
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, "Hyperparameters:")

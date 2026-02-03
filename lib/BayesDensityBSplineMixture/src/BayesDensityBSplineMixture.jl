@@ -3,7 +3,7 @@ module BayesDensityBSplineMixture
 using Reexport
 
 @reexport using BayesDensityCore
-import BayesDensityCore: logit, softmax, logistic_stickbreaking, bin_regular, unitvector, support
+import BayesDensityCore: support
 using BandedMatrices
 using BSplineKit
 using Distributions
@@ -17,6 +17,7 @@ using StatsBase
 
 
 include("spline_utils.jl")
+include("utils.jl")
 
 include("BSplineMixture.jl")
 export BSplineMixture, order, knots, basis

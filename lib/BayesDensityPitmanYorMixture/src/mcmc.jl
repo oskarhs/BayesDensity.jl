@@ -89,7 +89,7 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T}, initial_p
                 logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts[k] - discount)
             end
             logprobs[K+1] = logpdf(marginal_dist, x[i]) + log(strength + K * discount)
-            probs = BayesDensityCore.softmax(logprobs)
+            probs = softmax(logprobs)
             new_alloc = wsample(rng, 1:K+1, probs)
             cluster_alloc[i] = new_alloc
             

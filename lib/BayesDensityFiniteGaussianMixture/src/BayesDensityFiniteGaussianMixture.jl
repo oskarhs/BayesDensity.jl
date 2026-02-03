@@ -3,7 +3,6 @@ module BayesDensityFiniteGaussianMixture
 using Reexport
 
 @reexport using BayesDensityCore
-import BayesDensityCore: softmax, xlogx
 
 using Distributions
 using Random
@@ -24,6 +23,6 @@ include("RandomFiniteGaussianMixture/RandomFiniteGaussianMixture.jl")
 export RandomFiniteGaussianMixture
 
 include("RandomFiniteGaussianMixture/variational.jl")
-export RandomFiniteGaussianMixtureVIPosterior, posterior_prob_components, maximum_a_posteriori
+export RandomFiniteGaussianMixtureVIPosterior, posterior_components, maximum_a_posteriori
 
 end # module

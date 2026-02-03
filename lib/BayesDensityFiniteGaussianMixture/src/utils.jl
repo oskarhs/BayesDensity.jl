@@ -1,3 +1,12 @@
+xlogx(x::Real) = ifelse(x > 0.0, x*log(x), 0.0)
+
+# Numerically stable softmax
+function softmax(x::AbstractVector{T}) where {T<:Real}
+    xmax = maximum(x)
+    num = @. exp(x - xmax)
+    return num /sum(num)
+end
+
 function _get_default_location(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     return (xmax + xmin) / 2

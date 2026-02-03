@@ -56,11 +56,14 @@ function StatsBase.sample(
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
     δ2 = Vector{T}(undef, K-3)
 
+    # Get normalization factor
+    norm_fac = compute_norm_fac(basis(bsm), T)
+
     for m in 1:n_samples
         β = rand(rng, q_β)
         θ = max.(eps(), logistic_stickbreaking(β))
         θ = θ / sum(θ)
-        spline_coefs = theta_to_coef(θ, basis(bsm))
+        spline_coefs = θ .* norm_fac
         τ2 = rand(rng, q_τ)
         δ2 = rand(rng, q_δ)
 

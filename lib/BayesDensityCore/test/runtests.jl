@@ -8,6 +8,18 @@ const rng = Random.Xoshiro(1)
 
 include("aqua.jl")
 
+# Compute bin counts on a regular grid consisting of `M` bins over the interval [xmin, xmax]
+function bin_regular(x::AbstractVector{T}, xmin::T, xmax::T, n_bins::Int) where {T<:Real}
+    R = xmax - xmin
+    bincounts = zeros(Int, n_bins)
+    edges_inc = n_bins/R
+    for val in x
+        idval = min(n_bins-1, floor(Int, (val-xmin)*edges_inc+eps())) + 1
+        bincounts[idval] += 1.0
+    end
+    return bincounts
+end
+
 # Random Histogram model on [0, 1] with K-dimensional Dir(fill(a, K))-prior.
 struct RandomHistogram{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
@@ -17,7 +29,7 @@ struct RandomHistogram{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
         T_x = T.(x)
         xmin, xmax = T(0), T(1)
         binedges = LinRange(xmin, xmax, K+1)
-        bincounts = BayesDensityCore.bin_regular(T_x, xmin, xmax, K, true)
+        bincounts = bin_regular(T_x, xmin, xmax, K)
         data = (x = x, binedges=binedges, bincounts=bincounts)
         new{T, typeof(data)}(data, K, a)
     end
@@ -90,33 +102,6 @@ function BayesDensityCore.varinf(rhm::RandomHistogram{T, NT}) where {T, NT}
     posterior = RHPosterior{T}(rhm)
     info = VariationalOptimizationResult{T}([0.0], true, 1, 0.0, posterior)
     return posterior, info
-end
-
-@testset "Core: Utils" begin
-    # Softplus
-    @test isapprox(BayesDensityCore.softplus(0.0), log(2.0))
-
-    # Sigmoid
-    @test isapprox(BayesDensityCore.sigmoid(0.0), 0.5)
-
-    # Softmax
-    @test isapprox(BayesDensityCore.softmax([0.0, 0.0]), [0.5, 0.5])
-
-    # Logit
-    @test isapprox(BayesDensityCore.logit(0.5), 0.0; atol=1e-4)
-
-    # logistic_stickbreaking
-    @test isapprox(BayesDensityCore.logistic_stickbreaking([0.0, 0.0]), [0.5, 0.25, 0.25])
-
-    # truncated_stickbreaking
-    @test isapprox(BayesDensityCore.truncated_stickbreaking([0.5, 0.5]), [0.5, 0.25, 0.25])
-
-    # linear_binning
-    @test isapprox(BayesDensityCore.linear_binning([1/3, 0.75], 2, 0.0, 1.0), [1, 1])
-
-    # irregular binning
-    @test isapprox(BayesDensityCore.bin_irregular([0.2, 0.4, 0.8], [0.0, 0.5, 1.0], true), [2, 1])
-    @test isapprox(BayesDensityCore.bin_irregular([0.2, 0.4, 0.8], [0.0, 0.5, 1.0], false), [2, 1])
 end
 
 @testset "Core: pdf and cdf fallback methods" begin

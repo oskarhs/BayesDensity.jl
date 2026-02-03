@@ -148,7 +148,7 @@ end
     # Then the posterior mean should be very close to just evaluating the pdf of the mixture
     x = collect(-5:0.1:5)
     fgm = FiniteGaussianMixture{Float64}(x, 3)
-    rfgm = RandomFiniteGaussianMixture{Float64}(x; prior_components = Dict(3=>1.0))
+    rfgm = RandomFiniteGaussianMixture{Float64}(x; prior_components = DiscreteNonParametric([3], [1.0]))
     d_target = MixtureModel([Normal(j, sqrt(j+2)) for j in -1:1], [0.2, 0.6, 0.2])
     vip_fgm = FiniteGaussianMixtureVIPosterior{Float64}(
         1e12*[0.2, 0.6, 0.2], # dirichlet_params
@@ -160,13 +160,13 @@ end
         1.0,                  # rate hyperparam (irrelevant for pdf)
         fgm
     )
-    vip = RandomFiniteGaussianMixtureVIPosterior{Float64}(Dict(3=>(1.0, vip_fgm)), rfgm)
+    vip = RandomFiniteGaussianMixtureVIPosterior{Float64}(DiscreteNonParametric([3], [1.0]), [vip_fgm], rfgm)
 
     t = LinRange(-5, 5, 1001)
     @test isapprox(pdf(d_target, t), mean(vip, t); rtol=1e-5)
 
     @test maximum_a_posteriori(vip) == vip_fgm
-    @test posterior_prob_components(vip) == Dict(3=>1.0)
+    @test posterior_components(vip) == DiscreteNonParametric([3], [1.0])
 
     @test model(vip) isa RandomFiniteGaussianMixture{Float64}
 
