@@ -4,7 +4,7 @@ using Random, BSplineKit, Distributions, LinearAlgebra
 
 const rng = Random.Xoshiro(1)
 
-#include("aqua.jl")
+include("aqua.jl")
 
 @testset "HistSmoother: Constructor and model object" begin
     x = randn(rng, 10)

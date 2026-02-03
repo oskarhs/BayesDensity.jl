@@ -25,7 +25,7 @@ Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDe
 
 Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
 ```julia
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityBSplineMixture.jl")
+Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/HistSmoother.jl")
 ```
 
 ## Quick start

@@ -6,7 +6,7 @@ using Test
 
 const rng = Random.Xoshiro(1)
 
-# include("aqua.jl")
+include("aqua.jl")
 
 # Random Histogram model on [0, 1] with K-dimensional Dir(fill(a, K))-prior.
 struct RandomHistogram{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}

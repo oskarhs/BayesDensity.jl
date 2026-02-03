@@ -4,7 +4,7 @@ using Random, Distributions, LinearAlgebra, Suppressor
 
 const rng = Random.Xoshiro(1)
 
-# include("aqua.jl")
+include("aqua.jl")
 
 @testset "BSplineMixture: Constructor and model object" begin
     K = 20

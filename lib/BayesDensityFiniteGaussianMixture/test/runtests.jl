@@ -4,7 +4,7 @@ using Distributions, Random
 
 const rng = Random.Xoshiro(1)
 
-#include("aqua.jl")
+include("aqua.jl")
 
 @testset "FiniteGaussianMixture: Constructor and model object" begin
     x = [1.0, -1.0]
