@@ -169,26 +169,19 @@ Distributions.quantile(ps::PosteriorSamples) = throw(MethodError(quantile, (ps))
 for func in (:pdf, :cdf)
     @eval begin
         function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t, q::Real)
-            if !(0 ≤ q ≤ 1)
-                throws(DomainError("Requested quantile level is not in [0,1]."))
-            end
+            (0 ≤ q ≤ 1) || throws(DomainError("Requested quantile level is not in [0,1]."))
             func_samp = $func(ps.model, ps.samples[ps.non_burnin_ind], t)
-
             return mapslices(x -> quantile(x, q), func_samp; dims=2)[:]
         end
         function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t, q::AbstractVector{<:Real})
-            if !all(0 .≤ q .≤ 1)
-                throw(DomainError("All requested quantile levels must lie in the interval [0,1]."))
-            end
+            all(0 .≤ q .≤ 1) || throws(DomainError("Requested quantile levels are not all in [0,1]."))
             func_samp = $func(ps.model, ps.samples[ps.non_burnin_ind], t)
             
             result = mapslices(x -> quantile(x, q), func_samp; dims=2)
             return result  # shape: (length(t), length(q))
         end
         function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t::Real, q::Real)
-            if !(0 ≤ q ≤ 1)
-                throws(DomainError("Requested quantile level is not in [0,1]."))
-            end
+            (0 ≤ q ≤ 1) || throws(DomainError("Requested quantile level is not in [0,1]."))
             func_samp = $func(ps.model, ps.samples[ps.non_burnin_ind], t)
 
             return mapslices(x -> quantile(x, q), func_samp; dims=2)[1]

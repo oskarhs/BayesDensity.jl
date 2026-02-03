@@ -99,8 +99,8 @@ The named tuple should contain fields named `:μ`, `:σ2` and a third field name
 """
 Distributions.pdf(pym::PitmanYorMixture, params::NamedTuple, t::Real) = _pdf(pym, params, t)
 Distributions.pdf(pym::PitmanYorMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
-Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
-Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(pym, params, t)
+Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
+Distributions.pdf(pym::PitmanYorMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _pdf(pym, params, t)
 
 """
     cdf(
@@ -121,8 +121,8 @@ The named tuple should contain fields named `:μ`, `:σ2` and a third field name
 """
 Distributions.cdf(pym::PitmanYorMixture, params::NamedTuple, t::Real) = _cdf(pym, params, t)
 Distributions.cdf(pym::PitmanYorMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
-Distributions.cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
-Distributions.cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, t)
+Distributions.cdf(pym::PitmanYorMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
+Distributions.cdf(pym::PitmanYorMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _cdf(pym, params, t)
 
 
 # pdf/cdf evalutation for samplers using the marginal parameterization
@@ -178,18 +178,17 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             R = promote_type(T, S)
             n = pym.data.n
             (; discount, strength, prior_location, prior_inv_scale_fac, prior_shape, prior_rate) = hyperparams(pym)
-            K = length(cluster_counts) # Number of existing clusters
             marginal_scale = sqrt(prior_rate*(1 + 1/prior_inv_scale_fac)/prior_shape)
 
             vals = zeros(R, (length(t), length(params)))
             
             # Compute relative weight of (μ, σ²) belonging to a new cluster
             for m in eachindex(params)
-                (; μ, σ2, cluster_counts) = params[j]
+                (; μ, σ2, cluster_counts) = params[m]
                 for k in eachindex(cluster_counts)
                     vals[:, m] .+= (cluster_counts[k] - discount) / (strength + n) .* $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t) # Contribution from event that (μ, σ²) belong to existing clusters
                 end
-                vals[:, m] .+= (strength + K * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
+                vals[:, m] .+= (strength + length(cluster_counts) * discount) / (strength + n) .* $(funcs[2])(TDistLocationScale(2*prior_shape, prior_location, marginal_scale), t) # Contribution from event that (μ, σ²) forms a new cluster
             end
             return vals
         end
@@ -241,8 +240,8 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
     end
 end
 
-_pdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(pym, params, [t])
-_cdf(pym::PitmanYorMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(pym, params, [t])
+_pdf(pym::PitmanYorMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _pdf(pym, params, [t])
+_cdf(pym::PitmanYorMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _cdf(pym, params, [t])
 
 
 function _check_pitmanyorkwargs(discount::Real, strength::Real, prior_inv_scale_fac::Real, prior_shape::Real, prior_rate::Real)

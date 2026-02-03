@@ -15,10 +15,10 @@ include("aqua.jl")
     @test gm == FiniteGaussianMixture(x, 2)
 
     # Test that we have subtyped AbstractBayesDensityModel
-    @test typeof(gm) <: AbstractBayesDensityModel{Float64}
+    @test gm isa AbstractBayesDensityModel{Float64}
 
     # Check that the hyperparams method can be used without any issues
-    @test typeof(hyperparams(gm)) <: NamedTuple
+    @test hyperparams(gm) isa NamedTuple
 
     # Check that the support is returned correctly
     @test Distributions.support(gm) == (-Inf, Inf)
@@ -32,7 +32,7 @@ include("aqua.jl")
     io = IOBuffer() # just checks that we can call the show method
     show(io, gm)
     output = String(take!(io))
-    @test typeof(output) == String
+    @test output isa String
 end
 
 @testset "RandomFiniteGaussianMixture: Constructor and model object" begin
@@ -44,10 +44,10 @@ end
     @test gm == RandomFiniteGaussianMixture(x)
 
     # Test that we have subtyped AbstractBayesDensityModel
-    @test typeof(gm) <: AbstractBayesDensityModel{Float64}
+    @test gm isa AbstractBayesDensityModel{Float64}
 
     # Check that the hyperparams method can be used without any issues
-    @test typeof(hyperparams(gm)) <: NamedTuple
+    @test hyperparams(gm) isa NamedTuple
 
     # Check that the support is returned correctly
     @test Distributions.support(gm) == (-Inf, Inf)
@@ -61,7 +61,7 @@ end
     io = IOBuffer() # just checks that we can call the show method
     show(io, gm)
     output = String(take!(io))
-    @test typeof(output) == String
+    @test output isa String
 end
 
 
@@ -94,7 +94,7 @@ end
     x = collect(-5:0.1:5)
 
     fgm = FiniteGaussianMixture(x, 2)
-    @test typeof(sample(rng, fgm, 20)) <: PosteriorSamples{Float64}
+    @test sample(rng, fgm, 20) isa PosteriorSamples{Float64}
 end
 
 @testset "FiniteGaussianMixture: varinf" begin
@@ -102,8 +102,8 @@ end
     fgm = FiniteGaussianMixture(x, 3)
 
     vip, _ = varinf(fgm)
-    @test typeof(vip) <: AbstractVIPosterior{Float64}
-    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
+    @test vip isa AbstractVIPosterior{Float64}
+    @test sample(rng, vip, 100) isa PosteriorSamples{Float64}
 end
 
 @testset "FiniteGaussianMixture: VIPosterior" begin
@@ -125,6 +125,13 @@ end
 
     t = LinRange(-5, 5, 1001)
     @test isapprox(pdf(d_target, t), mean(vip, t); rtol=1e-5)
+
+    @test model(vip) isa FiniteGaussianMixture{Float64}
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, vip)
+    output = String(take!(io))
+    @test output isa String
 end
 
 @testset "RandomFiniteGaussianMixture: varinf" begin
@@ -132,8 +139,8 @@ end
     rfgm = RandomFiniteGaussianMixture(x)
 
     vip = varinf(rfgm)
-    @test typeof(vip) <: AbstractVIPosterior{Float64}
-    @test typeof(sample(rng, vip, 100)) <: PosteriorSamples{Float64}
+    @test vip isa AbstractVIPosterior{Float64}
+    @test sample(rng, vip, 100) isa PosteriorSamples{Float64}
 end
 
 @testset "RandomFiniteGaussianMixture: VIPosterior" begin
@@ -160,4 +167,11 @@ end
 
     @test maximum_a_posteriori(vip) == vip_fgm
     @test posterior_prob_components(vip) == Dict(3=>1.0)
+
+    @test model(vip) isa RandomFiniteGaussianMixture{Float64}
+
+    io = IOBuffer() # just checks that we can call the show method
+    show(io, vip)
+    output = String(take!(io))
+    @test output isa String
 end

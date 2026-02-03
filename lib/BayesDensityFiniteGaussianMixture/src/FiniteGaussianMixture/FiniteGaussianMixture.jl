@@ -114,8 +114,8 @@ The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `
 """
 Distributions.pdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(fgm, params, t)
 Distributions.pdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(fgm, params, t)
-Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _pdf(fgm, params, t)
-Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _pdf(fgm, params, t)
+Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _pdf(fgm, params, t)
+Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _pdf(fgm, params, [t])
 
 """
     cdf(
@@ -136,8 +136,8 @@ The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `
 """
 Distributions.cdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(fgm, params, t)
 Distributions.cdf(fgm::FiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(fgm, params, t)
-Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::AbstractVector{<:Real}) = _cdf(fgm, params, t)
-Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{NamedTuple}, t::Real) = _cdf(fgm, params, t)
+Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _cdf(fgm, params, t)
+Distributions.cdf(fgm::FiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _cdf(fgm, params, [t])
 
 for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
     for names in ((:μ, :σ2, :w), (:μ, :σ2, :w, :β))
@@ -181,7 +181,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
                     σ2 = params[m].σ2
                     w = params[m].w
                     for k in eachindex(μ)
-                        val[:, k] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
+                        val[:, m] .+= w[k] * $(funcs[2])(Normal(μ[k], sqrt(σ2[k])), t)
                     end
                 end
                 return val

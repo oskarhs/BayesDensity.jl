@@ -9,12 +9,6 @@ function _get_default_variance(x::AbstractVector{<:Real})
     return R^2
 end
 
-function _get_default_rate(x::AbstractVector{<:Real})
-    xmin, xmax = extrema(x)
-    R = xmax - xmin
-    return R^2/5
-end
-
 function _get_default_hyperprior_rate(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin

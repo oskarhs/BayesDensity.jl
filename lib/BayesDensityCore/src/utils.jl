@@ -17,13 +17,13 @@ function softmax(x::AbstractVector{T}) where {T<:Real}
 end
 
 # Count the number of times each integer from 1:K occurs in the array `z`
-function countint(z::AbstractVector{<:Integer}, K::Int)
+#= function countint(z::AbstractVector{<:Integer}, K::Int)
     counts = zeros(Int, K)
     for i in eachindex(z)
         counts[z[i]] += 1
     end
     return counts
-end
+end =#
 
 # Map an unconstrained K-1 dimensional vector to the K-simplex through logistic stickbreaking, defined as the composition of the logistic and stickbreaking maps.
 # To ensure numerical stability, the calculation is performed in log-space.
@@ -94,15 +94,23 @@ end
 function linear_binning(x::AbstractVector{T}, n_bins::Int, xmin::T, xmax::T) where {T<:Real}
     N = zeros(T, n_bins)
     delta = (xmax - xmin) / n_bins
+    
+    # Compute first midpoint
+    mid_first = delta / 2
 
     for i in eachindex(x)
-        lxi = ((x[i] - xmin) / delta) + 1
+        # Intervals 0 and n_bins are valid
+        lxi = ((x[i] - mid_first) / delta) + 1
         li = floor(Int, lxi)
         rem = lxi - li
 
         if 1 <= li < n_bins
             N[li] += 1 - rem
             N[li + 1] += rem
+        elseif li == n_bins
+            N[end] += one(T)
+        else
+            N[begin] += one(T)
         end
     end
     return round.(Int, N)
