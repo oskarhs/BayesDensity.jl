@@ -56,5 +56,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/oskarhs/BayesDensity.jl",
-    devbranch="master",
+    devbranch="main",
 )
