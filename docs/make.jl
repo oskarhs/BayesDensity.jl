@@ -4,7 +4,7 @@ using BayesDensityCore
 using BayesDensityFiniteGaussianMixture
 using BayesDensityHistSmoother
 using BayesDensityPitmanYorMixture
-using Documenter, DocumenterCitations
+using Documenter, DocumenterCitations, DocumenterInterLinks
 using Random
 
 bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:authoryear)
@@ -16,6 +16,10 @@ bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:author
     using BayesDensityHistSmoother;
     using BayesDensityHistSmoother
     ); recursive=true) =#
+
+links = DocumenterInterLinks.InterLinks(
+    "Distributions" => "https://juliastats.org/Distributions.jl/stable/",
+)
 
 makedocs(;
     modules=[
@@ -50,7 +54,7 @@ makedocs(;
         "Contributing" => "contributing.md",
         "References" => "references.md"
     ],
-    plugins = [bib],
+    plugins = [bib, links],
     checkdocs=:none
 )
 

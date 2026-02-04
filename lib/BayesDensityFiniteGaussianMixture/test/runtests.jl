@@ -134,6 +134,18 @@ end
     @test output isa String
 end
 
+@testset "RandomFiniteGaussianMixture: MCMC sample" begin
+    K = 2
+    x = collect(-5:0.1:5)
+
+    prior_components = DiscreteNonParametric(1:2, [0.6, 0.4])
+    rfgm = RandomFiniteGaussianMixture(x; prior_components=prior_components)
+    @test sample(rng, rfgm, 20) isa PosteriorSamples{Float64}
+    
+    initial_params = (μ = [0.2, 0.8], σ2 = [1.0, 2.0], w = [0.7, 0.3])
+    @test sample(rfgm, 10; n_burnin=2, initial_params=initial_params) isa PosteriorSamples{Float64}
+end
+
 @testset "RandomFiniteGaussianMixture: varinf" begin
     x = collect(-5:0.1:5)
     rfgm = RandomFiniteGaussianMixture(x)

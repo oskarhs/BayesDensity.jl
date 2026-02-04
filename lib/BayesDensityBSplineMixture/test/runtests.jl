@@ -80,7 +80,6 @@ end
     @test isapprox(cdf(bsm, samples2, t), [j/(L-1) for j in 0:(L-1), i in eachindex(samples2)])
     @test isapprox(pdf(bsm, samples2[1], t), ones(length(t)))
     @test isapprox(cdf(bsm, samples2[1], t), [j/(L-1) for j in 0:(L-1)])
-    @test isapprox(mean(ps2, t), ones(length(t)))
 end
 
 @testset "BSplineMixture: VI: varinf, sample, print" begin

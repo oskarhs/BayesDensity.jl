@@ -11,7 +11,7 @@ Struct representing a finite Gaussian mixture model with a variable (random) num
 * `x`: The data vector.
 
 # Keyword arguments
-* `prior_components`: A `DiscreteNonParametric` distribution containing the models with nonzero prior probabilities as keys and the corresponding prior probabilities (up to proportionality) as values. Defaults to `DiscreteNonParametric(1:20, fill(T(1/20), 20))`, corresponding to a uniform prior on the set {1, …, 20}.
+* `prior_components`: A [`Distributions.DiscreteNonParametric`](@extref Distributions.DiscreteNonParametric) distribution instance containing the models with nonzero prior probabilities as keys and the corresponding prior probabilities (up to proportionality) as values. Defaults to `DiscreteNonParametric(1:20, fill(T(1/20), 20))`, corresponding to a uniform prior on the set {1, …, 20}.
 * `prior_strength`: Strength parameter of the symmetric Dirichlet prior on the mixture weights. E.g. the prior is Dirichlet(strength, ..., strength). Defaults to `1.0`.
 * `prior_location`: Prior mean of the location parameters `μ[k]`. Defaults to the midpoint of the minimum and maximum values in the sample.
 * `prior_variance`: The prior variance of the location parameter `μ[k]`. Defaults to the sample range.
@@ -31,7 +31,7 @@ Hyperparameters:
  prior_shape = 2.0, hyperprior_shape = 0.2, hyperprior_rate = 10.0
  prior_strength = 1.0
 
-julia> fgm = RandomFiniteGaussianMixture(x; prior_components = DiscreteNonParametric(1:12, fill(1/12)));
+julia> fgm = RandomFiniteGaussianMixture(x; prior_components = DiscreteNonParametric(1:12, fill(1/12, 12)));
 ```
 """
 struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:DiscreteNonParametric{Int, T}} <: AbstractBayesDensityModel{T}

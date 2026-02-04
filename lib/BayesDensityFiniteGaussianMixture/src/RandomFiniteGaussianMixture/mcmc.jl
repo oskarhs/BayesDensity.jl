@@ -1,17 +1,17 @@
 """
     sample(
         [rng::Random.AbstractRNG],
-        fgm::FiniteGaussianMixture{T},
+        rfgm::RandomFiniteGaussianMixture{T},
         n_samples::Int;
         n_burnin::Int              = min(1000, div(n_samples, 5)),
         initial_params::NamedTuple = _get_default_initparams_mcmc(hs)
     ) where {T} -> PosteriorSamples{T}
 
-Generate `n_samples` posterior samples from a `FiniteGaussianMixture` using an augmented Gibbs sampler.
+Generate `n_samples` posterior samples from a `RandomFiniteGaussianMixture` using the telescope sampler.
 
 # Arguments
 * `rng`: Optional random seed used for random variate generation.
-* `fgm`: The `FiniteGaussianMixture` object for which posterior samples are generated.
+* `rfgm`: The `RandomFiniteGaussianMixture` object for which posterior samples are generated.
 * `n_samples`: The total number of samples (including burn-in).
 
 # Keyword arguments
@@ -28,36 +28,39 @@ julia> using Random
 
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
-julia> fgm = FiniteGaussianMixture(x, 2)
+julia> rfgm = RandomFiniteGaussianMixture(x, 2)
 
-julia> ps1 = sample(fgm, 5_000);
+julia> ps1 = sample(rfgm, 5_000);
 
-julia> ps2 = sample(fgm, 5_000; n_burnin=2_000, initial_params = (μ = [0.2, 0.8], σ2 = [1.0, 2.0], w = [0.7, 0.3]));
+julia> ps2 = sample(rfgm, 5_000; n_burnin=2_000, initial_params = (μ = [0.2, 0.8], σ2 = [1.0, 2.0], w = [0.7, 0.3]));
 ```
 """
 function StatsBase.sample(
     rng::AbstractRNG,
-    fgm::FiniteGaussianMixture,
+    rfgm::RandomFiniteGaussianMixture,
     n_samples::Int;
     n_burnin::Int = min(div(n_samples, 5), 1000),
-    initial_params::NamedTuple=_get_default_initial_params_mcmc(fgm)
+    initial_params::NamedTuple=_get_default_initial_params_mcmc(rfgm)
 )
     (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
     (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
     n_samples ≥ n_burnin || @warn "Number of total samples is smaller than the number of burn-in samples."
-    _check_initial_params_mcmc(initial_params, fgm)
-    return _sample_posterior(rng, fgm, initial_params, n_samples, n_burnin)
+    _check_initial_params_mcmc(initial_params, rfgm)
+    return _sample_posterior(rng, rfgm, initial_params, n_samples, n_burnin)
 end
 
-function _get_default_initial_params_mcmc(fgm::FiniteGaussianMixture{T}) where {T}
-    (; x, n) = fgm.data
-    K = fgm.K
+function _get_default_initial_params_mcmc(rfgm::RandomFiniteGaussianMixture{T}) where {T}
+    (; x, n) = rfgm.data
+    # Initialize by the most a prior probable K.
+    K_support = support(rfgm.prior_components)
+    K = K_support[argmax(probs(rfgm.prior_components))]
+
     breaks = quantile(x, LinRange{T}(0, 1, K+1))
     bin_counts, bin_sums, bin_sumsqs = _get_suffstats_binned(x, breaks)
     nonzero_ind = (bin_counts .!= 0)
 
-    μ = fill(fgm.prior_location, K)
-    σ2 = fill(fgm.prior_variance, K)
+    μ = fill(rfgm.prior_location, K)
+    σ2 = fill(rfgm.prior_variance, K)
 
     μ[nonzero_ind] = bin_sums[nonzero_ind] ./ bin_counts[nonzero_ind]
     σ2[nonzero_ind] = (bin_sumsqs[nonzero_ind] - 2*μ[nonzero_ind] .* bin_sums[nonzero_ind] + bin_counts[nonzero_ind] .* μ[nonzero_ind].^2) ./ bin_counts[nonzero_ind] # Inflate the variances a bit (all obs should not necessarily belong to the nearest cluster)
@@ -66,60 +69,103 @@ function _get_default_initial_params_mcmc(fgm::FiniteGaussianMixture{T}) where {
     return (μ = copy(μ), σ2 = copy(σ2), w = copy(w))
 end
 
-function _check_initial_params_mcmc(initial_params::NamedTuple{N, T}, fgm::FiniteGaussianMixture) where {N, T}
+function _check_initial_params_mcmc(initial_params::NamedTuple{N, T}, rfgm::RandomFiniteGaussianMixture) where {N, T}
     (:μ in N && :σ2 in N && :w in N) || throw(ArgumentError("Expected a NamedTuple with fields μ, σ2 and w"))
     (; μ, σ2, w) = initial_params
     all(σ2 .> 0) || throw(ArgumentError("Initial σ2 vector contains negative values."))
     (all(w .≥ 0) && isapprox(sum(w), 1)) || throw(ArgumentError("Initial w vector does not belong to the K-simplex."))
-    (length(μ) == length(σ2) == length(w) == fgm.K) || throw(ArgumentError("Initial μ, σ2 or w dimensions are incompatible with the mixture model dimension."))
+    (length(μ) == length(σ2) == length(w)) || throw(ArgumentError("Initial μ, σ2 or w dimensions are incompatible."))
+    (pdf(rfgm.prior_components, length(w)) > 0) || throw(ArgumentError("Initial number of mixture components has probability 0.")) 
 end
 
-function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real}
+function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real}
     # Unpack parameters, data
-    (; data, K, prior_strength, prior_location, prior_variance, prior_shape, hyperprior_rate, hyperprior_shape) = fgm
+    (; data, prior_components, prior_strength, prior_location, prior_variance, prior_shape, hyperprior_rate, hyperprior_shape) = rfgm
     (; x, n) = data
     (; μ, σ2, w) = initial_params
+
+    K_support = support(prior_components)
+
+    # Initial number of components
+    K = length(w)
     
     cluster_alloc = Vector{Int}(undef, n)
-    logprobs = Vector{T}(undef, K)
+    cluster_alloc_new = Vector{Int}(undef, n)
     samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
     for m in 1:n_samples
         # Sample from p(cluster_alloc|⋯)
         log_w = log.(w)
         for i in eachindex(x)
+            logprobs = Vector{T}(undef, K)
             for k in 1:K
                 logprobs[k] = log_w[k] + logpdf(Normal(μ[k], sqrt(σ2[k])), x[i])
             end
             probs = softmax(logprobs)
             cluster_alloc[i] = wsample(rng, 1:K, probs)
         end
+        # Relabel clusters so that the K_plus first clusters are filled:
+        cluster_counts = StatsBase.counts(cluster_alloc, K)
+        cluster_rearranged_ind = vcat(findall(cluster_counts .> 0), findall(cluster_counts .== 0)) # length K
+        K_plus = sum(cluster_counts .> 0) # count number of indices for which the allocation counts are positive
+        
+        # Update μ, σ2 according to new labelling
+        μ = μ[cluster_rearranged_ind]
+        σ2 = σ2[cluster_rearranged_ind]
+        # Update cluster allocations according to new labelling
+        for k in eachindex(cluster_rearranged_ind)
+            cluster_alloc_new[cluster_alloc .== k] .= findall(cluster_rearranged_ind .== k)
+        end
+        copy!(cluster_alloc, cluster_alloc_new) # Update allocation
+        
+        # Update the cluster counts to use the new labels
+        cluster_counts = StatsBase.counts(cluster_alloc, K)
 
         # Sample from p(β|⋯)
         β = rand(rng, Gamma(hyperprior_shape + K*prior_shape, inv(hyperprior_rate + sum(inv, σ2))))
 
+        # Sample from p(K|⋯)
+        K_support_given_K_plus = setdiff(K_support, 1:K_plus-1) # possible values are those in the support of the prior that are ≥ the number of nonempty components
+        logprobs_K = Vector{T}(undef, length(K_support_given_K_plus))
+        for j in eachindex(K_support_given_K_plus)
+            logprobs_K[j] = logpdf(prior_components, K_support_given_K_plus[j]) + loggamma(K + 1) - loggamma(K - K_plus + 1) + sum(loggamma.(cluster_counts .+ prior_strength)) - K_plus * loggamma(1 + prior_strength)
+        end
+        K = wsample(rng, K_support_given_K_plus, softmax(logprobs_K))
+        # Add empty clusters if K > K_plus
+        μ_new = Vector{T}(undef, K)
+        σ2_new = Vector{T}(undef, K)
+        μ_new[1:K_plus] = μ[1:K_plus]
+        σ2_new[1:K_plus] = σ2[1:K_plus]
+        if K > K_plus
+            # Sample new empty components from the prior conditional on the current β
+            μ_new[K_plus+1:K] .= rand(rng, Normal(prior_location, sqrt(prior_variance)), K-K_plus)
+            σ2_new[K_plus+1:K] .= rand(rng, InverseGamma(prior_shape, β), K-K_plus)
+        end
+        μ = μ_new
+        σ2 = σ2_new
+
         # Sample from p(w|⋯)
         cluster_counts = StatsBase.counts(cluster_alloc, K)
         w = rand(rng, Dirichlet(prior_strength .+ cluster_counts))
-        
+
         # Compute sufficient statistics for non-empty components
-        cluster_sum = zeros(T, K)
-        cluster_sumsq = zeros(T, K)
+        cluster_sum = zeros(T, K_plus)
+        cluster_sumsq = zeros(T, K_plus)
         for i in eachindex(x)
             k_ind = cluster_alloc[i]
             cluster_sum[k_ind] += x[i]
             cluster_sumsq[k_ind] += x[i]^2
-        end        
+        end
 
         # Sample from p(μ|⋯)
-        for k in 1:K
+        for k in 1:K_plus
             variance_k = inv(1/prior_variance + cluster_counts[k]/σ2[k])
             mean_k = variance_k * (prior_location / prior_variance + cluster_sum[k]/σ2[k])
             μ[k] = rand(rng, Normal(mean_k, sqrt(variance_k)))
         end
 
         # Sample from p(σ2|⋯)
-        for k in 1:K
+        for k in 1:K_plus
             rss_k = (cluster_sumsq[k] - 2*μ[k]*cluster_sum[k] + cluster_counts[k] * μ[k]^2)
             σ2[k] = rand(rng, InverseGamma(prior_shape + T(0.5)*cluster_counts[k], β + rss_k/2))
         end
@@ -127,5 +173,5 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
         # Store the samples
         samples[m] = (μ = copy(μ), σ2 = copy(σ2), w = w, β = β)
     end
-    return PosteriorSamples{T}(samples, fgm, n_samples, n_burnin)
+    return PosteriorSamples{T}(samples, rfgm, n_samples, n_burnin)
 end
