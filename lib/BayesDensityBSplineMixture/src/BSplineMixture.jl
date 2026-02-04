@@ -353,7 +353,7 @@ end
 function _mean(ps::PosteriorSamples{T, <:AbstractVector,<:BSplineMixture}, ::typeof(cdf), mean_spline_coefs::AbstractVector{<:Real}, t::S) where {T<:Real, S<:Union{Real, AbstractVector{<:Real}}}
     meanfunc = Spline(basis(model(ps)), mean_spline_coefs)
     bmin, _ = support(model(ps))
-    F_bar = Integral(meanfunc)
+    F_bar = integral(meanfunc)
     return F_bar.(t) .- F_bar(bmin)
 end
 
