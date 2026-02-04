@@ -81,8 +81,6 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
     (; μ, σ2, w) = initial_params
     
     cluster_alloc = Vector{Int}(undef, n)
-    cluster_sum = Vector{T}(undef, K)
-    cluster_sumsq = Vector{T}(undef, K)
     logprobs = Vector{T}(undef, K)
     samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
@@ -103,12 +101,18 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
         # Sample from p(w|⋯)
         cluster_counts = StatsBase.counts(cluster_alloc, K)
         w = rand(rng, Dirichlet(prior_strength .+ cluster_counts))
+        
+        # Compute sufficient statistics for non-empty components
+        cluster_sum = zeros(T, K)
+        cluster_sumsq = zeros(T, K)
+        for i in eachindex(x)
+            k_ind = cluster_alloc[i]
+            cluster_sum[k_ind] += x[i]
+            cluster_sumsq[k_ind] += x[i]^2
+        end        
 
         # Sample from p(μ|⋯)
         for k in 1:K
-            ind_k = (cluster_alloc .== k)
-            cluster_sum[k] = sum(x[ind_k])
-            cluster_sumsq[k] = sum(abs2, x[ind_k])
             variance_k = inv(1/prior_variance + cluster_counts[k]/σ2[k])
             mean_k = variance_k * (prior_location / prior_variance + cluster_sum[k]/σ2[k])
             μ[k] = rand(rng, Normal(mean_k, sqrt(variance_k)))

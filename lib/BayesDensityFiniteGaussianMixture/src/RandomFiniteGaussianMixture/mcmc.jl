@@ -7,7 +7,7 @@
         initial_params::NamedTuple = _get_default_initparams_mcmc(hs)
     ) where {T} -> PosteriorSamples{T}
 
-Generate `n_samples` posterior samples from a `RandomFiniteGaussianMixture` using an augmented Gibbs sampler.
+Generate `n_samples` posterior samples from a `RandomFiniteGaussianMixture` using the telescope sampler.
 
 # Arguments
 * `rng`: Optional random seed used for random variate generation.
@@ -53,7 +53,7 @@ function _get_default_initial_params_mcmc(rfgm::RandomFiniteGaussianMixture{T}) 
     (; x, n) = rfgm.data
     # Initialize by the most a prior probable K.
     K_support = support(rfgm.prior_components)
-    K = K_support[argmax[probs(rfgm.prior_components)]]
+    K = K_support[argmax(probs(rfgm.prior_components))]
 
     breaks = quantile(x, LinRange{T}(0, 1, K+1))
     bin_counts, bin_sums, bin_sumsqs = _get_suffstats_binned(x, breaks)
@@ -75,7 +75,7 @@ function _check_initial_params_mcmc(initial_params::NamedTuple{N, T}, rfgm::Rand
     all(σ2 .> 0) || throw(ArgumentError("Initial σ2 vector contains negative values."))
     (all(w .≥ 0) && isapprox(sum(w), 1)) || throw(ArgumentError("Initial w vector does not belong to the K-simplex."))
     (length(μ) == length(σ2) == length(w)) || throw(ArgumentError("Initial μ, σ2 or w dimensions are incompatible."))
-    (pdf(rfgm, length(w)) > 0) || throw(ArgumentError("Initial number of mixture components has probability 0.")) 
+    (pdf(rfgm.prior_components, length(w)) > 0) || throw(ArgumentError("Initial number of mixture components has probability 0.")) 
 end
 
 function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real}
@@ -85,11 +85,12 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
     (; μ, σ2, w) = initial_params
 
     K_support = support(prior_components)
+
+    # Initial number of components
+    K = length(w)
     
     cluster_alloc = Vector{Int}(undef, n)
     cluster_alloc_new = Vector{Int}(undef, n)
-    cluster_sum = Vector{T}(undef, K)
-    cluster_sumsq = Vector{T}(undef, K)
     samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
     for m in 1:n_samples
@@ -106,7 +107,7 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
         # Relabel clusters so that the K_plus first clusters are filled:
         cluster_counts = StatsBase.counts(cluster_alloc, K)
         cluster_rearranged_ind = vcat(findall(cluster_counts .> 0), findall(cluster_counts .== 0)) # length K
-        K_plus = sum(cluster_rearranged_ind) # count number of indices for which the allocation counts are positive
+        K_plus = sum(cluster_counts .> 0) # count number of indices for which the allocation counts are positive
         
         # Update μ, σ2 according to new labelling
         μ = μ[cluster_rearranged_ind]
@@ -127,31 +128,37 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
         K_support_given_K_plus = setdiff(K_support, 1:K_plus-1) # possible values are those in the support of the prior that are ≥ the number of nonempty components
         logprobs_K = Vector{T}(undef, length(K_support_given_K_plus))
         for j in eachindex(K_support_given_K_plus)
-            logprobs_K[j] = logpdf(prior_components, K_support_given_K_plus[j]) + loggamma(K + 1) - loggamma(K - K_plus + 1) + sum(loggamma(cluster_counts .+ prior_strength)) - K_plus * loggamma(1 + prior_strength)
+            logprobs_K[j] = logpdf(prior_components, K_support_given_K_plus[j]) + loggamma(K + 1) - loggamma(K - K_plus + 1) + sum(loggamma.(cluster_counts .+ prior_strength)) - K_plus * loggamma(1 + prior_strength)
         end
         K = wsample(rng, K_support_given_K_plus, softmax(logprobs_K))
         # Add empty clusters if K > K_plus
         μ_new = Vector{T}(undef, K)
         σ2_new = Vector{T}(undef, K)
-        μ_new[1:K_plus] = μ_new[1:K_plus]
-        σ2_new[1:K_plus] = σ2_new[1:K_plus]
+        μ_new[1:K_plus] = μ[1:K_plus]
+        σ2_new[1:K_plus] = σ2[1:K_plus]
         if K > K_plus
             # Sample new empty components from the prior conditional on the current β
-            μ[K_plus+1:K] .= rand(rng, Normal(prior_location, sqrt(prior_variance)), K-K_plus)
-            σ2[K_plus+1:K] .= rand(rng, InverseGamma(prior_shape, β), K-K_plus)
+            μ_new[K_plus+1:K] .= rand(rng, Normal(prior_location, sqrt(prior_variance)), K-K_plus)
+            σ2_new[K_plus+1:K] .= rand(rng, InverseGamma(prior_shape, β), K-K_plus)
         end
+        μ = μ_new
+        σ2 = σ2_new
 
         # Sample from p(w|⋯)
         cluster_counts = StatsBase.counts(cluster_alloc, K)
         w = rand(rng, Dirichlet(prior_strength .+ cluster_counts))
 
+        # Compute sufficient statistics for non-empty components
+        cluster_sum = zeros(T, K_plus)
+        cluster_sumsq = zeros(T, K_plus)
+        for i in eachindex(x)
+            k_ind = cluster_alloc[i]
+            cluster_sum[k_ind] += x[i]
+            cluster_sumsq[k_ind] += x[i]^2
+        end
+
         # Sample from p(μ|⋯)
-        cluster_sum = Vector{T}(undef, K_plus)   # sufficient statistics
-        cluster_sumsq = Vector{T}(undef, K_plus)
         for k in 1:K_plus
-            ind_k = (cluster_alloc .== k) # This is O(n), total complexity O(k*n). Better to have a separate loop that computes suffstats, as this would be O(n) instead
-            cluster_sum[k] = sum(x[ind_k])
-            cluster_sumsq[k] = sum(abs2, x[ind_k])
             variance_k = inv(1/prior_variance + cluster_counts[k]/σ2[k])
             mean_k = variance_k * (prior_location / prior_variance + cluster_sum[k]/σ2[k])
             μ[k] = rand(rng, Normal(mean_k, sqrt(variance_k)))

@@ -22,6 +22,8 @@ export FiniteGaussianMixtureVIPosterior
 include("RandomFiniteGaussianMixture/RandomFiniteGaussianMixture.jl")
 export RandomFiniteGaussianMixture
 
+include("RandomFiniteGaussianMixture/mcmc.jl")
+
 include("RandomFiniteGaussianMixture/variational.jl")
 export RandomFiniteGaussianMixtureVIPosterior, posterior_components, maximum_a_posteriori
 

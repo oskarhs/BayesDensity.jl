@@ -4,6 +4,8 @@ Documentation for finite Gaussian mixture models, with a variable (random) numbe
 
 This model is available through the `BayesDensityFiniteGaussianMixture` package.
 
+For Markov chain Monte Carlo-based inference, we provide an implementation of the telescope sampler [Fruhwirth2021Telescope](@citep).
+
 The variational inference algorithm used to compute the posterior first proceeds by separately fitting mixture models for different values of ``K``, recording the corresponding value of the optimized evidence lower bound, ``\mathrm{ELBO}(K)`` at the end of each optimization.
 The posterior over the number of mixture components ``p(K\,|\, \boldsymbol{x})`` is then approximated via
 ```math
@@ -32,6 +34,11 @@ BayesDensityFiniteGaussianMixture.cdf(::RandomFiniteGaussianMixture, ::NamedTupl
 ### Utility functions
 ```@docs
 hyperparams(::RandomFiniteGaussianMixture)
+```
+
+### Markov chain Monte Carlo
+```@docs
+sample(::Random.AbstractRNG, ::RandomFiniteGaussianMixture, ::Int)
 ```
 
 ### Variational inference
