@@ -24,14 +24,14 @@ using Pkg
 Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
 ```
 
-Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the B-spline mixture model estimator can be downloaded as follows:
+Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the histogram smooether estimator can be downloaded as follows:
 ```julia
 Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/HistSmoother.jl")
 ```
 
 ## Quick start
 
-To get started, we illustrate the basic use of the package by fitting a B-spline mixture model to a two-component mixture of normal densities:
+To get started, we illustrate the basic use of the package by fitting a histogram smoother to a two-component mixture of normal densities:
 
 ```julia
 using BayesDensity, Distributions, Random
@@ -42,14 +42,14 @@ d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
 x = rand(rng, d_true, 1000)
 
 # Create a B-Spline mixture model object:
-bsm = BSplineMixture(x)
+hs = HistSmoother(x)
 ```
 
 Having specified a model for the data, we can perform posterior inference through Markov chain Monte Carlo methods or variational inference:
 
 ```julia
-mcmc_fit = sample(rng, bsm, 5000; n_burnin=1000) # MCMC
-vi_fit = varinf(bsm)                             # VI
+mcmc_fit = sample(rng, hs, 5000; n_burnin=1000) # MCMC
+vi_fit, info = varinf(hs)                             # VI
 ```
 
 The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of the density evaluated at given point(s) `t` through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval with Makie as follows:
@@ -69,5 +69,4 @@ To be able to use the latest features of the package, make sure that you current
 In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
 
 - Write introductions to all models which have been implemented so far.
-- Implement an MCMC algorithm for RandomFixedGaussianMixture
 - Implement Bernstein polynomial model (variable K)
