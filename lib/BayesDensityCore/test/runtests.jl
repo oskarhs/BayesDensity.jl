@@ -104,6 +104,21 @@ function BayesDensityCore.varinf(rhm::RandomHistogram{T, NT}) where {T, NT}
     return posterior, info
 end
 
+@testset "Core: eltype, default_grid_points" begin
+    K = 15
+    a = 1.0
+    x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
+    rhm = RandomHistogram{Float64}(x, K; a=a)
+
+    @test eltype(rhm) == Float64
+
+    xmin, xmax = extrema(x)
+    R = xmax - xmin
+    t = LinRange{Float64}(xmin - 0.05*R, xmax + 0.05*R, 2001)
+
+    @test default_grid_points(rhm) == t
+end
+
 @testset "Core: pdf and cdf fallback methods" begin
     K = 15
     a = 1.0
@@ -216,12 +231,14 @@ end
     @test isapprox(posterior_median_cdf[1], median(posterior, cdf, t[1]))
 end
 
-@testset "Core: VI: varinf, sample" begin
+@testset "Core: VI: varinf, sample, eltype, show" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
     rhm = RandomHistogram{Float64}(x, K; a=a)
     rhp, info = varinf(rhm)
+
+    @test eltype(rhp) == Float64
 
     @test converged(info)
     @test elbo(info) == [0.0]
@@ -287,6 +304,13 @@ end
 
             @test isapprox($statistic($rng, $rhp, $t[1]), 0.0; atol=1e-3)
             @test isapprox($statistic($rng, $rhp, cdf, $t[1]), 0.0; atol=1e-3)
+        end
+    end
+
+    # Test that rng-less fallback versions also return the right output type.
+    for func in (:pdf, :cdf)
+        for statistic in (:mean, :var, :std, :median)
+            @eval @test $statistic($rhp, $func, 0.5) isa Float64
         end
     end
 end
