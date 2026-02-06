@@ -35,7 +35,7 @@ function bin_regular(x::AbstractVector{T}, xmin::T, xmax::T, n_bins::Int) where 
     edges_inc = n_bins/R
     for val in x
         idval = min(n_bins-1, floor(Int, (val-xmin)*edges_inc+eps())) + 1
-        bincounts[idval] += 1.0
+        bincounts[idval] += 1
     end
     return bincounts
 end

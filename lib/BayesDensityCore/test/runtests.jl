@@ -313,4 +313,8 @@ end
             @eval @test $statistic($rhp, $func, 0.5) isa Float64
         end
     end
+
+    for func in (:pdf, :cdf)
+        @eval @test quantile($rhp, $func, 0.5, [0.2, 0.8]) isa AbstractMatrix{Float64}
+    end
 end
