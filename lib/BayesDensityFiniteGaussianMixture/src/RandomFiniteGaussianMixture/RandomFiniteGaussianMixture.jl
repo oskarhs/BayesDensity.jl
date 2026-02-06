@@ -83,7 +83,6 @@ BayesDensityCore.hyperparams(gm::RandomFiniteGaussianMixture) = (
     hyperprior_rate = gm.hyperprior_rate
 )
 
-# Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", gm::RandomFiniteGaussianMixture{T}) where {T}
     println(io, nameof(typeof(gm)), '{', T, "} with ", length(probs(gm.prior_components)), " values for the number mixture components.")
     println(io, "Using ", gm.data.n, " observations.")
@@ -115,10 +114,10 @@ Evaluate ``f(t\\, |\\, \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianM
 
 The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
-Distributions.pdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(pym, params, t)
-Distributions.pdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
-Distributions.pdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _pdf(pym, params, t)
-Distributions.pdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _pdf(pym, params, [t])
+Distributions.pdf(rfgm::RandomFiniteGaussianMixture, params::NamedTuple, t::Real) = _pdf(rfgm, params, t)
+Distributions.pdf(rfgm::RandomFiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _pdf(rfgm, params, t)
+Distributions.pdf(rfgm::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _pdf(rfgm, params, t)
+Distributions.pdf(rfgm::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _pdf(rfgm, params, [t])
 
 """
     cdf(
@@ -137,10 +136,10 @@ Evaluate ``F(t\\, |\\, \\boldsymbol{\\eta})`` for a given `RandomFiniteGaussianM
 
 The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
 """
-Distributions.cdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(pym, params, t)
-Distributions.cdf(pym::RandomFiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
-Distributions.cdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _cdf(pym, params, t)
-Distributions.cdf(pym::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _cdf(pym, params, [t])
+Distributions.cdf(rfgm::RandomFiniteGaussianMixture, params::NamedTuple, t::Real) = _cdf(rfgm, params, t)
+Distributions.cdf(rfgm::RandomFiniteGaussianMixture, params::NamedTuple, t::AbstractVector{<:Real}) = _cdf(rfgm, params, t)
+Distributions.cdf(rfgm::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _cdf(rfgm, params, t)
+Distributions.cdf(rfgm::RandomFiniteGaussianMixture, params::AbstractVector{<:NamedTuple}, t::Real) = _cdf(rfgm, params, [t])
 
 for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
     for names in ((:μ, :σ2, :w), (:μ, :σ2, :w, :β))
