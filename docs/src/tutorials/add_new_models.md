@@ -68,7 +68,7 @@ It can be shown [see e.g. [Ormerod2010explaining](@citet)] that the optimal ``q`
 ```
 where the expectations are taken with respect to ``q(\boldsymbol{z})`` and ``q(\boldsymbol{\theta})``, respectively. This result leads to the iterative coordinate-wise ascent variational inference algorithm (CAVI) for finding the optimal ``q`` densities, where we cyclically update ``q(\boldsymbol{\theta})`` and ``q(\boldsymbol{z})`` until some convergence criterion has been met. An oft-used convergence criterion for this purpose is the evidence lower bound, (ELBO):
 ```math
-\mathrm{ELBO}(q) = \exp \Big\{\mathbb{E}_{\boldsymbol{\theta}, \boldsymbol{z}}\Big(\log \frac{p(\boldsymbol{x}, \boldsymbol{\theta}, \boldsymbol{z})}{q(\boldsymbol{\theta}, \boldsymbol{z})}\Big)\Big\}.
+\mathrm{ELBO}(q) = \mathbb{E}_{\boldsymbol{\theta}, \boldsymbol{z}}\Big(\log \frac{p(\boldsymbol{x}, \boldsymbol{\theta}, \boldsymbol{z})}{q(\boldsymbol{\theta}, \boldsymbol{z})}\Big).
 ```
 
 For our particular example it can be shown that the optimal ``q`` densities are:

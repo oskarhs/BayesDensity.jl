@@ -34,3 +34,27 @@ const rng = Random.Xoshiro(1)
     output = String(take!(io))
     @test output isa String
 end
+
+@testset "RandomBernsteinPoly: pdf and cdf" begin
+    x = [0.5, 0.7]
+    
+    rbp = RandomBernsteinPoly(x; prior_strength = 1, support=(0.0, 1.0))
+    w = [0.2, 0.8]
+    dist_ref = MixtureModel([Beta(1, 2), Beta(2, 1)], w)
+
+    n_rep = 10
+    parameters = (w = copy(w),)
+    parameters_vec = fill(parameters, n_rep)
+    # Evaluate at single point:
+    @test isapprox(pdf(rbp, parameters, 0.0), pdf(dist_ref, 0.0))
+    @test isapprox(pdf(rbp, parameters_vec, 0.0), fill(pdf(dist_ref, 0.0), (1, n_rep)))
+    @test isapprox(cdf(rbp, parameters, 0.0), cdf(dist_ref, 0.0))
+    @test isapprox(cdf(rbp, parameters_vec, 0.0), fill(cdf(dist_ref, 0.0), (1, n_rep)))
+
+    # Evaluate at multiple points:
+    t = LinRange(-5, 5, 11)
+    @test isapprox(pdf(rbp, parameters, t), pdf(dist_ref, t))
+    @test isapprox(pdf(rbp, parameters_vec, t), mapreduce(x->pdf(dist_ref, t), hcat, fill(0, n_rep)))
+    @test isapprox(cdf(rbp, parameters, t), cdf(dist_ref, t))
+    @test isapprox(cdf(rbp, parameters_vec, t), mapreduce(x->cdf(dist_ref, t), hcat, fill(0, n_rep)))
+end

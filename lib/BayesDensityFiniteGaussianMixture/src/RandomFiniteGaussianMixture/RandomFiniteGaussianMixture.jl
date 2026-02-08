@@ -11,7 +11,7 @@ Struct representing a finite Gaussian mixture model with a variable (random) num
 * `x`: The data vector.
 
 # Keyword arguments
-* `prior_components`: A [`Distributions.DiscreteNonParametric`](@extref Distributions.DiscreteNonParametric) distribution instance containing the models with nonzero prior probabilities as keys and the corresponding prior probabilities (up to proportionality) as values. Defaults to `DiscreteNonParametric(1:20, fill(T(1/20), 20))`, corresponding to a uniform prior on the set {1, …, 20}.
+* `prior_components`: A [`Distributions.DiscreteNonParametric`](@extref Distributions.DiscreteNonParametric) distribution instance specifying the prior on the number of components `K`. Defaults to `DiscreteNonParametric(1:50, fill(T(1/50), 50))`, corresponding to a uniform prior on the set {1, …, 50\\}.
 * `prior_strength`: Strength parameter of the symmetric Dirichlet prior on the mixture weights. E.g. the prior is Dirichlet(strength, ..., strength). Defaults to `1.0`.
 * `prior_location`: Prior mean of the location parameters `μ[k]`. Defaults to the midpoint of the minimum and maximum values in the sample.
 * `prior_variance`: The prior variance of the location parameter `μ[k]`. Defaults to the sample range.

@@ -4,7 +4,7 @@
         rfgm::RandomFiniteGaussianMixture{T},
         n_samples::Int;
         n_burnin::Int              = min(1000, div(n_samples, 5)),
-        initial_params::NamedTuple = _get_default_initparams_mcmc(hs)
+        initial_params::NamedTuple = _get_default_initparams_mcmc(rfgm)
     ) where {T} -> PosteriorSamples{T}
 
 Generate `n_samples` posterior samples from a `RandomFiniteGaussianMixture` using the telescope sampler.
@@ -28,7 +28,7 @@ julia> using Random
 
 julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
-julia> rfgm = RandomFiniteGaussianMixture(x, 2)
+julia> rfgm = RandomFiniteGaussianMixture(x);
 
 julia> ps1 = sample(rfgm, 5_000);
 

@@ -30,13 +30,15 @@ struct RandomBernsteinPoly{T<:Real, NT<:NamedTuple, W<:DiscreteNonParametric{Int
     bounds::NTuple{2, T}
     function RandomBernsteinPoly{T}(
         x::AbstractVector{<:Real};
-        prior_components::DiscreteNonParametric=DiscreteNonParametric(1:50, fill(T(1/50), 50)),
+        prior_components::DiscreteNonParametric=DiscreteNonParametric(1:100, fill(T(1/100), 100)),
         prior_strength::Real=1.0,
         bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x)
         ) where {T<:Real}
         _check_rbpkwargs(prior_components, prior_strength, bounds, x)
-        data = (x = T.(x), n = length(x))
         T_bounds = (T(bounds[1]), T(bounds[2]))
+        T_x = T.(x)
+        x_trans = @. (T_x - T_bounds[1])/(T_bounds[2] - T_bounds[1])
+        data = (x = T_x, n = length(x), x_trans = x_trans)
         return new{T, typeof(data), typeof(prior_components)}(data, prior_components, T(prior_strength), T_bounds)
     end
 end
@@ -116,46 +118,54 @@ Distributions.cdf(rbp::RandomBernsteinPoly, params::AbstractVector{<:NamedTuple}
 for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
     @eval begin
         function $(funcs[1])(
-            ::RandomBernsteinPoly{T},
+            rbp::RandomBernsteinPoly{T},
             params::NamedTuple{(:w,), V},
             t::S
         ) where {T<:Real, S<:Real, V<:Tuple}
+            xmin, xmax = support(rbp)
+            R = ifelse($(funcs[1]) isa typeof(pdf), xmax - xmin, one(T))
+            t_trans = @. (t - xmin) / R
             w = params.w
-            K = length(k)
+            K = length(w)
             val = zero(promote_type(T, S))
             for k in eachindex(w)
-                val += w[k] * $(funcs[2])(Beta(k, K - k + 1), t)
+                val += w[k] * $(funcs[2])(Beta(k, K - k + 1), t_trans)
             end
-            return val
+            return val / R
         end
         function $(funcs[1])(
-            ::RandomBernsteinPoly{T},
+            rbp::RandomBernsteinPoly{T},
             params::NamedTuple{(:w,), V},
             t::AbstractVector{S}
         ) where {T<:Real, S<:Real, V<:Tuple}
+            xmin, xmax = support(rbp)
+            R = ifelse($(funcs[1]) isa typeof(pdf), xmax - xmin, one(T))
+            t_trans = @. (t - xmin) / R
             w = params.w
-            K = length(k)
+            K = length(w)
             val = zeros(promote_type(T, S), length(t))
-            for k in eachindex(μ)
-                val += w[k] * $(funcs[2])(Beta(k, K - k + 1), t)
+            for k in eachindex(w)
+                val += w[k] * $(funcs[2])(Beta(k, K - k + 1), t_trans)
             end
-            return val
+            return val / R
         end
         function $(funcs[1])(
-            ::RandomBernsteinPoly{T},
+            rbp::RandomBernsteinPoly{T},
             params::AbstractVector{NamedTuple{(:w,), V}},
             t::AbstractVector{S}
         ) where {T<:Real, S<:Real, V<:Tuple}
+            xmin, xmax = support(rbp)
+            R = ifelse($(funcs[1]) isa typeof(pdf), xmax - xmin, one(T))
+            t_trans = @. (t - xmin) / R
             val = zeros(promote_type(T, S), (length(t), length(params)))
             for m in eachindex(params)
-                μ = params[m].μ
-                σ2 = params[m].σ2
                 w = params[m].w
-                for k in eachindex(μ)
-                    val[:, m] .+= w[k] * $(funcs[2])(Beta(k, K - k + 1), t)
+                K = length(w)
+                for k in eachindex(w)
+                    val[:, m] .+= w[k] * $(funcs[2])(Beta(k, K - k + 1), t_trans)
                 end
             end
-            return val
+            return val / R
         end
     end
 end
