@@ -71,6 +71,8 @@ function Base.show(io::IO, ::MIME"text/plain", rbp::RandomBernsteinPoly{T}) wher
     nothing
 end
 
+Base.show(io::IO, rbp::RandomBernsteinPoly) = show(io, MIME("text/plain"), rbp)
+
 """
     pdf(
         bsm::RandomBernsteinPoly,
@@ -115,7 +117,7 @@ Distributions.cdf(rbp::RandomBernsteinPoly, params::NamedTuple, t::AbstractVecto
 Distributions.cdf(rbp::RandomBernsteinPoly, params::AbstractVector{<:NamedTuple}, t::AbstractVector{<:Real}) = _cdf(rbp, params, t)
 Distributions.cdf(rbp::RandomBernsteinPoly, params::AbstractVector{<:NamedTuple}, t::Real) = _cdf(rbp, params, [t])
 
-for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
+for funcs in ((:_pdf, :pdf, :(xmax - xmin)), (:_cdf, :cdf, :(1)))
     @eval begin
         function $(funcs[1])(
             rbp::RandomBernsteinPoly{T},
@@ -123,7 +125,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             t::S
         ) where {T<:Real, S<:Real, V<:Tuple}
             xmin, xmax = support(rbp)
-            R = ifelse($(funcs[1]) isa typeof(pdf), xmax - xmin, one(T))
+            R = xmax - xmin
             t_trans = @. (t - xmin) / R
             w = params.w
             K = length(w)
@@ -131,7 +133,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             for k in eachindex(w)
                 val += w[k] * $(funcs[2])(Beta(k, K - k + 1), t_trans)
             end
-            return val / R
+            return val / $(funcs[3])
         end
         function $(funcs[1])(
             rbp::RandomBernsteinPoly{T},
@@ -139,7 +141,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             t::AbstractVector{S}
         ) where {T<:Real, S<:Real, V<:Tuple}
             xmin, xmax = support(rbp)
-            R = ifelse($(funcs[1]) isa typeof(pdf), xmax - xmin, one(T))
+            R = xmax - xmin
             t_trans = @. (t - xmin) / R
             w = params.w
             K = length(w)
@@ -147,7 +149,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             for k in eachindex(w)
                 val += w[k] * $(funcs[2])(Beta(k, K - k + 1), t_trans)
             end
-            return val / R
+            return val / $(funcs[3])
         end
         function $(funcs[1])(
             rbp::RandomBernsteinPoly{T},
@@ -155,7 +157,7 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             t::AbstractVector{S}
         ) where {T<:Real, S<:Real, V<:Tuple}
             xmin, xmax = support(rbp)
-            R = ifelse($(funcs[1]) isa typeof(pdf), xmax - xmin, one(T))
+            R = xmax - xmin
             t_trans = @. (t - xmin) / R
             val = zeros(promote_type(T, S), (length(t), length(params)))
             for m in eachindex(params)
@@ -165,12 +167,10 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
                     val[:, m] .+= w[k] * $(funcs[2])(Beta(k, K - k + 1), t_trans)
                 end
             end
-            return val / R
+            return val / $(funcs[3])
         end
     end
 end
-
-Base.show(io::IO, rbp::RandomBernsteinPoly) = show(io, MIME("text/plain"), rbp)
 
 function _get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)

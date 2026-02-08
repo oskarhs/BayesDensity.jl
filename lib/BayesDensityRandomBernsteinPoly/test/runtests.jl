@@ -38,7 +38,7 @@ end
 @testset "RandomBernsteinPoly: pdf and cdf" begin
     x = [0.5, 0.7]
     
-    rbp = RandomBernsteinPoly(x; prior_strength = 1, support=(0.0, 1.0))
+    rbp = RandomBernsteinPoly(x; prior_strength = 1, bounds=(0.0, 1.0))
     w = [0.2, 0.8]
     dist_ref = MixtureModel([Beta(1, 2), Beta(2, 1)], w)
 
@@ -57,4 +57,11 @@ end
     @test isapprox(pdf(rbp, parameters_vec, t), mapreduce(x->pdf(dist_ref, t), hcat, fill(0, n_rep)))
     @test isapprox(cdf(rbp, parameters, t), cdf(dist_ref, t))
     @test isapprox(cdf(rbp, parameters_vec, t), mapreduce(x->cdf(dist_ref, t), hcat, fill(0, n_rep)))
+end
+
+@testset "FiniteGaussianMixture: MCMC sample" begin
+    x = collect(-5:0.1:5)
+
+    rbp = RandomBernsteinPoly(x)
+    @test sample(rng, rbp, 20) isa PosteriorSamples{Float64}
 end

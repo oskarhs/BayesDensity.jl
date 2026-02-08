@@ -4,6 +4,7 @@ using BayesDensityCore
 using BayesDensityFiniteGaussianMixture
 using BayesDensityHistSmoother
 using BayesDensityPitmanYorMixture
+using BayesDensityRandomBernsteinPoly
 using Documenter, DocumenterCitations, DocumenterInterLinks
 using Random
 
@@ -28,7 +29,8 @@ makedocs(;
         BayesDensityCore,
         BayesDensityFiniteGaussianMixture,
         BayesDensityHistSmoother,
-        BayesDensityPitmanYorMixture
+        BayesDensityPitmanYorMixture,
+        BayesDensityRandomBernsteinPoly
     ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
@@ -46,7 +48,8 @@ makedocs(;
             "methods/HistSmoother.md",
             "methods/PitmanYorMixture.md",
             "methods/FiniteGaussianMixture.md",
-            "methods/RandomFiniteGaussianMixture.md"
+            "methods/RandomFiniteGaussianMixture.md",
+            "methods/RandomBernsteinPoly.md"
         ],
         "Tutorials" => [
             "tutorials/add_new_models.md"
