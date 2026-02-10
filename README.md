@@ -69,4 +69,3 @@ To be able to use the latest features of the package, make sure that you current
 In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
 
 - Write introductions to all models which have been implemented so far.
-- Implement Bernstein polynomial model (variable K)

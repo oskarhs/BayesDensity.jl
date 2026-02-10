@@ -1,2 +1,12 @@
 [workspace]
-projects = ["test", "docs", "lib/BayesDensityCore", "lib/BayesDensityBSplineMixture", "lib/BayesDensityHistSmoother", "lib/BayesDensityPitmanYorMixture", "lib/BayesDensityFiniteGaussianMixture", "lib/BayesDensity"]
+projects = [
+    "test",
+    "docs",
+    "lib/BayesDensityCore",
+    "lib/BayesDensityBSplineMixture",
+    "lib/BayesDensityHistSmoother",
+    "lib/BayesDensityPitmanYorMixture",
+    "lib/BayesDensityFiniteGaussianMixture",
+    "lib/BayesDensityRandomBernsteinPoly",
+    "lib/BayesDensity"
+]
