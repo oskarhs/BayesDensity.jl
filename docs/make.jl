@@ -51,6 +51,9 @@ makedocs(;
             "methods/RandomFiniteGaussianMixture.md",
             "methods/RandomBernsteinPoly.md"
         ],
+        "Examples" => [
+            "examples/naive_bayes.md"
+        ],
         "Tutorials" => [
             "tutorials/add_new_models.md"
         ],

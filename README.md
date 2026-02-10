@@ -61,11 +61,3 @@ plot(vi_fit)   # Based on VI
 ```
 
 For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the [documentation](https://oskarhs.github.io/BayesDensity.jl).
-
-## Development phase
-The package is currently under a period of heavy development, and new features will as such be added in rapid succession.
-To be able to use the latest features of the package, make sure that you currently have the latest version of the package installed.
-
-In particular, here is a non-exhaustive list of planned features (roguhly in order of priority)
-
-- Write introductions to all models which have been implemented so far.

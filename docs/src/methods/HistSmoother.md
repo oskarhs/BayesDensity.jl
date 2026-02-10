@@ -10,7 +10,7 @@ The `HistSmoother` approach is based on modelling the data-generating density as
 \begin{align*}
 x_i\,|\, \boldsymbol{\beta} &\sim \frac{\exp\{\sum_{k=1}^K \beta_k z_k(x_i)\}}{\int \exp\{\sum_{k=1}^K \beta_k z_k(x)\}\,\text{d}x}, &i = 1,\ldots, n,\\
 \beta_k &\sim \mathrm{Normal}(0, \sigma_\beta^2), &k = 1, 2,\\
-\beta_j \, |\, \sigma^2 &\sim \mathrm{Normal}(0, \sigma^2), &k \geq 3\\
+\beta_k \, |\, \sigma^2 &\sim \mathrm{Normal}(0, \sigma^2), &k \geq 3\\
 \sigma^2 &\sim \text{HalfCauchy}(0, s_\sigma),
 \end{align*}
 ```

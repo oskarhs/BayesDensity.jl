@@ -2,7 +2,7 @@
 
 Documentation for random Bernstein polynomials [Petrone1999bernstein](@citep).
 
-`RandomBernsteinPoly` models the data-generating density as a mixture of fixed ``Beta`` distributions with an unknown number of mixture components. The smoothness of the density estiates is primarily controlled through the number of basis densities ``K``, which is selected in a data-driven manner. Mathematically, the Bernstein density model and prior distribution takes the following form,
+`RandomBernsteinPoly` models the data-generating density as a mixture of fixed ``\text{Beta}`` distributions with an unknown number of mixture components. The smoothness of the density estiates is primarily controlled through the number of basis densities ``K``, which is selected in a data-driven manner. Mathematically, the Bernstein density model and prior distribution takes the following form,
 
 ```math
 \begin{align*}
