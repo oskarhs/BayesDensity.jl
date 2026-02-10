@@ -1,8 +1,4 @@
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "lib"))
-using BayesDensityCore
-using BayesDensityBSplineMixture
-using BayesDensityHistSmoother
-using BayesDensityPitmanYorMixture
 using Test
 
 # Core:
@@ -19,3 +15,6 @@ include(joinpath(@__DIR__, "..", "lib", "BayesDensityPitmanYorMixture", "test", 
 
 # FiniteGaussianMixture
 include(joinpath(@__DIR__, "..", "lib", "BayesDensityFiniteGaussianMixture", "test", "runtests.jl"))
+
+# RandomBernsteinPoly
+include(joinpath(@__DIR__, "..", "lib", "BayesDensityRandomBernsteinPoly", "test", "runtests.jl"))

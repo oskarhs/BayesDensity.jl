@@ -12,16 +12,24 @@ Struct representing a random Bernstein polyomial.
 
 # Keyword arguments
 * `prior_components`: A [`Distributions.DiscreteNonParametric`](@extref Distributions.DiscreteNonParametric) distribution instance specifying the prior on the number of components `K`. Defaults to `DiscreteNonParametric(1:50, fill(T(1/50), 50))`, corresponding to a uniform prior on the set {1, …, 50\\}.
-* `prior_strength`: Strength parameter of the symmetric Dirichlet prior on the mixture weights. E.g. the prior is Dirichlet(strength, ..., strength). Defaults to `1.0`.
+* `prior_strength`: Strength parameter of the symmetric Dirichlet prior on the mixture weights. E.g. the prior on the mixture weights is Dirichlet(strength/K, ..., strength/K) conditional on the number of mixture components being equal to `K`. Defaults to `1.0`.
 * `bounds`: A tuple giving the support of the B-spline mixture model.
 
 # Returns
 * `rbp`: A random Bernstein polynomial model object.
 
 # Examples
+```julia-repl
+julia> x = (1.0 .- (1.0 .- LinRange(0.0, 1.0, 5000)) .^(1/3)).^(1/3);
 
-# Extended help
+julia> rbp = RandomBernsteinPoly(x)
+RandomBernsteinPoly{Float64} with 100 values for the number mixture components.
+Using 5000 observations.
+Hyperparameters:
+ prior_strength = 1.0
 
+julia> fgm = RandomBernsteinPoly(x; prior_strength = 0.5, prior_components = DiscreteNonParametric(1:25, fill(1/25, 25)));
+```
 """
 struct RandomBernsteinPoly{T<:Real, NT<:NamedTuple, W<:DiscreteNonParametric{Int, T}} <: AbstractBayesDensityModel{T}
     data::NT

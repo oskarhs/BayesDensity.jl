@@ -31,7 +31,7 @@ Hyperparameters:
  prior_shape = 2.0, hyperprior_shape = 0.2, hyperprior_rate = 10.0
  prior_strength = 1.0
 
-julia> fgm = RandomFiniteGaussianMixture(x; prior_components = DiscreteNonParametric(1:12, fill(1/12, 12)));
+julia> rfgm = RandomFiniteGaussianMixture(x; prior_components = DiscreteNonParametric(1:12, fill(1/12, 12)));
 ```
 """
 struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:DiscreteNonParametric{Int, T}} <: AbstractBayesDensityModel{T}
