@@ -14,7 +14,7 @@ A good introduction to all three topics can be found in [Bishop2006pattern](@cit
 For our tutorial, we will illustrate by focusing on a Bayesian Bernstein-type density estimator for data supported on the unit interval.[^1] This section provides the theoretical background for the model we will later implement as an example, and can be skipped by readers who are more interested in the details of the implementation itself.
 
 [^1]:
-    A Bayesian Bernstein-type estimator, where the number ``K`` of mixture components is treated as a further random variable has been proposed by [Petrone1999bernstein](@citet).
+    A Bayesian Bernstein-type estimator, where the number ``K`` of mixture components is treated as a further random variable has been proposed by [Petrone1999bernstein](@citet). A `BayesDensity` implementation of this model is available as [`RandomBernsteinPoly`](@ref).
 
 Given a positive integer ``K``, we say that ``f`` is a Bernstein density if we can write
 ```math
@@ -34,7 +34,15 @@ Given an observed independent and identically distributed sample ``\boldsymbol{x
 ```math
 p(\boldsymbol{x}\,|\, \boldsymbol{\theta}) = \prod_{i=1}^n \sum_{k=1}^K \theta_k\, \varphi_k(x_i).
 ```
-The form taken by the likelihood function above makes Bayesian inference challenging due to the fact that the resulting posterior distribution is analytically intractable. However, by augmenting the data with latent variables ``\boldsymbol{z} \in \{1,2,\ldots, K\}^n``, it is possible to perform posterior inference very efficiently through Gibbs sampling or mean-field VI. Another possible way of defining the Bernstein density model is to let ``x_i \, |\, \boldsymbol{\theta}, z_i = k \sim \varphi_k`` and ``p(z_i = k) = \theta_k`` for all ``i``, as this leads to the same likelihood function as previously when the ``z_i`` are marginalized out.`
+The form taken by the likelihood function above makes Bayesian inference challenging due to the fact that the resulting posterior distribution is analytically intractable. However, by augmenting the data with latent variables ``\boldsymbol{z} \in \{1,2,\ldots, K\}^n``, it is possible to perform posterior inference very efficiently through Gibbs sampling or mean-field VI. To this end, we note that an equivalent formulation of the Bernstein density model is
+```math
+\begin{align*}
+    x_i\,|\, \{z_i = k\} &\sim \varphi_k(x_i)
+    p(z_i = k\,|\, \boldsymbol{\theta}) &= \theta_k, \quad \text{for}\ k = 1, \ldots, K,\\
+    \boldsymbol{\theta} &\sim \text{Dirichlet}_K(\boldsymbol{a}).
+\end{align*}
+```
+When ``\boldsymbol{z}`` is marginalized out, we recover the Bernstein density likelihood, so the two model formulations are equivalent. However, as it turns out that Bayesian inference based on the augmented posterior ``p(\boldsymbol{\theta}, \boldsymbol{z}\,|\, \boldsymbol{x})`` is much simpler than working with the marginal posterior of ``\boldsymbol{\theta}``, we work with the augmented formulation instead.
 
 Under this data augmentation strategy it can then be shown that joint posterior of ``\boldsymbol{\theta}, \boldsymbol{z}`` is
 ```math

@@ -62,7 +62,7 @@ end
         rtol::Real                 = 1e-5
     ) where {T} -> HistSmootherVIPosterior{T}
 
-Find a variational approximation to the posterior distribution of a [`HistSmoother`](@ref) using mean-field variational inference.
+Find a variational approximation to the posterior distribution of a [`HistSmoother`](@ref) using semiparametric mean-field variational inference.
 
 # Arguments
 * `hs`: The `HistSmoother` whose posterior we want to approximate.
