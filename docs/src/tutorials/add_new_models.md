@@ -37,8 +37,8 @@ p(\boldsymbol{x}\,|\, \boldsymbol{\theta}) = \prod_{i=1}^n \sum_{k=1}^K \theta_k
 The form taken by the likelihood function above makes Bayesian inference challenging due to the fact that the resulting posterior distribution is analytically intractable. However, by augmenting the data with latent variables ``\boldsymbol{z} \in \{1,2,\ldots, K\}^n``, it is possible to perform posterior inference very efficiently through Gibbs sampling or mean-field VI. To this end, we note that an equivalent formulation of the Bernstein density model is
 ```math
 \begin{align*}
-    x_i\,|\, \{z_i = k\} &\sim \varphi_k(x_i)
-    p(z_i = k\,|\, \boldsymbol{\theta}) &= \theta_k, \quad \text{for}\ k = 1, \ldots, K,\\
+    x_i\,|\, \{z_i = k\} &\sim \varphi_k(x_i), &i = 1,\ldots, n,\\
+    z_i\,|\, \boldsymbol{\theta} &\sim \text{Multinomial}(1, \boldsymbol{\theta}), &i = 1, \ldots, n,\\
     \boldsymbol{\theta} &\sim \text{Dirichlet}_K(\boldsymbol{a}).
 \end{align*}
 ```

@@ -5,7 +5,9 @@ using BayesDensityFiniteGaussianMixture
 using BayesDensityHistSmoother
 using BayesDensityPitmanYorMixture
 using BayesDensityRandomBernsteinPoly
-using Documenter, DocumenterCitations, DocumenterInterLinks
+using Documenter
+using DocumenterCitations
+using DocumenterInterLinks
 using Random
 
 bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:authoryear)
@@ -52,7 +54,8 @@ makedocs(;
             "methods/RandomBernsteinPoly.md"
         ],
         "Examples" => [
-            "examples/naive_bayes.md"
+            "examples/naive_bayes.md",
+            "examples/model_selection.md"
         ],
         "Tutorials" => [
             "tutorials/add_new_models.md"

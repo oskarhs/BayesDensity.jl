@@ -78,7 +78,7 @@ for func in (:pdf, :cdf)
             end
             lines!(
                 plot, plot.est, color = plot.strokecolor, linewidth = plot.strokewidth,
-                inspectable = plot.inspectable, visible = plot.visible
+                inspectable = plot.inspectable, visible = plot.visible, linestyle = plot.linestyle
             )
             return plot
         end

@@ -126,6 +126,30 @@ See the specific method docstring for method-specific additional positional and 
 StatsBase.sample(bdm::AbstractBayesDensityModel, args...; kwargs...) = StatsBase.sample(Random.default_rng(), bdm, args...; kwargs...)
 
 """
+    pdf(
+        ps::PosteriorSamples,
+        t::Union{<:Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate the pdf ``f(t \\,|\\,\\boldsymbol{\\eta})`` of the Bayesian density model to which `ps` was fit for every sample ``\\boldsymbol{\\eta}^{(s)}`` from the posterior and every element in the collection `t`.
+
+This function always returns a Matrix of size `(length(t), n_samples(ps) - n_burnin(ps))`.
+"""
+Distributions.pdf(ps::PosteriorSamples, t::Union{<:Real, AbstractVector{<:Real}}) = pdf(model(ps), samples(ps), t)
+
+"""
+    cdf(
+        ps::PosteriorSamples,
+        t::Union{<:Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate the cdf ``F(t \\,|\\,\\boldsymbol{\\eta})`` of the Bayesian density model to which `ps` was fit for every sample ``\\boldsymbol{\\eta}^{(s)}`` from the posterior and every element in the collection `t`.
+
+This function always returns a Matrix of size `(length(t), n_samples(ps) - n_burnin(ps))`.
+"""
+Distributions.cdf(ps::PosteriorSamples, t::Union{<:Real, AbstractVector{<:Real}}) = cdf(model(ps), samples(ps), t)
+
+"""
     quantile(
         ps::PosteriorSamples,
         [func = pdf],

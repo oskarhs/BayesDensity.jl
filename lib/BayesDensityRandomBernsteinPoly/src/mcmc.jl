@@ -16,7 +16,7 @@ Generate `n_samples` posterior samples from a `RandomBernsteinPoly` using the te
 
 # Keyword arguments
 * `n_burnin`: Number of burn-in samples.
-* `initial_params`: Initial values used in the MCMC algorithm. Should be supplied as a `NamedTuple` with a single field `K`, where `K` is a positive integer. Defaults to
+* `initial_params`: Initial values used in the MCMC algorithm. Should be supplied as a `NamedTuple` with a single field `K`, where `K` is a positive integer. Defaults to the integer nearest to `0.5*sqrt(n)` which has positive prior probability, where `n` is the sample size.
 
 # Returns
 * `ps`: A [`PosteriorSamples`](@ref) object holding the posterior samples and the original model object.

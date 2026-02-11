@@ -254,6 +254,9 @@ end
     @test ps isa PosteriorSamples{Float64}
     @test length(ps.samples) == n_samples
 
+    @test pdf(ps, 0.5) == pdf(model(ps), samples(ps), 0.5)
+    @test cdf(ps, 0.5) == cdf(model(ps), samples(ps), 0.5)
+
     @test posterior(info) isa AbstractVIPosterior{Float64}
 
     io = IOBuffer() # just checks that we can call the show method

@@ -9,7 +9,7 @@ This model is available through the `BayesDensityBSplineMixture` package.
 ```math
 \begin{align*}
     x_i\,|\, \boldsymbol{\beta} &\sim \sum_{k=1}^K \theta_k b_k(x_i), &i = 1,\ldots, n,\\
-    \beta_k &\sim \text{Normal}(0, \sigma_\beta^2), &k = 1, 2,\\
+    \beta_k &\sim \text{Normal}(\mu_k, \sigma_\beta^2), &k = 1, 2,\\
     \Delta^2 \big\{\beta_k - \mu_k\big\} \,|\, \tau^2, \boldsymbol{\delta}^2 &\sim \text{Normal}(0, \tau^2\delta_k^2), &k \geq 3\\
     \tau^2 &\sim \text{InverseGamma}(a_\tau, b_\tau),\\
     \delta^2_k &\sim \text{InverseGamma}(a_\delta, b_\delta), &k = 1, \ldots, K-3,\\
