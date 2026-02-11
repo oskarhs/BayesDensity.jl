@@ -129,6 +129,12 @@ var(::PosteriorSamples)
 std(::PosteriorSamples)
 ```
 
+It is also possible to evaluate the pdf or cdf for all non-burn in samples at a grid of input points:
+```@docs
+pdf(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
+cdf(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
+```
+
 ## Variational inference
 The `varinf` method can be used to compute a variational approximation to the posterior distribution:
 ```@docs

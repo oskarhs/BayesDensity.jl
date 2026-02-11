@@ -13,4 +13,5 @@ The following table provides a complete list of all the models available in `Bay
 | [`FiniteGaussianMixture`](@ref) | ✅ | ✅ | `BayesDensityFiniteGaussianMixture` |
 | [`HistSmoother`](@ref) | ✅ | ✅ | `BayesDensityHistSmoother` |
 | [`PitmanYorMixture`](@ref) | ✅ | ✅ | `BayesDensityPitmanYorMixture` |
+| [`RandomBernsteinPoly`](@ref) | ✅ | ❌ | `BayesDensityRandomBernsteinPoly` |
 | [`RandomFiniteGaussianMixture`](@ref) | ✅ | ✅ | `BayesDensityFiniteGaussianMixture` |

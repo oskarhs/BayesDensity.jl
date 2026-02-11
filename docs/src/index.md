@@ -4,7 +4,7 @@ CurrentModule = BayesDensity
 
 # BayesDensity.jl
 
-[BayesDensity.jl](https://github.com/oskarhs/BayesianDensityEstimation.jl) is a Julia package for univariate nonparametric Bayesian density estimation. The package provides access to several density estimators from the Bayesian nonparametrics literature. For most of the implemented methods, posterior inference is possible through both Markov chain Monte Carlo (MCMC) methods and variational inference (VI).
+[BayesDensity.jl](https://github.com/oskarhs/BayesDensity.jl) is a Julia package for univariate nonparametric Bayesian density estimation. The package provides access to several density estimators from the Bayesian nonparametrics literature. For most of the implemented methods, posterior inference is possible through both Markov chain Monte Carlo (MCMC) methods and variational inference (VI).
 
 ## Installation
 We note that each of the models implemented in `BayesDensity` can be installed independently from all the by downloading the corresponding module. For instance, if we would like to use the [`HistSmoother`](@ref) model we need to install the `BayesDensityHistSmoother` package:

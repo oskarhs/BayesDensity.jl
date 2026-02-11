@@ -141,7 +141,10 @@ Returns the hyperparameters of the B-Spline mixture model `bsm` as a `NamedTuple
 """
 BayesDensityCore.hyperparams(bsm::BSplineMixture) = (prior_global_shape=bsm.prior_global_shape, prior_global_rate=bsm.prior_global_rate, prior_local_shape=bsm.prior_local_shape, prior_local_rate=bsm.prior_local_rate, prior_stdev=bsm.prior_stdev)
 
-Base.eltype(::BSplineMixture{T,<:AbstractBSplineBasis,<:NamedTuple}) where {T<:Real} = T
+function BayesDensityCore.default_grid_points(bsm::BSplineMixture{T}) where {T}
+    xmin, xmax = support(bsm)
+    return LinRange{T}(xmin, xmax, 2001)
+end
 
 # Print method for binned data
 function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}) where {T, A, Vals}
