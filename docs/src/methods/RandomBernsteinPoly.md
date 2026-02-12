@@ -13,6 +13,8 @@ K &\sim p(K),
 ```
 where ``b_{K,k}(\cdot)`` denotes the probability density function of the ``\text{Beta}(k, K-k+1)``-distribution, ``a> 0`` a fixed hyperparameter and ``p(K)`` is a probability mass function supported on a finite subset of the positive integers.
 
+Although this model is formulated in terms of data on the unit interval, it can be also be applied more broadly to data on the entire real line. By default, we estimate the support of the Bernstein density based on the extrema of the data set, but it is also possible to use a prespecified support via the `bounds` keyword argument.
+
 This module implements the Gibbs sampler of [Petrone1999bernstein](@citet) for Markov chain Monte Carlo-based posterior inference.
 
 !!! note
