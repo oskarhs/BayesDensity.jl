@@ -1,13 +1,23 @@
-# Model comparison
+# Model selection
 In this example notebook, we will show how `BayesDensity` can be used to investigate whether two random samples follow the same distribution.
 
-Suppose that we observe two independent samples ``x_1, \ldots, x_n \sim f_1`` and ``y_1, \ldots, y_m \sim f_2``. In many applications it is of interest to test whether both samples come from a common distribution ``f`` against the alternative that ``f_1 \neq f_2``. Although this is a problem that can be tackled by frequentist methods, the Bayesian solution based on model selection, that we focus on here, provides a rather elegant alternative. Here, we proceed by constructing two competing models, one under which the data-generating density is constrained to be the same across both groups, and another where the densities are allowed to differ. To assess which model fits the data better, a popular approach is to use an estimate of out-of sample predictive performance, and to choose the model that performs better with respect to this criterion. A popular metric for Bayesian model comparison is the widely applicable information criterion [(WAIC)](https://en.wikipedia.org/wiki/Watanabe%E2%80%93Akaike_information_criterion), [Watanabe2010WAIC](@citep),
+Suppose that we observe two independent samples ``x_1, \ldots, x_n \sim f`` and ``y_1, \ldots, y_m \sim g``. In many applications it is of interest to test whether both samples come from a common distribution ``f`` against the alternative that ``f \neq g``. Although this is a problem that can be tackled by frequentist methods, the Bayesian solution based on model selection, that we focus on here, provides a rather elegant alternative. Here, we proceed by constructing two competing models, one under which the data-generating density is constrained to be the same across both groups, and another where the densities are allowed to differ.
+
+To assess which model fits the data better, a popular approach is to use an estimate of out-of sample predictive performance, and to choose the model that performs better with respect to this criterion. A popular metric for Bayesian model comparison is the [widely applicable information criterion]((https://en.wikipedia.org/wiki/Watanabe%E2%80%93Akaike_information_criterion)), [Watanabe2010WAIC](@citep), as it is large-sample equivalent to leave-one-out cross-validation, and it is easily computed from posterior samples. For the model where the two densities are not equal, the WAIC can be computed via
 
 ```math
-\text{WAIC} = -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(y_i)\Big\} + 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(y_i)\big],
+\begin{align*}
+\text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S g^{(s)}(y_j)\Big\} \\ +& 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log g(y_j)\big],
+\end{align*}
 ```
-where ``f^{(s)}`` are samples from the posterior distribution of ``f`` and ``\widehat{\mathbb{V}}\big[\log f(y_i)\big]`` is the sample variance of ``\log f^{(s)}(y_i)``. In particular, a smaller value of this criterion is indicative of better model fit.
+where ``f^{(s)}, g^{(s)}`` are samples from the posterior distributions ``p(f\,|\, \boldsymbol{x})`` and ``p(g\,|\, \boldsymbol{y})`` under the independent model assumption, and ``\widehat{\mathbb{V}}\big[\log h(y_i)\big]`` is the sample variance of ``\log h^{(s)}(y_i)`` for ``h \in \{f, g\}``. In particular, a smaller value of this criterion is indicative of better model fit. On the other hand, the WAIC under the pooled data model where ``f = g`` the WAIC is given by
 
+```math
+\begin{align*}
+\text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(y_j)\Big\} \\ +& 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log f(y_j)\big],
+\end{align*}
+```
+where ``f^{(s)}`` now denotes samples from the pooled-data posterior ``p(f\,|\, \boldsymbol{x}, \boldsymbol{y})``.
 
 ## A real-data example
 
@@ -57,8 +67,7 @@ save(joinpath("src", "assets", "model_selection", "relative_wages_by_sex.svg"), 
 
 ![Model comparison](../assets/model_selection/relative_wages_by_sex.svg)
 
-
-Based on the above display, it appears that the distribution of male wages is a bit more dispersed than the female distribution, which could indicate that the null hypothesis is false in this case, especially given the fact that the sample sizes involved are quite large in this case.
+Based on the above display, it appears that the distribution of male wages is a bit more dispersed than the female distribution, which could indicate that the null hypothesis is false in this case, especially given the fact that the sample sizes involved are quite large.
 
 To carry out the formal Bayesian analysis of this question, we need to compute the ``\text{WAIC}`` under both model specifications. We start by writing a funtion for computing the WAIC of each model:
 ```julia
@@ -67,14 +76,17 @@ function compute_waic(ps::PosteriorSamples)
     # object was fit is stored under `bsm.data.x`.
     logpdfs = log.(pdf(ps, model(ps).data.x))
     lppd = sum(log.(mapslices(mean, exp.(logpdfs); dims=2)))
-    effpar_male = sum(vec(mapslices(var, logpdfs; dims=2)))
-    return -2 * (lppd - effpar_male)
+    effpar = sum(vec(mapslices(var, logpdfs; dims=2)))
+    return -2 * (lppd - effpar)
 end
 ```
 
 Next, we compute the WAIC of the three models using the above function. Note that under the unconstrained model specification, the WAIC decomposes nicely into the sum of the WAICs of both models evaluated on their respective samples since both the priors and the likelihoods are independent in this case.
 
 ```julia
+using Random
+rng = Xoshiro(1984)
+
 waic_male = compute_waic(sample(rng, male_viposterior, 10_000))
 waic_female = compute_waic(sample(rng, female_viposterior, 10_000))
 waic_joint = compute_waic(sample(rng, joint_viposterior, 10_000))

@@ -32,8 +32,8 @@ function compute_waic(ps::PosteriorSamples)
     # object was fit is stored under `bsm.data.x`.
     logpdfs = log.(pdf(ps, model(ps).data.x))
     lppd = sum(log.(mapslices(mean, exp.(logpdfs); dims=2)))
-    effpar_male = sum(vec(mapslices(var, logpdfs; dims=2)))
-    return -2 * (lppd - effpar_male)
+    effpar = sum(vec(mapslices(var, logpdfs; dims=2)))
+    return -2 * (lppd - effpar)
 end
 
 # Get loglikelihoods of each observation

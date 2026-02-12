@@ -15,7 +15,7 @@ w_k &\sim \mathrm{Dirichlet}_K(\alpha, \ldots, \alpha),\\
 \beta &\sim \mathrm{Gamma}(a_\beta, b_\beta),\\
 \end{align*}
 ```
-where ``\phi`` denotes the density of the standard normal distribution, ``\mu_0 \in \mathbb{R}, \alpha, \sigma_0^2, a_\sigma, a_\beta, b_\beta > 0`` are fixed hyperparameters and ``K`` is a fixed positive integer.[^1]
+where ``\phi(\cdot)`` denotes the density of the standard normal distribution, ``\mu_0 \in \mathbb{R}, \alpha, \sigma_0^2, a_\sigma, a_\beta, b_\beta > 0`` are fixed hyperparameters and ``K`` is a fixed positive integer.[^1]
 
 [^1]:
     We use the rate parameterization of the [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution) here. This differs from the scale-parameterization used by `Distributions`.

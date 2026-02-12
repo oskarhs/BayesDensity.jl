@@ -4,7 +4,7 @@ Documentation for finite Gaussian mixture models, with a variable (random) numbe
 
 This model is available through the `BayesDensityFiniteGaussianMixture` package.
 
-`RandomFiniteGaussianMixture` models the data-generating density as a mixture of normal distributions with an unknown number of mixture components. Our prior and model-specification follows that of [Richardson1997Mixtures](@citet), and can be described as the following scheme:
+`RandomFiniteGaussianMixture` models the data-generating density as a mixture of normal distributions with an unknown number of mixture components. Our prior and model-specification follows that of [Richardson1997Mixtures](@citet), and can be described as follows:
 
 ```math
 \begin{align*}
@@ -16,7 +16,7 @@ w_k \,|\, K &\sim \mathrm{Dirichlet}_K(\alpha, \ldots, \alpha),\\
 K &\sim p(K)
 \end{align*}
 ```
-where ``\phi`` denotes the density of the standard normal distribution, ``\mu_0 \in \mathbb{R}, \alpha, \sigma_0^2, a_\sigma, a_\beta, b_\beta > 0`` are fixed hyperparameters and ``p(K)`` is a probability mass function supported on a finite subset of the positive integers.[^1]
+where ``\phi(\cdot)`` denotes the density of the standard normal distribution, ``\mu_0 \in \mathbb{R}, \alpha, \sigma_0^2, a_\sigma, a_\beta, b_\beta > 0`` are fixed hyperparameters and ``p(K)`` is a probability mass function supported on a finite subset of the positive integers.[^1]
 
 [^1]:
     We use the rate parameterization of the [Gamma distribution](https://en.wikipedia.org/wiki/Gamma_distribution) here. This differs from the scale-parameterization used by `Distributions`.

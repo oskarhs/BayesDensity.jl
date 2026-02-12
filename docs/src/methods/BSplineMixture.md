@@ -15,13 +15,14 @@ This model is available through the `BayesDensityBSplineMixture` package.
     \delta^2_k &\sim \text{InverseGamma}(a_\delta, b_\delta), &k = 1, \ldots, K-3,\\
 \end{align*}
 ```
-where ``b_k(\cdot)`` is a [B-spline](https://en.wikipedia.org/wiki/B-spline) basis function, normalized to have unit integral, ``\boldsymbol{\mu}\in \mathbb{R}^{K-1}, \sigma_\beta, a_\tau, b_\tau, a_\delta, b_\delta > 0`` are fixed hyperparameters, ``\Delta^2 \alpha_k= (\alpha_k - 2\alpha_{k-1} + \alpha_{k-2})`` is the discrete second-order difference operator and ``\boldsymbol{\theta} = \boldsymbol{\theta}(\boldsymbol{\beta})`` is defined by the logistic stickbreaking-map,
+where ``b_k(\cdot)`` is a [B-spline](https://en.wikipedia.org/wiki/B-spline) basis function, normalized to have unit integral, ``\boldsymbol{\mu}\in \mathbb{R}^{K-1}, \sigma_\beta, a_\tau, b_\tau, a_\delta, b_\delta > 0`` are fixed hyperparameters, ``\Delta^2 \alpha_k= \alpha_k - 2\alpha_{k-1} + \alpha_{k-2}`` is the discrete second-order difference operator and ``\boldsymbol{\theta} = \boldsymbol{\theta}(\boldsymbol{\beta})`` is defined by the logistic stickbreaking-map,
 ```math
 \begin{align*}
     \theta_k &= \frac{e^{\beta_k}}{1 + e^{\beta_k}} \prod_{j = 1}^{k-1} \frac{1}{1 + e^{\beta_j}}, &k = 1,\ldots, K-1\\
     \theta_K &= 1 - \sum_{k=1}^{K-1} \theta_k.
 \end{align*}
 ```
+This model is supported on a compact interval, which by default is estimates based on the observed sample. It is also possible to manually specify the support of the model through the `bounds` keyword argument.
 
 ## Module API
 
