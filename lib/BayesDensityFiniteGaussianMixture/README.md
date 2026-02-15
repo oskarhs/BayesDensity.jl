@@ -1,0 +1,3 @@
+# BayesDensityFiniteGaussianMixture
+
+This subpackage provides an implementation of a Bayesian finite Gaussian mixture models. This package contains two estimators, one where the number of mixture components is fixed, and another where the number of mixture components is treated as a random variable. For the subpackage API of the former, see [FiniteGaussianMixture](https://oskarhs.github.io/BayesDensity.jl/dev/methods/FiniteGaussianMixture/) and [RandomFiniteGaussianMixture](https://oskarhs.github.io/BayesDensity.jl/dev/methods/RandomFiniteGaussianMixture/) for the latter.
