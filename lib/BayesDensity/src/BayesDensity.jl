@@ -7,5 +7,6 @@ using Reexport
 @reexport using BayesDensityFiniteGaussianMixture
 @reexport using BayesDensityHistSmoother
 @reexport using BayesDensityPitmanYorMixture
+@reexport using BayesDensityRandomBernsteinPoly
 
 end # module
