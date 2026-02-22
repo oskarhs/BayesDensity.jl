@@ -27,19 +27,17 @@ male_viposterior, male_info = varinf(model_male; rtol=1e-10)
 female_viposterior, female_info = varinf(model_female; rtol=1e-10)
 joint_viposterior, joint_info = varinf(model_joint; rtol=1e-10)
 
-function compute_waic(ps::PosteriorSamples)
-    # Note that the original data to which a `BSplineMixture`
-    # object was fit is stored under `bsm.data.x`.
-    logpdfs = log.(pdf(ps, model(ps).data.x))
+function compute_waic(ps::PosteriorSamples, data::AbstractVector{<:Real})
+    logpdfs = log.(pdf(ps, data))
     lppd = sum(log.(mapslices(mean, exp.(logpdfs); dims=2)))
     effpar = sum(vec(mapslices(var, logpdfs; dims=2)))
     return -2 * (lppd - effpar)
 end
 
 # Get loglikelihoods of each observation
-waic_male = compute_waic(sample(rng, male_viposterior, 10_000))
-waic_female = compute_waic(sample(rng, female_viposterior, 10_000))
-waic_joint = compute_waic(sample(rng, joint_viposterior, 10_000))
+waic_male = compute_waic(sample(rng, male_viposterior, 10_000), male_rel_wages)
+waic_female = compute_waic(sample(rng, female_viposterior, 10_000), female_rel_wages)
+waic_joint = compute_waic(sample(rng, joint_viposterior, 10_000), joint_rel_wages)
 println("WAIC separate: ", waic_male + waic_female)
 println("WAIC joint: ", waic_joint)
 

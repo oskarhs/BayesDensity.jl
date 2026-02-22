@@ -118,6 +118,11 @@ function BayesDensityCore.support(shs::HistSmoother{T}) where {T}
     return bs_min, bs_max
 end
 
+function BayesDensityCore.default_grid_points(hs::HistSmoother{T}) where {T}
+    xmin, xmax = support(hs)
+    return LinRange{T}(xmin, xmax, 2001)
+end
+
 """
     hyperparams(
         shs::HistSmoother{T}

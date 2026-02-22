@@ -66,7 +66,7 @@ end
 function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
-    (; x, log_B, b_ind, bincounts, μ, P, n) = bsm.data
+    (; log_B, b_ind, bincounts, μ, P, n) = bsm.data
     n_bins = length(bincounts)
 
     # Prior Hyperparameters
@@ -79,8 +79,10 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     # Initialize other params
     δ2 = Vector{T}(undef, K-3)
     ω = Vector{T}(undef, K-1)
+
+    n_overlap = size(log_B, 2)
     
-    logprobs = Vector{T}(undef, 4)  # class label probabilities
+    logprobs = Vector{T}(undef, n_overlap)  # class label probabilities
 
     #θ = Vector{T}(undef, K) # Mixture probabilities
     θ = max.(eps(), logistic_stickbreaking(β))
@@ -94,7 +96,6 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
 
     for m in 1:n_samples
-
         # Update δ2: (some inefficiencies here, but okay for now)
         for k in 1:K-3
             a_δ_k_new = prior_local_shape + T(0.5)
@@ -115,13 +116,13 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         for i in 1:n_bins
             # Compute the four nonzero probabilities:
             k0 = b_ind[i]
-            for l in 1:4
+            for l in axes(log_B, 2)
                 k = k0 + l - 1
                 logprobs[l] = log_B[i,l] + log_θ[k] 
             end
             probs = softmax(logprobs)
             counts = rand(rng, Multinomial(bincounts[i], probs))
-            N[k0:k0+3] .+= counts
+            N[k0:k0+n_overlap-1] .+= counts
         end
         # Update ω
         # Compute N and S
@@ -156,11 +157,103 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end
 
+function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:hist, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, A, Vals}
+    basis = BSplineKit.basis(bsm)
+    K = length(basis)
+    (; log_B, b_ind, bincounts, μ, P, n) = bsm.data
+    n_bins = length(bincounts)
+
+    # Prior Hyperparameters
+    (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
+    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
+
+    # Initial parameters
+    (; β, τ2) = initial_params
+
+    # Initialize other params
+    δ2 = Vector{T}(undef, K-3)
+    ω = Vector{T}(undef, K-1)
+
+    n_overlap = size(log_B, 2)
+    
+    #θ = Vector{T}(undef, K) # Mixture probabilities
+    θ = max.(eps(), logistic_stickbreaking(β))
+    θ = θ / sum(θ)
+    log_θ = log.(θ)
+
+    # Get normalization factor
+    norm_fac = compute_norm_fac(basis, T)
+    
+    # Initialize vector of samples
+    samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
+
+    for m in 1:n_samples
+        # Update δ2: (some inefficiencies here, but okay for now)
+        for k in 1:K-3
+            a_δ_k_new = prior_local_shape + T(0.5)
+            b_δ_k_new = prior_local_rate + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
+            δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
+        end
+
+        # Update τ2
+        a_τ_new = prior_global_shape + T(0.5) * (K - 3)
+        b_τ_new = prior_global_rate
+        for k in 1:K-3
+            b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
+        end
+        τ2 = rand(rng, InverseGamma(a_τ_new, b_τ_new))
+
+        # Update z (N and S)
+        N = zeros(Int, K)               # class label counts (of z[i]'s)
+        for i in 1:n_bins
+            # Compute the nonzero probabilities:
+            ks = b_ind[i]
+            logprobs = Vector{T}(undef, ks[2] - ks[1]+1)  # class label probabilities
+
+            for k in ks[1]:ks[2]
+                logprobs[k-ks[1]+1] = log_B[i,k-ks[1]+1] + log_θ[k] 
+            end
+            probs = softmax(logprobs)
+            counts = rand(rng, Multinomial(bincounts[i], probs))
+            N[ks[1]:ks[2]] .+= counts
+        end
+        # Update ω
+        # Compute N and S
+        S = n .- cumsum(vcat(0, N[1:K-1]))
+        for k in 1:K-1
+            c_k_new = S[k]
+            d_k_new = β[k]
+            ω[k] = rand(rng, PolyaGammaHybridSampler(c_k_new, d_k_new))
+        end
+
+        # Update β
+        # Compute the Q matrix
+        D = Diagonal(1 ./(τ2*δ2))
+        Q = transpose(P) * D * P + Q0
+        # Compute the Ω matrix (Note: Q + D retains the banded structure!)
+        Ω = Diagonal(ω)
+        inv_Σ_new = Ω + Q
+        # Compute inv(Σ_new) * μ_new
+        canon_mean_new = Q * μ + (N[1:K-1] - S[1:K-1]/2)
+        # Sample β
+        β = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
+
+        # Record θ
+        θ = max.(eps(), logistic_stickbreaking(β))
+        θ = θ / sum(θ)
+        log_θ = log.(θ)
+
+        # Compute coefficients in terms of unnormalized B-spline basis
+        spline_coefs = θ .* norm_fac
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
+    end
+    return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
+end
 
 function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
     K = length(basis)
-    (; x, log_B, b_ind, μ, P, n) = bsm.data
+    (; log_B, b_ind, μ, P, n) = bsm.data
 
     # Prior Hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
@@ -210,7 +303,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         for i in 1:n
             # Compute the four nonzero probabilities:
             k0 = b_ind[i]
-            for l in 1:4
+            for l in axes(log_B, 2)
                 k = k0 + l - 1
                 logprobs[l] = log_B[i,l] + log_θ[k] 
             end

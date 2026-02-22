@@ -22,11 +22,13 @@ end
 PosteriorSamples{T}(samples::V, model::M, n_samples::Int, n_burnin::Int) where {T<:Real, V<:AbstractVector, M<:AbstractBayesDensityModel} = PosteriorSamples{T}(samples, model, n_samples, collect(n_burnin+1:n_samples))
 
 """
-    samples(ps::PosteriorSamples{T, V}) where {T, V<:AbstractVector} -> V
+    samples(ps::PosteriorSamples{T, V}; include_burnin::bool=false) where {T, V<:AbstractVector} -> V
 
 Get the posterior samples of a `PosteriorSamples` object as a vector.
+
+The `include_burnin` keyword argument controls whether or not burn-in samples are also returned. By default, burn-in samples are not returned.
 """
-samples(ps::PosteriorSamples) = ps.samples
+samples(ps::PosteriorSamples; include_burnin=false) = ifelse(include_burnin, ps.samples, ps.samples[ps.non_burnin_ind])
 
 """
     n_samples(ps::PosteriorSamples) -> Int

@@ -18,15 +18,15 @@ Moreover, the package is designed to be extensible, allowing new estimators to m
 
 ## Installation
 
-The BayesDensity.jl package is currently not part of any package repository, but can be installed from its GitHub repository as follows:
+The BayesDensity.jl package is part of the Julia general registry, and can as such easily be installed via the default package manager:
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
+Pkg.add("BayesDensity")
 ```
 
 Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the histogram smooether estimator can be downloaded as follows:
 ```julia
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/HistSmoother.jl")
+Pkg.add("HistSmoother.jl")
 ```
 
 ## Quick start
