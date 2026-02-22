@@ -125,7 +125,7 @@ end
     @test sample(vip2, 10) isa PosteriorSamples{Float64}
 
     hist = fit(Histogram, x; nbins=30)
-    bsm3 = BSplineMixture(hist; K=K, bounds=(0,1), n_bins=nothing)
+    bsm3 = BSplineMixture(hist; K=K, bounds=(0,1))
     vip2, _ = @suppress varinf(bsm3; max_iter = 10)
     @test vip3 isa AbstractVIPosterior
     @test sample(vip3, 10) isa PosteriorSamples{Float64}
