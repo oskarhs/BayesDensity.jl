@@ -31,6 +31,7 @@ jobs:
         run: |
           julia --project=. --color=yes -e '
             import Pkg
+            Pkg.Registry.update()
             Pkg.instantiate()
           '
       - name: Build and deploy
