@@ -54,7 +54,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-          project: ${{matrix.package}}
+          project: lib/${{matrix.package}}
 
       - name: Cache Julia artifacts
         uses: julia-actions/cache@v2
