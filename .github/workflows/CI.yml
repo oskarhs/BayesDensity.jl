@@ -42,6 +42,7 @@ jobs:
           - BayesDensityFiniteGaussianMixture
           - BayesDensityHistSmoother
           - BayesDensityPitmanYorMixture
+          - BayesDensityRandomBernsteinPoly
           # add more packages here as needed
 
     steps:
@@ -59,9 +60,10 @@ jobs:
 
       - name: Instantiate and test ${{ matrix.package }}
         run: |
-          julia --project=. -e '
-            import Pkg
-            Pkg.instantiate()
+          julia --project=. '
+            using Pkg
+            Pkg.Registry.update()
+            Pkg.activate("${{ matrix.package }}")
             Pkg.test("${{ matrix.package }}"; coverage=true)
           '
 
