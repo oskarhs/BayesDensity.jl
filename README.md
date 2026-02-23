@@ -26,7 +26,7 @@ Pkg.add("BayesDensity")
 
 Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the histogram smoother estimator can be downloaded as follows:
 ```julia
-Pkg.add("BayesDensityHistSmoother.jl")
+Pkg.add("BayesDensityHistSmoother")
 ```
 
 ## Quick start

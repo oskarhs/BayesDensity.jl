@@ -8,7 +8,7 @@ using Test
 
 const rng = Random.Xoshiro(1)
 
-# include("aqua.jl")
+include("aqua.jl")
 
 @testset "HistSmoother: Constructor and model object" begin
     x = randn(rng, 30)
@@ -114,7 +114,7 @@ end
 @testset "HistSmoother: varinf" begin
     K = 10
     x = collect(-5:0.05:5)
-    hist = fit(Histogram, x, LinRange(-5, 5, 21))
+    hist = fit(Histogram, x, LinRange(-5, 5, 41))
 
     shs = HistSmoother(x; K = K, n_bins = 20)
     vip, _ = varinf(shs)

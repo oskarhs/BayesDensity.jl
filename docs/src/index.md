@@ -10,7 +10,7 @@ CurrentModule = BayesDensity
 Each of the models implemented in `BayesDensity` can be installed independently from all the others by downloading the corresponding module. For instance, if we would like to use the [`HistSmoother`](@ref) model we need to install the `BayesDensityHistSmoother` package:
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityHistSmoother.jl")
+Pkg.add("BayesDensityHistSmoother")
 ```
 
 We can now use the model by importing the downloaded package:
@@ -21,7 +21,7 @@ using BayesDensityHistSmoother
 Alternatively, if one wants to have access to more models, one can install the `BayesDensity` package instead:
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
+Pkg.add("BayesDensity")
 ```
 
 We can now import all the models implemented in this package by running the following code snippet:

@@ -8,7 +8,7 @@ using StatsBase
 
 const rng = Random.Xoshiro(1)
 
-#include("aqua.jl")
+include("aqua.jl")
 
 @testset "BSplineMixture: Constructor and model object" begin
     K = 20
@@ -110,7 +110,7 @@ end
 
 @testset "BSplineMixture: VI: varinf, sample, print" begin
     K = 5
-    x = collect(0:0.1:1)
+    x = collect(0:0.01:1)
     t = LinRange(0, 1, 11)
 
     bsm1 = BSplineMixture(x; K=K, bounds=(0,1), n_bins=10)

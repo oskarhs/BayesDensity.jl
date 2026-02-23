@@ -7,9 +7,12 @@ Struct representing a B-spline mixture model.
     
     BSplineMixture(x::AbstractVector{<:Real}; kwargs...)
     BSplineMixture{T}(x::AbstractVector{<:Real}; kwargs...)
+    BSplineMixture(hist::StatsBase.Histogram; kwargs...)
+    BSplineMixture{T}hist::StatsBase.Histogram; kwargs...)
 
 # Arguments
 * `x`: The data vector.
+* `hist`: A [`StatsBase.Histogram`](@extref StatsBase.Histogram) holding grouped continuous data.
 
 # Keyword arguments
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))

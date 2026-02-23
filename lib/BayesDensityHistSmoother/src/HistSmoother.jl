@@ -7,9 +7,12 @@ Struct representing a spline histogram smoother model.
     
     HistSmoother(x::AbstractVector{<:Real}; kwargs...)
     HistSmoother{T}(x::AbstractVector{<:Real}; kwargs...)
+    HistSmoother(hist::StasBase.Histogram; kwargs...)
+    HistSmoother{T}(hist::StasBase.Histogram; kwargs...)
 
 # Arguments
 * `x`: The data vector.
+* `hist`: A [`StatsBase.Histogram`](@extref StatsBase.Histogram) holding grouped continuous data.
 
 # Keyword arguments
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to `52`.
