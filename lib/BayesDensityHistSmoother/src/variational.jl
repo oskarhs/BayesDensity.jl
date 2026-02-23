@@ -112,7 +112,7 @@ function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T}
     Z = C[:, 3:end]
     K = size(Z, 2) + 2
 
-    any(!=(v[1]), v) || return (μ_opt = zeros(K), Σ_opt = Diagonal(ones(K)), b_σ_opt = prior_scale_random)
+    any(!=(N[1]), N) || return (μ_opt = zeros(K), Σ_opt = Diagonal(ones(K)), b_σ_opt = prior_scale_random)
 
     df = DataFrame(obs_ind = 1, x_grid = x_grid, N = N)
     df = hcat(df, DataFrame(Z, Symbol.("z", 1:size(Z, 2))))
