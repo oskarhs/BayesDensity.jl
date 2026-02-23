@@ -54,7 +54,6 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-          project: lib/${{matrix.package}}
 
       - name: Cache Julia artifacts
         uses: julia-actions/cache@v2
@@ -64,8 +63,8 @@ jobs:
           julia -e '
             import Pkg
             Pkg.Registry.update()
-            Pkg.activate("lib/${{ matrix.package }}")
-            Pkg.test("${{ matrix.package }}"; coverage=true)
+            Pkg.instantiate()
+            Pkg.test("lib/${{ matrix.package }}"; coverage=true)
           '
 
       - name: Process coverage
