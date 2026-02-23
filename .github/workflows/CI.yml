@@ -64,7 +64,7 @@ jobs:
             import Pkg
             Pkg.Registry.update()
             Pkg.activate(".")
-            Pkg.test("lib/${{ matrix.package }}"; coverage=true)
+            Pkg.test("${{ matrix.package }}"; coverage=true)
           '
 
       - name: Process coverage
