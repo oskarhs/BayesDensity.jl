@@ -107,10 +107,12 @@ end
 
 function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T}
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
-    (; x, n, x_grid, N, C, LZ, bounds) = data
+    (; n, x_grid, N, C, LZ, bounds) = data
     # Use MixedModels.jl to find initial parameter estimate:
     Z = C[:, 3:end]
     K = size(Z, 2) + 2
+
+    any(!=(N[1]), N) || return (μ_opt = zeros(K), Σ_opt = Diagonal(ones(K)), b_σ_opt = prior_scale_random)
 
     df = DataFrame(obs_ind = 1, x_grid = x_grid, N = N)
     df = hcat(df, DataFrame(Z, Symbol.("z", 1:size(Z, 2))))
@@ -149,7 +151,7 @@ end
 
 function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::NamedTuple, max_iter::Int, rtol::Real) where {T, A, D}
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
-    (; x, n, x_grid, N, C, LZ, bounds) = data
+    (; n, x_grid, N, C, LZ, bounds) = data
     (; μ_opt, Σ_opt, b_σ_opt) = initial_params
 
     K = length(bs)

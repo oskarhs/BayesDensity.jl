@@ -66,7 +66,7 @@ end
 function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T<:Real}
     # Unpack model:
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
-    (; x, n, x_grid, N, C, LZ, bounds) = data
+    (; n, x_grid, N, C, LZ, bounds) = data
     prior_scaled_fixed2 = prior_scale_fixed^2
 
     n_bins = length(N)

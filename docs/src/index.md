@@ -7,10 +7,10 @@ CurrentModule = BayesDensity
 [BayesDensity.jl](https://github.com/oskarhs/BayesDensity.jl) is a Julia package for univariate nonparametric Bayesian density estimation. The package provides access to several density estimators from the Bayesian nonparametrics literature. For most of the implemented methods, posterior inference is possible through both Markov chain Monte Carlo (MCMC) methods and variational inference (VI).
 
 ## Installation
-We note that each of the models implemented in `BayesDensity` can be installed independently from all the by downloading the corresponding module. For instance, if we would like to use the [`HistSmoother`](@ref) model we need to install the `BayesDensityHistSmoother` package:
+Each of the models implemented in `BayesDensity` can be installed independently from all the others by downloading the corresponding module. For instance, if we would like to use the [`HistSmoother`](@ref) model we need to install the `BayesDensityHistSmoother` package:
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensityHistSmoother.jl")
+Pkg.add("BayesDensityHistSmoother")
 ```
 
 We can now use the model by importing the downloaded package:
@@ -21,7 +21,7 @@ using BayesDensityHistSmoother
 Alternatively, if one wants to have access to more models, one can install the `BayesDensity` package instead:
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
+Pkg.add("BayesDensity")
 ```
 
 We can now import all the models implemented in this package by running the following code snippet:
@@ -48,7 +48,7 @@ Having specified a model for the data, we can perform posterior inference throug
 
 ```julia
 mcmc_fit = sample(rng, smoother, 2100; n_burnin=100) # MCMC
-vi_fit, info = varinf(smoother)                            # VI
+vi_fit, info = varinf(smoother)                      # VI
 ```
 
 The resulting fits can easily be plotted using the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [Makie.jl](https://github.com/MakieOrg/Makie.jl) package extensions. For example, the posterior mean and ``95 \%`` pointwise credible bands can be plotted via Makie as follows:

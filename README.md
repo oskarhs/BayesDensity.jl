@@ -18,15 +18,15 @@ Moreover, the package is designed to be extensible, allowing new estimators to m
 
 ## Installation
 
-The BayesDensity.jl package is currently not part of any package repository, but can be installed from its GitHub repository as follows:
+The BayesDensity.jl package is part of the Julia general registry, and can as such easily be installed via the default package manager:
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/BayesDensity.jl")
+Pkg.add("BayesDensity")
 ```
 
-Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the histogram smooether estimator can be downloaded as follows:
+Alternatively, it is possible to install each of the Bayesian density estimators implemented in this package separately. For instance, the histogram smoother estimator can be downloaded as follows:
 ```julia
-Pkg.add(url="https://github.com/oskarhs/BayesianDensityEstimation.jl/lib/HistSmoother.jl")
+Pkg.add("BayesDensityHistSmoother")
 ```
 
 ## Quick start
@@ -41,15 +41,15 @@ rng = Random.Xoshiro(1) # for reproducibility
 d_true = MixtureModel([Normal(-0.2, 0.25), Normal(0.5, 0.15)], [0.4, 0.6])
 x = rand(rng, d_true, 1000)
 
-# Create a B-Spline mixture model object:
+# Create a histogram smoother model object:
 hs = HistSmoother(x)
 ```
 
-Having specified a model for the data, we can perform posterior inference through Markov chain Monte Carlo methods or variational inference:
+Having specified a model for the data, we can perform posterior inference through Markov chain Monte Carlo methods or variational Bayes:
 
 ```julia
 mcmc_fit = sample(rng, hs, 5000; n_burnin=1000) # MCMC
-vi_fit, info = varinf(hs)                             # VI
+vi_fit, info = varinf(hs)                       # VI
 ```
 
 The resulting fitted model objects can be used to compute posterior quantities of interest such as the posterior median of the density evaluated at given point(s) `t` through `median(mcmc_fit, t)`. Additionally, the package also provides convenience plotting functions through its [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) extensions, making it easy to visualize the density estimates. For instance, one can easily plot the posterior mean, along with a 95% credible interval with Makie as follows:

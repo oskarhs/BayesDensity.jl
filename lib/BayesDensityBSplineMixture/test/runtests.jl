@@ -1,6 +1,10 @@
 using BayesDensityBSplineMixture
 using Test
-using Random, Distributions, LinearAlgebra, Suppressor
+using Distributions 
+using LinearAlgebra
+using Suppressor
+using Random
+using StatsBase
 
 const rng = Random.Xoshiro(1)
 
@@ -11,6 +15,9 @@ include("aqua.jl")
     x = randn(rng, 10)
 
     @test length(basis(BSplineMixture(x; K=K))) == 20
+
+    hist = fit(Histogram, x; nbins=10)
+    @test length(basis(BSplineMixture(hist; K=4))) == 4
 
     @test order(BSplineMixture(x)) == 4
 
@@ -31,15 +38,30 @@ end
 @testset "BSplineMixture: Constructor throws error" begin
     K = 20
     x = collect(-5:0.1:5)
-
-    @test_throws ArgumentError BSplineMixture(x; bounds=(-1, 1))
-    @test_throws ArgumentError BSplineMixture(x; bounds=(1, -1))
-
-    for hyp in [:prior_global_shape, :prior_global_rate, :prior_local_shape, :prior_local_rate, :prior_stdev]
-        @eval @test_throws ArgumentError $BSplineMixture($x; $hyp = -1)
-    end
+    hist = fit(Histogram, x; nbins=40)
 
     @test_throws ArgumentError BSplineMixture(x; n_bins=-10)
+
+    test_data = Dict(
+        :x => x,
+        :hist => hist  # replace with proper histogram data if needed
+    )
+
+    # Test invalid bounds
+    for data_vec in values(test_data)
+        @test_throws ArgumentError BSplineMixture(data_vec; bounds=(-1, 1))
+        @test_throws ArgumentError BSplineMixture(data_vec; bounds=(1, -1))
+    end
+
+    # Test negative hyperparameters
+    hyperparams = [:prior_global_shape, :prior_global_rate, :prior_local_shape, :prior_local_rate, :prior_stdev]
+
+    for data_vec in values(test_data)
+        for hyp in hyperparams
+            kwargs = Dict(hyp => -1)
+            @test_throws ArgumentError BSplineMixture(data_vec; kwargs...)
+        end
+    end
 end
 
 @testset "BSplineMixture: MC: sample" begin
@@ -51,6 +73,10 @@ end
 
     bsm2 = BSplineMixture(x; n_bins = nothing)
     @test sample(rng, bsm2, 100) isa PosteriorSamples{Float64}
+
+    hist = fit(Histogram, x; nbins=40)
+    bsm3 = BSplineMixture(hist; K = 5)
+    @test sample(rng, bsm3, 100) isa PosteriorSamples{Float64}
 end
 
 @testset "BSplineMixture: MC: pdf, cdf and mean" begin
@@ -83,8 +109,8 @@ end
 end
 
 @testset "BSplineMixture: VI: varinf, sample, print" begin
-    K = 20
-    x = collect(0:0.1:1)
+    K = 5
+    x = collect(0:0.01:1)
     t = LinRange(0, 1, 11)
 
     bsm1 = BSplineMixture(x; K=K, bounds=(0,1), n_bins=10)
@@ -95,8 +121,14 @@ end
 
     bsm2 = BSplineMixture(x; K=K, bounds=(0,1), n_bins=nothing)
     vip2, _ = @suppress varinf(bsm2; max_iter = 10)
-    @test vip1 isa AbstractVIPosterior
-    @test sample(vip1, 10) isa PosteriorSamples{Float64}
+    @test vip2 isa AbstractVIPosterior
+    @test sample(vip2, 10) isa PosteriorSamples{Float64}
+
+    hist = fit(Histogram, x, LinRange(0, 1, 20))
+    bsm3 = BSplineMixture(hist; K=K, bounds=(0,1))
+    vip3, _ = @suppress varinf(bsm3; max_iter = 10)
+    @test vip3 isa AbstractVIPosterior
+    @test sample(vip3, 10) isa PosteriorSamples{Float64}
 
     io = IOBuffer() # just checks that we can call the show method
     show(io, vip1)

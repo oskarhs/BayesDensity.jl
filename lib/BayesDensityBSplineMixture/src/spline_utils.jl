@@ -67,7 +67,6 @@ function create_spline_basis_matrix_binned(x::AbstractVector{T}, basis::Abstract
     n_bins = (fld(n_bins, K-2)+1)*(K-2)-1 # Make the number of bins a multiple of K-2 so that at most 4 basis functions are nonzero at a time
     bincounts = bin_regular(x, bounds[1], bounds[2], n_bins)
     binedges = LinRange(bounds[1], bounds[2], n_bins+1)
-    n = length(x)
     b_ind = Vector{Int}(undef, n_bins)
     B = Matrix{R}(undef, (n_bins, 4))
     norm_fac = compute_norm_fac(basis, R)
@@ -85,6 +84,36 @@ function create_spline_basis_matrix_binned(x::AbstractVector{T}, basis::Abstract
             k = j + l - 1
             F = integral(Spline(basis, unitvector(K, k, T)))
             B[i,l] = (F(x1) - F(x0)) * norm_fac[k]
+        end
+    end
+    return B, b_ind, bincounts
+end
+
+function create_spline_basis_matrix_binned(hist::StatsBase.Histogram{<:Integer}, basis::AbstractBSplineBasis{N, S}) where {N, S<:Real}
+    K = length(basis)
+
+    bounds = boundaries(basis)
+
+    n_bins = length(hist.edges[1]) - 1
+    bincounts = hist.weights
+    binedges = hist.edges[1]
+    b_ind = Vector{Tuple{Int, Int}}(undef, n_bins)
+    B = zeros(S, (n_bins, 5))
+    norm_fac = compute_norm_fac(basis, S)
+    
+    # Compute ∫ bⱼ(x) dx over each bin for the nonzero coefficients
+
+    # Note: BSplineKit returns the evaluated spline functions in "reverse" order
+    basis_knots = unique(knots(basis))
+    for i in 1:n_bins
+        x0 = binedges[i]
+        x1 = binedges[i+1]
+        j = find_knot_interval(basis_knots, x0)[1]
+        j1 = find_knot_interval(basis_knots, x1)[1] + 3
+        b_ind[i] = (j, j1)
+        for k in j:j1
+            F = integral(Spline(basis, unitvector(K, k, S)))
+            B[i,k-j+1] = (F(x1) - F(x0)) * norm_fac[k]
         end
     end
     return B, b_ind, bincounts

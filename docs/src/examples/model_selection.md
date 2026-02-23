@@ -7,14 +7,14 @@ To assess which model fits the data better, a popular approach is to use an esti
 
 ```math
 \begin{align*}
-\text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S g^{(s)}(y_j)\Big\} \\ +& 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log g(y_j)\big],
+\text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S g^{(s)}(y_j)\Big\} \\ &+ 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log g(y_j)\big],
 \end{align*}
 ```
 where ``f^{(s)}, g^{(s)}`` are samples from the posterior distributions ``p(f\,|\, \boldsymbol{x})`` and ``p(g\,|\, \boldsymbol{y})`` under the independent model assumption, and ``\widehat{\mathbb{V}}\big[\log h(y_i)\big]`` is the sample variance of ``\log h^{(s)}(y_i)`` for ``h \in \{f, g\}``. In particular, a smaller value of this criterion is indicative of better model fit. On the other hand, the WAIC under the pooled data model where ``f = g`` the WAIC is given by
 
 ```math
 \begin{align*}
-\text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(y_j)\Big\} \\ +& 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log f(y_j)\big],
+\text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(y_j)\Big\} \\ &+ 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log f(y_j)\big],
 \end{align*}
 ```
 where ``f^{(s)}`` now denotes samples from the pooled-data posterior ``p(f\,|\, \boldsymbol{x}, \boldsymbol{y})``.
@@ -71,10 +71,8 @@ Based on the above display, it appears that the distribution of male wages is a 
 
 To carry out the formal Bayesian analysis of this question, we need to compute the ``\text{WAIC}`` under both model specifications. We start by writing a funtion for computing the WAIC of each model:
 ```julia
-function compute_waic(ps::PosteriorSamples)
-    # Note that the original data to which a `BSplineMixture`
-    # object was fit is stored under `bsm.data.x`.
-    logpdfs = log.(pdf(ps, model(ps).data.x))
+function compute_waic(ps::PosteriorSamples, data::AbstractVector{<:Real})
+    logpdfs = log.(pdf(ps, data))
     lppd = sum(log.(mapslices(mean, exp.(logpdfs); dims=2)))
     effpar = sum(vec(mapslices(var, logpdfs; dims=2)))
     return -2 * (lppd - effpar)
@@ -87,9 +85,9 @@ Next, we compute the WAIC of the three models using the above function. Note tha
 using Random
 rng = Xoshiro(1984)
 
-waic_male = compute_waic(sample(rng, male_viposterior, 10_000))
-waic_female = compute_waic(sample(rng, female_viposterior, 10_000))
-waic_joint = compute_waic(sample(rng, joint_viposterior, 10_000))
+waic_male = compute_waic(sample(rng, male_viposterior, 10_000), male_rel_wages)
+waic_female = compute_waic(sample(rng, female_viposterior, 10_000), female_rel_wages)
+waic_joint = compute_waic(sample(rng, joint_viposterior, 10_000), joint_rel_wages)
 waic_separate = waic_male + waic_female
 
 waic_joint, waic_separate

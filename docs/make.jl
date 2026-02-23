@@ -22,6 +22,7 @@ bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:author
 
 links = DocumenterInterLinks.InterLinks(
     "Distributions" => "https://juliastats.org/Distributions.jl/stable/",
+    "StasBase" => "https://juliastats.org/StatsBase.jl/stable/",
 )
 
 makedocs(;

@@ -1,16 +1,23 @@
 using BayesDensityHistSmoother
+using BSplineKit
+using Distributions
+using LinearAlgebra
+using Random
+using StatsBase
 using Test
-using Random, BSplineKit, Distributions, LinearAlgebra
 
 const rng = Random.Xoshiro(1)
 
 include("aqua.jl")
 
 @testset "HistSmoother: Constructor and model object" begin
-    x = randn(rng, 10)
+    x = randn(rng, 30)
 
     shs = HistSmoother(x)
     @test shs isa HistSmoother{Float64, <:AbstractBSplineBasis, <:NamedTuple}
+
+    hist = fit(Histogram, x, LinRange(0, 1, 10))
+    @test HistSmoother(hist) isa HistSmoother{Float64}
 
     # Check that we can retrieve hyerparameter defaults
     @test hyperparams(shs) == (prior_scale_fixed = 1e3, prior_scale_random = 1e3)
@@ -26,15 +33,30 @@ end
 
 @testset "HistSmoother: Constructor throws error" begin
     x = collect(-5:0.1:5)
-
-    @test_throws ArgumentError HistSmoother(x; bounds=(-1, 1))
-    @test_throws ArgumentError HistSmoother(x; bounds=(1, -1))
-
-    for hyp in [:prior_scale_fixed, :prior_scale_random]
-        @eval @test_throws ArgumentError $HistSmoother($x; $hyp = -1)
-    end
+    hist = fit(Histogram, x, LinRange(-5, 5, 11))
 
     @test_throws ArgumentError HistSmoother(x; n_bins=-10)
+
+    test_data = Dict(
+        :x => x,
+        :hist => hist  # replace with proper histogram data if needed
+    )
+
+    # Test invalid bounds
+    for data_vec in values(test_data)
+        @test_throws ArgumentError HistSmoother(data_vec; bounds=(-1, 1))
+        @test_throws ArgumentError HistSmoother(data_vec; bounds=(1, -1))
+    end
+
+    # Test negative hyperparameters
+    hyperparams = [:prior_scale_fixed, :prior_scale_random]
+
+    for data_vec in values(test_data)
+        for hyp in hyperparams
+            kwargs = Dict(hyp => -1)
+            @test_throws ArgumentError HistSmoother(data_vec; kwargs...)
+        end
+    end
 end
 
 @testset "HistSmoother: pdf, cdf, support" begin
@@ -79,17 +101,27 @@ end
 
 @testset "HistSmoother: MC: sample" begin
     K = 10
-    x = collect(-5:0.1:5)
+    x = collect(-5:0.05:5)
+    hist = fit(Histogram, x, LinRange(-5, 5, 21))
 
-    shs = HistSmoother(x; K = K, n_bins = 20)
-    @test sample(rng, shs, 100) isa PosteriorSamples{Float64}
+    shs1 = HistSmoother(x; K = K, n_bins = 20)
+    @test sample(rng, shs1, 100) isa PosteriorSamples{Float64}
+
+    shs2 = HistSmoother(hist; K = K)
+    @test sample(rng, shs2, 100) isa PosteriorSamples{Float64}
 end
 
 @testset "HistSmoother: varinf" begin
     K = 10
-    x = collect(-5:0.1:5)
+    x = collect(-5:0.05:5)
+    hist = fit(Histogram, x, LinRange(-5, 5, 41))
 
     shs = HistSmoother(x; K = K, n_bins = 20)
+    vip, _ = varinf(shs)
+    @test vip isa AbstractVIPosterior{Float64}
+    @test sample(rng, vip, 100) isa PosteriorSamples{Float64}
+
+    shs = HistSmoother(hist; K = K)
     vip, _ = varinf(shs)
     @test vip isa AbstractVIPosterior{Float64}
     @test sample(rng, vip, 100) isa PosteriorSamples{Float64}

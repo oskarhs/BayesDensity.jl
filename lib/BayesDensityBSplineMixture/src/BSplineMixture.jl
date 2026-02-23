@@ -7,9 +7,12 @@ Struct representing a B-spline mixture model.
     
     BSplineMixture(x::AbstractVector{<:Real}; kwargs...)
     BSplineMixture{T}(x::AbstractVector{<:Real}; kwargs...)
+    BSplineMixture(hist::StatsBase.Histogram; kwargs...)
+    BSplineMixture{T}hist::StatsBase.Histogram; kwargs...)
 
 # Arguments
 * `x`: The data vector.
+* `hist`: A [`StatsBase.Histogram`](@extref StatsBase.Histogram) holding grouped continuous data.
 
 # Keyword arguments
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to max(100, min(200, ⌈n/5⌉))
@@ -75,49 +78,97 @@ struct BSplineMixture{T<:Real, A<:AbstractBSplineBasis, NT<:NamedTuple} <: Abstr
     prior_local_shape::T
     prior_local_rate::T
     prior_stdev::T
-    function BSplineMixture{T}(x::AbstractVector{<:Real};
-        K::Int = _get_default_splinedim(x),
-        bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
-        n_bins::Union{Nothing,Int}=_get_default_bins(x),
-        prior_global_shape::Real=1.0,
-        prior_global_rate::Real=1e-3,
-        prior_local_shape::Real=0.5,
-        prior_local_rate::Real=0.5,
-        prior_stdev::Real=1e5
-    ) where {T<:Real}
-        _check_bsmkwargs(x, n_bins, bounds, prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) # verify that supplied parameters make sense
-
-        bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
-        K = length(bs)
-
-        # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior median)
-        μ = compute_μ(bs)
-
-        # Set up difference matrix:
-        P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
-
-        T_a_τ = T(prior_global_shape)
-        T_b_τ = T(prior_global_rate)
-        T_a_δ = T(prior_local_shape)
-        T_b_δ = T(prior_local_rate)
-        T_σ = T(prior_stdev)
-        T_x = T.(x)
-        
-        n = length(x)
-        if !isnothing(n_bins)
-            # Create binned B-Spline basis matrix
-            B, b_ind, bincounts = create_spline_basis_matrix_binned(T_x, bs, n_bins)
-            log_B = log.(B)
-
-            data = (x = x, log_B = log_B, b_ind = b_ind, bincounts = bincounts, μ = μ, P = P, n = n)
-        else
-            B, b_ind = create_spline_basis_matrix(T_x, bs)
-            log_B = log.(B)
-
-            data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
-        end
-        return new{T,typeof(bs),typeof(data)}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ, T_σ)
+    function BSplineMixture{T}(
+        data::NT,
+        bs::A,
+        prior_global_shape::T,
+        prior_global_rate::T,
+        prior_local_shape::T,
+        prior_local_rate::T,
+        prior_stdev::T
+        ) where {T<:Real, NT, A}
+        return new{T, A, NT}(data, bs, prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev)
     end
+end
+function BSplineMixture{T}( # Constructor for unbinned data
+    x::AbstractVector{<:Real};
+    K::Int = _get_default_splinedim(x),
+    bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
+    n_bins::Union{Nothing,Int}=_get_default_bins(x),
+    prior_global_shape::Real=1.0,
+    prior_global_rate::Real=1e-3,
+    prior_local_shape::Real=0.5,
+    prior_local_rate::Real=0.5,
+    prior_stdev::Real=1e5
+) where {T<:Real}
+    _check_bsmkwargs(x, n_bins, bounds, prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) # verify that supplied parameters make sense
+
+    bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
+    K = length(bs)
+
+    # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior median)
+    μ = compute_μ(bs)
+
+    # Set up difference matrix:
+    P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
+
+    T_a_τ = T(prior_global_shape)
+    T_b_τ = T(prior_global_rate)
+    T_a_δ = T(prior_local_shape)
+    T_b_δ = T(prior_local_rate)
+    T_σ = T(prior_stdev)
+    T_x = T.(x)
+    
+    n = length(x)
+    if !isnothing(n_bins)
+        # Create binned B-Spline basis matrix
+        B, b_ind, bincounts = create_spline_basis_matrix_binned(T_x, bs, n_bins)
+        log_B = log.(B)
+
+        data = (x = x, log_B = log_B, b_ind = b_ind, bincounts = bincounts, μ = μ, P = P, n = n)
+    else
+        B, b_ind = create_spline_basis_matrix(T_x, bs)
+        log_B = log.(B)
+
+        data = (x = x, log_B = log_B, b_ind = b_ind, μ = μ, P = P, n = n)
+    end
+    return BSplineMixture{T}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ, T_σ)
+end
+function BSplineMixture{T}( # Constructor for binned data
+    hist::StatsBase.Histogram{<:Integer};
+    K::Int = _get_default_splinedim(hist),
+    bounds::Tuple{<:Real,<:Real} = _get_default_bounds(hist),
+    prior_global_shape::Real=1.0,
+    prior_global_rate::Real=1e-3,
+    prior_local_shape::Real=0.5,
+    prior_local_rate::Real=0.5,
+    prior_stdev::Real=1e5
+) where {T<:Real}
+    _check_bsmkwargs(hist, bounds, prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) # verify that supplied parameters make sense
+    (K ≤ 0.7 * length(hist.weights)) || throw(ArgumentError("K is too large relative to the number of bins."))
+
+    bs = BSplineBasis(BSplineOrder(4), LinRange{T}(bounds[1], bounds[2], K-2))
+    K = length(bs)
+
+    # Here: determine μ via the medians (e.g. we penalize differences away from the values that yield a uniform prior median)
+    μ = compute_μ(bs)
+
+    # Set up difference matrix:
+    P = BandedMatrix((0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3)), (K-3, K-1))
+
+    T_a_τ = T(prior_global_shape)
+    T_b_τ = T(prior_global_rate)
+    T_a_δ = T(prior_local_shape)
+    T_b_δ = T(prior_local_rate)
+    T_σ = T(prior_stdev)
+    
+    n = sum(hist.weights)
+    # Create binned B-Spline basis matrix
+    B, b_ind, bincounts = create_spline_basis_matrix_binned(hist, bs)
+    log_B = log.(B)
+
+    data = (hist = hist, log_B = log_B, b_ind = b_ind, bincounts = bincounts, μ = μ, P = P, n = n)
+    return BSplineMixture{T}(data, bs, T_a_τ, T_b_τ, T_a_δ, T_b_δ, T_σ)
 end
 BSplineMixture(args...; kwargs...) = BSplineMixture{Float64}(args...; kwargs...)
 
@@ -160,6 +211,20 @@ function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTu
     end
     nothing
 end
+function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:hist, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}) where {T, A, Vals}
+    n_bins = length(bsm.data.b_ind)
+    println(io, length(bsm), "-dimensional ", nameof(typeof(bsm)), '{', eltype(bsm), "}:")
+    println(io, "Using ", bsm.data.n, " binned observations on a regular grid consisting of ", n_bins, " bins.")
+    let io = IOContext(io, :compact => true, :limit => true)
+        println(io, " support: ", BayesDensityCore.support(bsm))
+        println(io, "Hyperparameters: ")
+        println(io, " prior_global_shape = " , bsm.prior_global_shape, ", prior_global_rate = ", bsm.prior_global_rate)
+        println(io, " prior_local_shape = " , bsm.prior_local_shape, ", prior_local_rate = ", bsm.prior_local_rate)
+        print(io, "prior_stdev = ", bsm.prior_stdev)
+    end
+    nothing
+end
+
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}) where {T, A, Vals}
@@ -360,10 +425,17 @@ function _mean(ps::PosteriorSamples{T, <:AbstractVector,<:BSplineMixture}, ::typ
     return F_bar.(t) .- F_bar(bmin)
 end
 
-_get_default_splinedim(x::AbstractVector{<:Real}) = max(min(200, ceil(Int, length(x)/10)), 100)
+_get_default_splinedim(hist::StatsBase.Histogram) = max(min(200, ceil(Int, 0.5*length(hist.edges[1]))))
+_get_default_splinedim(x::AbstractVector{<:Real}) = max(min(200, ceil(Int, length(x)/4)), 40)
+
 
 function _get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
+    R = xmax - xmin
+    return xmin - 0.05*R, xmax + 0.05*R
+end
+function _get_default_bounds(hist::StatsBase.Histogram{<:Integer})
+    xmin, xmax = extrema(hist.edges[1])
     R = xmax - xmin
     return xmin - 0.05*R, xmax + 0.05*R
 end
@@ -373,6 +445,17 @@ _get_default_bins(x::AbstractVector{<:Real}) = ifelse(length(x) ≤ 1200, nothin
 function _check_bsmkwargs(x::AbstractVector{<:Real}, n_bins::Union{Nothing,Int}, bounds::Tuple{<:Real, <:Real}, prior_global_shape::Real, prior_global_rate::Real, prior_local_shape::Real, prior_local_rate::Real, prior_stdev::Real)
     (isnothing(n_bins) || n_bins ≥ 1) || throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
     xmin, xmax = extrema(x)
+    (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
+    (bounds[1] ≤ xmin ≤ xmax ≤ bounds[2]) || throw(ArgumentError("Data is not contained within supplied bounds."))
+    hyperpar = [prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev]
+    hyperpar_symb = [:prior_global_shape, :prior_global_rate, :prior_local_shape, :prior_local_rate, :prior_stdev]
+    for i in eachindex(hyperpar)
+        (0 < hyperpar[i] < Inf) || throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
+    end
+end
+
+function _check_bsmkwargs(hist::StatsBase.AbstractHistogram{<:Integer}, bounds::Tuple{<:Real, <:Real}, prior_global_shape::Real, prior_global_rate::Real, prior_local_shape::Real, prior_local_rate::Real, prior_stdev::Real)
+    xmin, xmax = extrema(hist.edges[1])
     (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
     (bounds[1] ≤ xmin ≤ xmax ≤ bounds[2]) || throw(ArgumentError("Data is not contained within supplied bounds."))
     hyperpar = [prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev]

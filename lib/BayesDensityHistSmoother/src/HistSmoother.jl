@@ -7,9 +7,12 @@ Struct representing a spline histogram smoother model.
     
     HistSmoother(x::AbstractVector{<:Real}; kwargs...)
     HistSmoother{T}(x::AbstractVector{<:Real}; kwargs...)
+    HistSmoother(hist::StasBase.Histogram; kwargs...)
+    HistSmoother{T}(hist::StasBase.Histogram; kwargs...)
 
 # Arguments
 * `x`: The data vector.
+* `hist`: A [`StatsBase.Histogram`](@extref StatsBase.Histogram) holding grouped continuous data.
 
 # Keyword arguments
 * `K`: B-spline basis dimension of a regular augmented spline basis. Defaults to `52`.
@@ -41,7 +44,7 @@ julia> shs = HistSmoother(x; K = 80, prior_scale_fixed = 1e5);
 ### Binning
 The binning step used by the spline histogram smoother is an essential part of the model fitting procedure, and can as such not be disabled.
 Using a greater number of bins means that less precision is lost due to the binning step, but makes the model fitting procedure slower due to a larger compuatational burden.
-Note that the number of bins only affects the model fitting process, and does otherwise not change the returned 
+Note that the number of bins only affects the model fitting process, and does otherwise not affect the returned model object.
 
 ### Hyperparameter selection
 The hyperparameter `s_β` contols the smoothness of the resulting density estimates.
@@ -53,43 +56,87 @@ struct HistSmoother{T<:Real, A<:AbstractBSplineBasis, D<:NamedTuple} <: Abstract
     prior_scale_fixed::T
     prior_scale_random::T
     function HistSmoother{T}(
-        x::AbstractVector{<:Real};
-        K::Int                       = 52,
-        n_bins::Int                  = 400,
-        bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
-        prior_scale_fixed::Real                    = 1e3,
-        prior_scale_random::Real                    = 1e3
-    ) where {T<:Real}
-        _check_shskwargs(x, n_bins, bounds, prior_scale_fixed, prior_scale_random)
-        n = length(x)
-        T_x = T.(x)
-        x_trans = (T_x .- bounds[1]) / (bounds[2] - bounds[1])
-        kn_first = -0.05
-        kn_last = 1.05
-
-        # Define knot vector and create the corresponding B-spline basis:
-        kn = vcat(kn_first, quantile(unique(x_trans), LinRange{T}(0, 1, K-4)), kn_last)
-        bs = BSplineBasis(BSplineOrder(4), kn)
-
-        # Get penalty matrix and find its eigendecomposition
-        Ω = galerkin_matrix(bs, (Derivative(2), Derivative(2)))
-        eig = eigen(Ω)
-        # Keep vectors corresponding to nonzero eigenvalues
-        U = eig.vectors[:, end:-1:3]
-        D = Diagonal(eig.values[end:-1:3])
-        LZ = U * sqrt(inv(D))
-
-        # Compute linearly binned counts
-        N = linear_binning(x_trans, n_bins, kn_first, kn_last)
-        
-        # Reparametrize
-        bin_grid = LinRange{T}(kn_first, kn_last, n_bins+1)
-        x_grid = 0.5 * (bin_grid[1:end-1] .+ bin_grid[2:end]) # midpoints of bin edges
-        Z = demmler_reinsch_basis_matrix(x_grid, bs, LZ)
-        C = hcat(fill(T(1), n_bins), x_grid, Z)
-        data = (x = T_x, n = n, x_grid = x_grid, N = N, C = C, LZ = LZ, bounds = bounds)
-        return new{T, typeof(bs), typeof(data)}(data, bs, T(prior_scale_fixed), T(prior_scale_random))
+        data::D,
+        bs::A,
+        prior_scale_fixed::T,
+        prior_scale_random::T
+    ) where {T<:Real, A, D}
+        return new{T, A, D}(data, bs, prior_scale_fixed, prior_scale_random)
     end
+end
+
+function HistSmoother{T}( # Unbinned data constructor
+    x::AbstractVector{<:Real};
+    K::Int                       = 52,
+    n_bins::Int                  = 400,
+    bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
+    prior_scale_fixed::Real      = 1e3,
+    prior_scale_random::Real     = 1e3
+) where {T<:Real}
+    _check_shskwargs(x, n_bins, bounds, prior_scale_fixed, prior_scale_random)
+    n = length(x)
+    T_x = T.(x)
+    x_trans = (T_x .- bounds[1]) / (bounds[2] - bounds[1])
+    kn_first = -0.05
+    kn_last = 1.05
+
+    # Define knot vector and create the corresponding B-spline basis:
+    kn = vcat(kn_first, quantile(unique(x_trans), LinRange{T}(0, 1, K-4)), kn_last)
+    bs = BSplineBasis(BSplineOrder(4), kn)
+
+    # Get penalty matrix Ωⱼₖ = ∫ Bⱼ''(x) Bₖ''(x) dx and find its eigendecomposition
+    Ω = galerkin_matrix(bs, (Derivative(2), Derivative(2)))
+    eig = eigen(Ω)
+    # Keep vectors corresponding to nonzero eigenvalues
+    U = eig.vectors[:, end:-1:3]
+    D = Diagonal(eig.values[end:-1:3])
+    LZ = U * sqrt(inv(D))
+
+    # Compute linearly binned counts
+    N = linear_binning(x_trans, n_bins, kn_first, kn_last)
+    
+    # Reparametrize
+    bin_grid = LinRange{T}(kn_first, kn_last, n_bins+1)
+    x_grid = 0.5 * (bin_grid[1:end-1] .+ bin_grid[2:end]) # midpoints of bin edges
+    Z = demmler_reinsch_basis_matrix(x_grid, bs, LZ)
+    C = hcat(fill(T(1), n_bins), x_grid, Z)
+    data = (x = T_x, n = n, x_grid = x_grid, N = N, C = C, LZ = LZ, bounds = bounds)
+    return HistSmoother{T}(data, bs, T(prior_scale_fixed), T(prior_scale_random))
+end
+function HistSmoother{T}( # Unbinned data constructor
+    hist::StatsBase.Histogram{<:Integer};
+    K::Int                       = min(max(div(length(hist.weights), 2), 4), 52),
+    bounds::Tuple{<:Real,<:Real} = _get_default_bounds(hist),
+    prior_scale_fixed::Real      = 1e3,
+    prior_scale_random::Real     = 1e3
+) where {T<:Real}
+    _check_shskwargs(hist, bounds, prior_scale_fixed, prior_scale_random)
+    n = sum(hist.weights)
+    kn_first = -0.05
+    kn_last = 1.05
+
+    # Define knot vector and create the corresponding B-spline basis:
+    kn = vcat(kn_first, LinRange{T}(0, 1, K-4), kn_last)
+    bs = BSplineBasis(BSplineOrder(4), kn)
+
+    # Get penalty matrix Ωⱼₖ = ∫ Bⱼ''(x) Bₖ''(x) dx and find its eigendecomposition
+    Ω = galerkin_matrix(bs, (Derivative(2), Derivative(2)))
+    eig = eigen(Ω)
+    # Keep vectors corresponding to nonzero eigenvalues
+    U = eig.vectors[:, end:-1:3]
+    D = Diagonal(eig.values[end:-1:3])
+    LZ = U * sqrt(inv(D))
+
+    N = hist.weights
+    n_bins = length(N)
+    
+    # Reparametrize
+    bin_grid = (hist.edges[1] .- bounds[1]) / (bounds[2] - bounds[1])
+    x_grid = 0.5 * (bin_grid[1:end-1] .+ bin_grid[2:end]) # midpoints of bin edges
+    Z = demmler_reinsch_basis_matrix(x_grid, bs, LZ)
+    C = hcat(fill(T(1), n_bins), x_grid, Z)
+    data = (hist = hist, n = n, x_grid = x_grid, N = N, C = C, LZ = LZ, bounds = bounds)
+    return HistSmoother{T}(data, bs, T(prior_scale_fixed), T(prior_scale_random))
 end
 HistSmoother(args...; kwargs...) = HistSmoother{Float64}(args...; kwargs...)
 
@@ -116,6 +163,11 @@ function BayesDensityCore.support(shs::HistSmoother{T}) where {T}
     bs_min = bounds[1] - 0.05 * (bounds[2] - bounds[1])
     bs_max = bounds[2] + 0.05 * (bounds[2] - bounds[1])
     return bs_min, bs_max
+end
+
+function BayesDensityCore.default_grid_points(hs::HistSmoother{T}) where {T}
+    xmin, xmax = support(hs)
+    return LinRange{T}(xmin, xmax, 2001)
 end
 
 """
@@ -324,10 +376,26 @@ function _get_default_bounds(x::AbstractVector{<:Real})
     R = xmax - xmin
     return xmin - 0.05*R, xmax + 0.05*R
 end
+function _get_default_bounds(hist::StatsBase.Histogram{<:Integer})
+    xmin, xmax = extrema(hist.edges[1])
+    R = xmax - xmin
+    return xmin - 0.05*R, xmax + 0.05*R
+end
 
 function _check_shskwargs(x::AbstractVector{<:Real}, n_bins::Int, bounds::Tuple{<:Real, <:Real}, prior_scale_fixed::Real, prior_scale_random::Real)
     (isnothing(n_bins) || n_bins > 0) || throw(ArgumentError("Number of bins must be a positive integer or 'nothing'."))
     xmin, xmax = extrema(x)
+    (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
+    (bounds[1] ≤ xmin || bounds[2] ≥ xmax) || throw(ArgumentError("Data is not contained within supplied bounds."))
+    hyperpar = [prior_scale_fixed, prior_scale_random]
+    hyperpar_symb = [:prior_scale_fixed, :prior_scale_random]
+    for i in eachindex(hyperpar)
+        (hyperpar[i] > 0.0 && hyperpar[i] < Inf) || throw(ArgumentError("Hyperparameter $(hyperpar_symb[i]) must be a strictly positive finite number."))
+    end
+end
+
+function _check_shskwargs(hist::StatsBase.Histogram{<:Integer}, bounds::Tuple{<:Real, <:Real}, prior_scale_fixed::Real, prior_scale_random::Real)
+    xmin, xmax = extrema(hist.edges[1])
     (bounds[1] < bounds[2]) || throw(ArgumentError("Supplied upper bound must be strictly greater than the lower bound."))
     (bounds[1] ≤ xmin || bounds[2] ≥ xmax) || throw(ArgumentError("Data is not contained within supplied bounds."))
     hyperpar = [prior_scale_fixed, prior_scale_random]
