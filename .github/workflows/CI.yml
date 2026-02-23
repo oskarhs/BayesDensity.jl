@@ -54,16 +54,17 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+          project: ${{matrix.package}}
 
       - name: Cache Julia artifacts
         uses: julia-actions/cache@v2
 
       - name: Instantiate and test ${{ matrix.package }}
-      - shell: julia --color=yes {0}
         run: |
-          julia --project=. '
+          julia -e '
             import Pkg
             Pkg.Registry.update()
+            Pkg.activate("${{ matrix.package }}")
             Pkg.test("${{ matrix.package }}"; coverage=true)
           '
 
