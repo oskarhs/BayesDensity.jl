@@ -34,6 +34,7 @@ jobs:
             import Pkg
             Pkg.Registry.update()
             Pkg.activate("${{ matrix.package }}")
+            Pkg.instantiate()
           '
       - name: Build and deploy
         run: julia --color=yes --project=docs docs/make.jl
