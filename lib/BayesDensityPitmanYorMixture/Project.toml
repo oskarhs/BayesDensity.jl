@@ -1,6 +1,6 @@
 name = "BayesDensityPitmanYorMixture"
 uuid = "9da0b0c8-0459-4567-a5a4-3605fb8f6d57"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Oskar Høgberg Simensen"]
 
 [workspace]

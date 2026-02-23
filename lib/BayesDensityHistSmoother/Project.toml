@@ -1,6 +1,6 @@
 name = "BayesDensityHistSmoother"
 uuid = "4ec5b509-5e49-418c-a128-3e7a20b6d93e"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["oskarhs <oskarhsimensen@gmail.com>"]
 
 [workspace]

@@ -1,6 +1,6 @@
 name = "BayesDensityRandomBernsteinPoly"
 uuid = "0b3787ab-bd9c-4026-b901-8cf5c1b442b9"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Oskar Høgberg Simensen"]
 
 [workspace]
