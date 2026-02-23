@@ -107,7 +107,7 @@ end
 
 function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T}
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
-    (; x, n, x_grid, N, C, LZ, bounds) = data
+    (; n, x_grid, N, C, LZ, bounds) = data
     # Use MixedModels.jl to find initial parameter estimate:
     Z = C[:, 3:end]
     K = size(Z, 2) + 2
