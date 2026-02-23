@@ -59,13 +59,19 @@ jobs:
         uses: julia-actions/cache@v2
 
       - name: Instantiate and test ${{ matrix.package }}
+      - shell: julia --color=yes {0}
         run: |
-          julia --project=. '
+          @static if VERSION >= v"1.12"
             using Pkg
             Pkg.Registry.update()
             Pkg.activate("${{ matrix.package }}")
-            Pkg.test("${{ matrix.package }}"; coverage=true)
-          '
+            Pkg.test()
+#        run: |
+#          julia --project=. '
+#            import Pkg
+#           Pkg.instantiate()
+#            Pkg.test("${{ matrix.package }}"; coverage=true)
+#          '
 
       - name: Process coverage
         uses: julia-actions/julia-processcoverage@v1
