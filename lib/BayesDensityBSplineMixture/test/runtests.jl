@@ -109,7 +109,7 @@ end
 end
 
 @testset "BSplineMixture: VI: varinf, sample, print" begin
-    K = 4
+    K = 5
     x = collect(0:0.1:1)
     t = LinRange(0, 1, 11)
 
@@ -124,9 +124,9 @@ end
     @test vip2 isa AbstractVIPosterior
     @test sample(vip2, 10) isa PosteriorSamples{Float64}
 
-    hist = fit(Histogram, x; nbins=30)
+    hist = fit(Histogram, x, LinRange(0, 1, 20))
     bsm3 = BSplineMixture(hist; K=K, bounds=(0,1))
-    vip2, _ = @suppress varinf(bsm3; max_iter = 10)
+    vip3, _ = @suppress varinf(bsm3; max_iter = 10)
     @test vip3 isa AbstractVIPosterior
     @test sample(vip3, 10) isa PosteriorSamples{Float64}
 

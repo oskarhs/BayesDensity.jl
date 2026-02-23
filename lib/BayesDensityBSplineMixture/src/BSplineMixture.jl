@@ -208,6 +208,20 @@ function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTu
     end
     nothing
 end
+function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:hist, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}) where {T, A, Vals}
+    n_bins = length(bsm.data.b_ind)
+    println(io, length(bsm), "-dimensional ", nameof(typeof(bsm)), '{', eltype(bsm), "}:")
+    println(io, "Using ", bsm.data.n, " binned observations on a regular grid consisting of ", n_bins, " bins.")
+    let io = IOContext(io, :compact => true, :limit => true)
+        println(io, " support: ", BayesDensityCore.support(bsm))
+        println(io, "Hyperparameters: ")
+        println(io, " prior_global_shape = " , bsm.prior_global_shape, ", prior_global_rate = ", bsm.prior_global_rate)
+        println(io, " prior_local_shape = " , bsm.prior_local_shape, ", prior_local_rate = ", bsm.prior_local_rate)
+        print(io, "prior_stdev = ", bsm.prior_stdev)
+    end
+    nothing
+end
+
 
 # Print method for unbinned data
 function Base.show(io::IO, ::MIME"text/plain", bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :μ, :P, :n), Vals}}) where {T, A, Vals}

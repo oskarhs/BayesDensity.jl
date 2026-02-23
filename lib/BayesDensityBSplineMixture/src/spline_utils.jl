@@ -98,7 +98,7 @@ function create_spline_basis_matrix_binned(hist::StatsBase.Histogram{<:Integer},
     bincounts = hist.weights
     binedges = hist.edges[1]
     b_ind = Vector{Tuple{Int, Int}}(undef, n_bins)
-    B = Matrix{S}(undef, (n_bins, 5))
+    B = zeros(S, (n_bins, 5))
     norm_fac = compute_norm_fac(basis, S)
     
     # Compute ∫ bⱼ(x) dx over each bin for the nonzero coefficients
@@ -108,8 +108,8 @@ function create_spline_basis_matrix_binned(hist::StatsBase.Histogram{<:Integer},
     for i in 1:n_bins
         x0 = binedges[i]
         x1 = binedges[i+1]
-        j = find_knot_interval(basis_knots, x0)[1] # So we compute b_{j-3}, b_{j-2}, b_{j-1} and b_j for x_i
-        j1 = find_knot_interval(basis_knots, x1)[1]
+        j = find_knot_interval(basis_knots, x0)[1]
+        j1 = find_knot_interval(basis_knots, x1)[1] + 3
         b_ind[i] = (j, j1)
         for k in j:j1
             F = integral(Spline(basis, unitvector(K, k, S)))

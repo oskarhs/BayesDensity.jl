@@ -313,7 +313,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
             end
             probs = softmax(logprobs)
             E_N[ks[1]:ks[2]] .+= bincounts[i] * probs
-            last_term += bincounts[i] * sum(probs .* (log_B[i,:] - log.(probs)))
+            last_term += bincounts[i] * sum(probs .* (log_B[i,1:ks[2]-ks[1]+1] - log.(probs)))
         end
         E_S[1] = n
         E_S[2:K] .= n .- cumsum(view(E_N, 1:K-1))
