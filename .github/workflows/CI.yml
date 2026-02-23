@@ -64,7 +64,6 @@ jobs:
           julia --project=. '
             import Pkg
             Pkg.Registry.update()
-            Pkg.instantiate()
             Pkg.test("${{ matrix.package }}"; coverage=true)
           '
 
