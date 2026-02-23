@@ -23,7 +23,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 BSplineKit = "0.19.0"
 BandedMatrices = "1.0.0"
-BayesDensityCore = "0.1.0"
+BayesDensityCore = "0.2.0"
 Distributions = "0.25.0"
 LinearAlgebra = "1.0.0"
 PolyaGammaHybridSamplers = "1.0.0"
