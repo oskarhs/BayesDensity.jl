@@ -61,16 +61,12 @@ jobs:
       - name: Instantiate and test ${{ matrix.package }}
       - shell: julia --color=yes {0}
         run: |
-          using Pkg
-          Pkg.Registry.update()
-          Pkg.activate("${{ matrix.package }}")
-          Pkg.test()
-#        run: |
-#          julia --project=. '
-#            import Pkg
-#           Pkg.instantiate()
-#            Pkg.test("${{ matrix.package }}"; coverage=true)
-#          '
+          julia --project=. '
+            import Pkg
+            Pkg.Registry.update()
+            Pkg.instantiate()
+            Pkg.test("${{ matrix.package }}"; coverage=true)
+          '
 
       - name: Process coverage
         uses: julia-actions/julia-processcoverage@v1
