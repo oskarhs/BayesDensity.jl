@@ -63,8 +63,8 @@ jobs:
           julia -e '
             import Pkg
             Pkg.Registry.update()
-            Pkg.instantiate()
-            Pkg.test("lib/${{ matrix.package }}"; coverage=true)
+            Pkg.activate("lib/${{ matrix.package }}")
+            Pkg.test(; coverage=true)
           '
 
       - name: Process coverage
