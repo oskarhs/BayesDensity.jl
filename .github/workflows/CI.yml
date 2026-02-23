@@ -64,7 +64,7 @@ jobs:
           julia -e '
             import Pkg
             Pkg.Registry.update()
-            Pkg.activate("${{ matrix.package }}")
+            Pkg.activate("lib/${{ matrix.package }}")
             Pkg.test("${{ matrix.package }}"; coverage=true)
           '
 
