@@ -17,10 +17,42 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    # Required permissions
+    permissions:
+      pull-requests: read
+    outputs:
+      # Expose matched filters as job 'packages' output variable
+      packages: ${{ steps.filter.outputs.changes }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          BayesDensityBSplineMixture:
+            - BayesDensityCore/**
+            - lib/BayesDensityBSplineMixture/**
+          BayesDensityCore:
+            - BayesDensityCore/**
+          BayesDensityFiniteGaussianMixture:
+            - BayesDensityCore/**
+            - lib/BayesDensityFiniteGaussianMixture/**
+          BayesDensityHistSmoother:
+            - BayesDensityCore/**
+            - lib/BayesDensityHistSmoother/**
+          BayesDensityPitmanYorMixture:
+            - BayesDensityCore/**
+            - lib/BayesDensityPitmanYorMixture/**
+          BayesDensityRandomBernsteinPoly:
+            - BayesDensityCore/**
+            - lib/BayesDensityRandomBernsteinPoly/**
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ matrix.package }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    needs: changes
+    if: needs.changes.outputs.packages != '[]'
 
     permissions:
       actions: write
@@ -36,14 +68,7 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
-        package:
-          - BayesDensityCore
-          - BayesDensityBSplineMixture
-          - BayesDensityFiniteGaussianMixture
-          - BayesDensityHistSmoother
-          - BayesDensityPitmanYorMixture
-          - BayesDensityRandomBernsteinPoly
-          # add more packages here as needed
+        package: ${{ fromJSON(needs.changes.outputs.packages) }}
 
     steps:
       - name: Checkout repository
