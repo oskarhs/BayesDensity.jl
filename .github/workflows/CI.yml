@@ -62,7 +62,6 @@ jobs:
         run: |
           julia --project=. -e '
             import Pkg
-            Pkg.resolve()
             Pkg.instantiate()
             Pkg.test("${{ matrix.package }}"; coverage=true)
           '
