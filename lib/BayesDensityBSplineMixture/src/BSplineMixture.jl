@@ -56,9 +56,10 @@ This is done to ensure that at most 4 cubic splines have positive integrals over
 ### Hyperparameter selection
 The global variance parameter `τ2` and the local variance parameters `δ2[k]` govern the smoothness of the B-spline mixture prior through the centered random walk prior on β | τ2, δ2:
 
-    β[k+2] = μ[k+2] + 2 {β[k+1] - μ[k+1]} - {β[k] - μ[k]} + τ * δ[k] * ϵ[k],
+    β[k] = μ[k] + τ * σ * ϵ[k], k = 1, 2
+    β[k] = μ[k] + 2 {β[k-1] - μ[k-1]} - {β[k-2] - μ[k-2]} + ν[k] * ϵ[k], k ≥ 3
 
-where ϵ[k] is standard normal. The first two parameters β[1] and β[2] are assigned diffuse N(0, σ²) priors.
+where ϵ[k] are independent standard normal variables and ν[k] = τ^2/(1/δ[k]^2 + 1/σ^2). By default, σ = 1e3.
 
 The prior distributions of the local and global smoothing parameters are given by
 
