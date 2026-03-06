@@ -96,7 +96,7 @@ function BSplineMixture{T}( # Constructor for unbinned data
     bounds::Tuple{<:Real,<:Real} = _get_default_bounds(x),
     n_bins::Union{Nothing,Int}=_get_default_bins(x),
     prior_global_shape::Real=1.0,
-    prior_global_rate::Real=5e-4,
+    prior_global_rate::Real=2e-4,
     prior_local_shape::Real=0.5,
     prior_local_rate::Real=0.5,
     prior_stdev::Real=1e3
@@ -139,7 +139,7 @@ function BSplineMixture{T}( # Constructor for binned data
     K::Int = _get_default_splinedim(hist),
     bounds::Tuple{<:Real,<:Real} = _get_default_bounds(hist),
     prior_global_shape::Real=1.0,
-    prior_global_rate::Real=5e-4,
+    prior_global_rate::Real=2e-4,
     prior_local_shape::Real=0.5,
     prior_local_rate::Real=0.5,
     prior_stdev::Real=1e3
@@ -426,7 +426,7 @@ function _mean(ps::PosteriorSamples{T, <:AbstractVector,<:BSplineMixture}, ::typ
 end
 
 _get_default_splinedim(hist::StatsBase.Histogram) = max(min(200, ceil(Int, 0.5*length(hist.edges[1]))))
-_get_default_splinedim(x::AbstractVector{<:Real}) = max(min(200, ceil(Int, length(x)/4)), 40)
+_get_default_splinedim(x::AbstractVector{<:Real}) = max(min(200, ceil(Int, length(x)/6)), 40)
 
 
 function _get_default_bounds(x::AbstractVector{<:Real})
