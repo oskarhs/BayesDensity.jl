@@ -94,4 +94,4 @@ waic_joint, waic_separate
 ```
 
 
-After running the above code snippet, we obtain a WAIC of ``11036`` for the constrained model and a ``10968`` for the unconstrained one, strongly favoring the latter model. The results obtained here indicate that the two samples indeed follow different distributions.
+After running the above code snippet, we obtain a WAIC of ``11032`` for the constrained model and a ``10962`` for the unconstrained one, strongly favoring the latter model. The results obtained here indicate that the two samples indeed follow different distributions.
