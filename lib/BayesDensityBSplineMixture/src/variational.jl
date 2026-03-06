@@ -263,7 +263,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
 
     # Get hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
+    Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -324,7 +324,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
         
         # Update q(β)
         D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
-        Q = transpose(P) * D * P + Q0
+        Q = transpose(P) * D * P + (Q0 / a_τ_opt * b_τ_opt)
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
         h2 = Q*μ
@@ -371,7 +371,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
     # Get prior hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
+    Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -431,7 +431,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         
         # Update q(β)
         D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
-        Q = transpose(P) * D * P + Q0
+        Q = transpose(P) * D * P + (Q0 / a_τ_opt * b_τ_opt)
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
         h2 = Q*μ

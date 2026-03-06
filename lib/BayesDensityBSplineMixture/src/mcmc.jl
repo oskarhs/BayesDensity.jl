@@ -71,7 +71,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Prior Hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, K-1)))
 
     # Initial parameters
     (; β, τ2) = initial_params
@@ -136,7 +136,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         # Update β
         # Compute the Q matrix
         D = Diagonal(1 ./(τ2*δ2))
-        Q = transpose(P) * D * P + Q0
+        Q = transpose(P) * D * P + (Q0 / τ2)
         # Compute the Ω matrix (Note: Q + D retains the banded structure!)
         Ω = Diagonal(ω)
         inv_Σ_new = Ω + Q
@@ -165,7 +165,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Prior Hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat([1/prior_stdev^2, 1/prior_stdev^2], zeros(T, K-3)))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, K-1)))
 
     # Initial parameters
     (; β, τ2) = initial_params
@@ -229,7 +229,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         # Update β
         # Compute the Q matrix
         D = Diagonal(1 ./(τ2*δ2))
-        Q = transpose(P) * D * P + Q0
+        Q = transpose(P) * D * P + (Q0 / τ2)
         # Compute the Ω matrix (Note: Q + D retains the banded structure!)
         Ω = Diagonal(ω)
         inv_Σ_new = Ω + Q
