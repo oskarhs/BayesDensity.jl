@@ -27,12 +27,12 @@ densities_negative = []
 for predictor in predictor_names
     fit_positive = sample(
         rng,
-        BSplineMixture(collect(skipmissing(train_positive[:,predictor])); prior_global_rate=1e-4),
+        BSplineMixture(collect(skipmissing(train_positive[:,predictor])); prior_global_rate=2e-4),
         10_000
     )
     fit_negative = sample(
         rng,
-        BSplineMixture(collect(skipmissing(train_negative[:,predictor])); prior_global_rate=1e-4),
+        BSplineMixture(collect(skipmissing(train_negative[:,predictor])); prior_global_rate=2e-4),
         10_000
     )
     push!(densities_positive, fit_positive)
@@ -55,6 +55,7 @@ end
 
 # Compute accuracies:
 acc = mean(test.Type .== predicted_class)
+println("Test set accuracy, BSplineMix: ", acc)
 
 # Now consider a parametric naive Bayes classifier with gaussian margins
 # Fit univariate density estimates to each covariate
@@ -85,3 +86,4 @@ end
 
 # Compute accuracies:
 acc_normal = mean(test.Type .== predicted_class_normal)
+println("Test set accuracy, Normal: ", acc_normal)
