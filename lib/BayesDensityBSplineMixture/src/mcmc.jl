@@ -196,8 +196,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         end
 
         # Update τ2
-        a_τ_new = prior_global_shape + T(0.5) * (K - 3)
-        b_τ_new = prior_global_rate
+        a_τ_new = prior_global_shape + T(0.5) * (K - 1)
+        b_τ_new = prior_global_rate + ( (β[1] - μ[1])^2 + (β[2] - μ[2])^2 )/ (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -220,6 +220,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         # Update ω
         # Compute N and S
         S = n .- cumsum(vcat(0, N[1:K-1]))
+        S = max.(S, 0)
         for k in 1:K-1
             c_k_new = S[k]
             d_k_new = β[k]
@@ -291,8 +292,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         end
 
         # Update τ2
-        a_τ_new = prior_global_shape + T(0.5) * (K - 3)
-        b_τ_new = prior_global_rate
+        a_τ_new = prior_global_shape + T(0.5) * (K - 1)
+        b_τ_new = prior_global_rate + ( (β[1] - μ[1])^2 + (β[2] - μ[2])^2 )/ (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -314,6 +315,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         # Update ω
         # Compute N and S
         S = n .- cumsum(vcat(0, N[1:K-1]))
+        S = max.(S, 0)
         for k in 1:K-1
             c_k_new = S[k]
             d_k_new = β[k]

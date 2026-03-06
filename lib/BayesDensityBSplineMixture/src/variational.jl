@@ -276,7 +276,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
     # These two stay constant throughout the optimization loop.
-    a_τ_opt = prior_global_shape + (K-3)/2
+    a_τ_opt = prior_global_shape + (K-1)/2
     a_δ_opt = fill(prior_local_shape + 1/2, K-3)
 
     n_overlap = size(log_B, 2)
@@ -345,7 +345,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
 
         # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
-        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * prior_stdev^2)
+        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * prior_stdev^2) * (a_τ_opt / b_τ_opt)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
         term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
 
@@ -384,7 +384,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
     # These two stay constant throughout the optimization loop.
-    a_τ_opt = prior_global_shape + (K-3)/2
+    a_τ_opt = prior_global_shape + (K-1)/2
     a_δ_opt = fill(prior_local_shape + 1/2, K-3)
 
     non_basis_term = Vector{T}(undef, K)
@@ -452,7 +452,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
         # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-3) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
-        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * prior_stdev^2)
+        term_β = term_β - (abs2(E_β[1] - μ[1]) + abs2(E_β[2] - μ[2]) + d0[1]^2 + d0[2]^2) / (2 * prior_stdev^2) * a_τ_opt / b_τ_opt
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
         term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
 
