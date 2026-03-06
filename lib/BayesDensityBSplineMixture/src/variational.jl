@@ -134,8 +134,8 @@ function _get_default_initparams(bsm::BSplineMixture{T}) where {T}
     Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
     a_τ_opt = prior_global_shape + (K-1)/2
     b_τ_opt = prior_global_rate
-    a_δ_opt = fill(prior_local_shape + 1/2, K-1)
-    b_δ_opt = fill(prior_local_rate, K-1)
+    a_δ_opt = fill(prior_local_shape + 1/2, K-3)
+    b_δ_opt = fill(prior_local_rate, K-3)
 
     μ_opt = compute_μ(basis(bsm))
     D = Diagonal(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt)
