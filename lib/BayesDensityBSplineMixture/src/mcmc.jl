@@ -37,7 +37,7 @@ function StatsBase.sample(
     bsm::BSplineMixture,
     n_samples::Int;
     n_burnin::Int = min(1000, div(n_samples, 5)),
-    initial_params::NamedTuple=get_default_initparams_mcmc(bsm)
+    initial_params::NamedTuple=_get_default_initparams_mcmc(bsm)
 )
     (1 ≤ n_samples ≤ Inf) || throw(ArgumentError("Number of samples must be a positive integer."))
     (0 ≤ n_burnin ≤ Inf) || throw(ArgumentError("Number of burn-in samples must be a nonnegative integer."))
@@ -56,7 +56,7 @@ function _check_initparams(bsm::BSplineMixture, initial_params::NamedTuple{N, V}
 end
 
 # Lazy initialization
-function get_default_initparams_mcmc(bsm::BSplineMixture{T}) where {T}
+function _get_default_initparams_mcmc(bsm::BSplineMixture{T}) where {T}
     β = copy(bsm.data.μ)
     τ2 = one(T)                # Global smoothing parameter
     return (β = β, τ2 = τ2)
@@ -104,8 +104,8 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         end
 
         # Update τ2
-        a_τ_new = prior_global_shape + T(0.5) * (K - 3)
-        b_τ_new = prior_global_rate
+        a_τ_new = prior_global_shape + T(0.5) * (K - 1)
+        b_τ_new = prior_global_rate + sum(abs2, β - μ)/ (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -197,7 +197,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Update τ2
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
-        b_τ_new = prior_global_rate + ( (β[1] - μ[1])^2 + (β[2] - μ[2])^2 )/ (2*prior_stdev^2)
+        b_τ_new = prior_global_rate + sum(abs2, β - μ)/ (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -293,7 +293,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Update τ2
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
-        b_τ_new = prior_global_rate + ( (β[1] - μ[1])^2 + (β[2] - μ[2])^2 )/ (2*prior_stdev^2)
+        b_τ_new = prior_global_rate + sum(abs2, β - μ)/ (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
