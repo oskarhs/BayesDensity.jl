@@ -131,7 +131,7 @@ function _get_default_initparams(bsm::BSplineMixture{T}) where {T}
     P = sparse(bsm.data.P)
     #P = spdiagm(K-3, K-1, 0=>fill(1, K-3), 1=>fill(-2, K-3), 2=>fill(1, K-3))
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
     a_τ_opt = prior_global_shape + (K-1)/2
     b_τ_opt = prior_global_rate
     a_δ_opt = fill(prior_local_shape + 1/2, K-3)
@@ -153,7 +153,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
     # Get hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -187,7 +187,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         b_δ_opt = prior_local_rate .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
 
         # Update q(τ²)
-        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0) + sum(abs2, E_β - μ))/ (2*prior_stdev^2)
+        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0[1:2]) + sum(abs2, E_β[1:2] - μ[1:2]))/ (2*prior_stdev^2)
 
         # Update q(z, ω)
         E_N = zeros(T, K)
@@ -263,7 +263,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
 
     # Get hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -296,7 +296,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
         b_δ_opt = prior_local_rate .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
 
         # Update q(τ²)
-        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0) + sum(abs2, E_β - μ))/ (2*prior_stdev^2)
+        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0[1:2]) + sum(abs2, E_β[1:2] - μ[1:2]))/ (2*prior_stdev^2)
 
         # Update q(z, ω)
         E_N = zeros(T, K)
@@ -345,7 +345,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
 
         # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-1) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
-        term_β = term_β - (sum(d0) + sum(abs2, E_β - μ))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
+        term_β = term_β - (sum(d0) + sum(abs2, view(E_β, 1:2) - view(μ, 1:2)))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
         term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
 
@@ -371,7 +371,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
     # Get prior hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(fill(1/prior_stdev^2, K-1))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
 
     (; μ_opt, inv_Σ_opt, b_τ_opt, b_δ_opt) = initial_params
     # Find the required posterior moments of q(β):
@@ -403,7 +403,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         b_δ_opt = prior_local_rate .+ T(0.5) * E_Δ2 * a_τ_opt / b_τ_opt
 
         # Update q(τ²)
-        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0) + sum(abs2, E_β - μ))/ (2*prior_stdev^2)
+        b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0[1:2]) + sum(abs2, E_β[1:2] - μ[1:2]))/ (2*prior_stdev^2)
 
         # Update q(z, ω)
         E_N = zeros(T, K)
@@ -452,7 +452,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
         # Compute ELBO contribution from the expectation of log {p(β | τ², δ²) / q(β)} under q
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-1) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
-        term_β = term_β - (sum(d0) + sum(abs2, E_β - μ))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
+        term_β = term_β - (sum(d0) + sum(abs2, view(E_β, 1:2) - view(μ, 1:2)))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
         term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
 

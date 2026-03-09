@@ -36,8 +36,8 @@ julia> model = BSplineMixture(x)
 Using 5000 binned observations on a regular grid consisting of 1187 bins.
  support: (-0.05, 1.05)
 Hyperparameters:
- prior_global_shape = 1.0, prior_global_rate = 0.001
- prior_local_shape = 0.5, prior_local_rate = 0.5
+ prior_global_shape = 1.0, prior_global_rate = 0.0002
+ prior_local_shape = 1, prior_local_rate = 0.5
 
 julia> model = BSplineMixture(x; K = 150, bounds=(0, 1), n_bins=nothing, prior_global_rate = 5e-3);
 ```
@@ -98,7 +98,7 @@ function BSplineMixture{T}( # Constructor for unbinned data
     n_bins::Union{Nothing,Int}=_get_default_bins(x),
     prior_global_shape::Real=1.0,
     prior_global_rate::Real=2e-4,
-    prior_local_shape::Real=0.5,
+    prior_local_shape::Real=1.0,
     prior_local_rate::Real=0.5,
     prior_stdev::Real=1e3
 ) where {T<:Real}
@@ -141,7 +141,7 @@ function BSplineMixture{T}( # Constructor for binned data
     bounds::Tuple{<:Real,<:Real} = _get_default_bounds(hist),
     prior_global_shape::Real=1.0,
     prior_global_rate::Real=2e-4,
-    prior_local_shape::Real=0.5,
+    prior_local_shape::Real=1.0,
     prior_local_rate::Real=0.5,
     prior_stdev::Real=1e3
 ) where {T<:Real}
