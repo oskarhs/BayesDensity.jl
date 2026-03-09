@@ -71,7 +71,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Prior Hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, K-1)))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
 
     # Initial parameters
     (; β, τ2) = initial_params
@@ -105,7 +105,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Update τ2
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
-        b_τ_new = prior_global_rate + sum(abs2, β - μ)/ (2*prior_stdev^2)
+        b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2))/ (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -165,7 +165,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Prior Hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, K-1)))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
 
     # Initial parameters
     (; β, τ2) = initial_params
@@ -197,7 +197,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Update τ2
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
-        b_τ_new = prior_global_rate + sum(abs2, β - μ)/ (2*prior_stdev^2)
+        b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2)) / (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
@@ -258,7 +258,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Prior Hyperparameters
     (; prior_global_shape, prior_global_rate, prior_local_shape, prior_local_rate, prior_stdev) = hyperparams(bsm)
-    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, K-1)))
+    Q0 = Diagonal(vcat(fill(1/prior_stdev^2, 2), zeros(T, K-3)))
     
     # Initial parameters
     (; β, τ2) = initial_params
@@ -293,7 +293,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Update τ2
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
-        b_τ_new = prior_global_rate + sum(abs2, β - μ)/ (2*prior_stdev^2)
+        b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2)) / (2*prior_stdev^2)
         for k in 1:K-3
             b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
         end
