@@ -1,6 +1,6 @@
 name = "BayesDensity"
 uuid = "4cc3c169-7268-405b-84ce-cc9eca2341c2"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Oskar Høgberg Simensen"]
 
 [deps]
