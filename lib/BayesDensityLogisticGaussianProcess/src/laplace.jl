@@ -32,7 +32,7 @@ function Base.show(io::IO, ::MIME"text/plain", lap::LogisticGaussianProcessLapla
     println(io, nameof(typeof(lap)), "{", T, "} vith optimal hyperparameters:")
     let io = IOContext(io, :compact => true, :limit => true)
         println(io, " σ2 = ", lap.σ2)
-        print(io, " λ = ", lap.λ)
+        println(io, " λ = ", lap.λ)
     end
     println(io, "Model:")
     print(io, model(lap))
@@ -47,13 +47,14 @@ function StatsBase.sample(
     n_samples::Int
 ) where {T<:Real}
     (; q_β, lgp) = lgp_laplace
+    bounds = BayesDensityCore.support(lgp)
     n_bins = lgp.data.n_bins
     samples = Vector{NamedTuple{(:β, :val_pdf, :val_cdf), Tuple{Vector{T}, Vector{T}, Vector{T}}}}(undef, n_samples)
     for i in 1:n_samples
         β = rand(rng, q_β)
         exp_β = exp.(β)
         eval_unnorm = cumsum(exp_β)
-        val_pdf = n_bins * exp_β / eval_unnorm[end]
+        val_pdf = n_bins * exp_β / (eval_unnorm[end]*(bounds[2] - bounds[1]))
         val_cdf = vcat(0.0, eval_unnorm / eval_unnorm[end])
         samples[i] = (β = β, val_pdf = val_pdf, val_cdf = val_cdf)
     end
@@ -98,14 +99,10 @@ julia> vip, info = laplace_approximation(lgp);
 
 julia> vip, info = laplace_approximation(lgp; rtol_newton=1e-4, max_iter_newton=1000);
 ```
-
-# Extended help
-## Convergence
-The criterion used to determine convergence is that the relative change in the ELBO falls below the given `rtol`.
 """
 function laplace_approximation(
     lgp::LogisticGaussianProcess{T};
-    initial_params::NamedTuple = (σ2 = T(1.0), λ = T(1.0)),
+    initial_params::NamedTuple = (σ2 = T(0.1), λ = T(1.0)),
     max_iter_newton::Int       = 100,
     atol_newton::Real          = 1e-3,
     rtol_newton::Real          = 1e-3
@@ -145,17 +142,19 @@ function _laplace_approximation(
     σ2, λ = exp.(η)
 
     # Find the Laplace approximation given the optimal hyperparameters
+    ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ))
+    K = σ2 * ∂K_∂σ2
     newton_rhapson!(cache, K, max_iter_newton, atol_newton, rtol_newton) # Get the posterior mode of β
     β = cache.β
     u = softmax(β)
-    R = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R!(res, u, b, n))
-    B = Matrix(I(n_bins) + transpose(R) * K * R)
+    R = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R!(res, u, n, b), (res, b) -> mul_R_transpose!(res, u, n, b))
+    B = Symmetric(Matrix(I(n_bins) + transpose(R) * K * R))
     chol_B = cholesky(B)
     L = chol_B.L
     U = chol_B.L
     # V = inv(K + W⁻¹) = R * inv(I + transpose(R) * K * R)*transpose(R)
     tmp = L \ transpose(Matrix(R))
-    V = R * (U \ tmp)
+    V = Symmetric(Matrix(R * (U \ tmp)))
 
     return LogisticGaussianProcessLaplacePosterior{T}(β, V, σ2, λ, lgp)
 end
@@ -185,17 +184,19 @@ function newton_rhapson!(
     while !converged && iter ≤ max_iter_newton
         iter = iter + 1
         u = softmax(β)
+        u = clamp.(u, 1e-12, 1 - 1e-12)
 
         # Compute v:
         v = n * (u .* β - u * dot(u, β)) + (N - n * u)
 
         # Compute linear operators:
         R = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R!(res, u, n, b), (res, b) -> mul_R_transpose!(res, u, n, b))
-        #R_t = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R_t!(res, u, b, n))
-        A = LinearOperator(T, n_bins, n_bins, true, true, (res, b) -> mul_A!(res, R, K, n_bins, b), (res, b) -> mul_A!(res, R, K, n_bins, b))
-        RtCv = transpose(R) * K * v
+        A = LinearOperator(T, n_bins, n_bins, true, true, (res, b) -> mul_A!(res, R, K, n_bins, b))
+        Kv = K * v
+        RtCv = transpose(R) * Kv
         # Solve Az = RtCv using the conjugate gradient method:
-        z, _ = cg(A, RtCv; atol=1e-3, rtol=1e-3)
+        #z, _ = cg(A, RtCv; atol=1e-3, rtol=1e-3)
+        z, _ = gmres(A, RtCv; atol=1e-3, rtol=1e-3)
         # Finally, get the new mode:
         a = v - R * z
         β_new = K * a
@@ -238,7 +239,7 @@ function loglik_and_grad!(
     σ2, λ = exp.(η) # Perform optimization in unconstrained space
     ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ))
     K = σ2 * ∂K_∂σ2
-    ∂K_∂λ = 1/λ^2 * K
+    ∂K_∂λ = (pairwise_dists / λ^2) .* K
     newton_rhapson!(cache, K, max_iter_newton, atol_newton, rtol_newton)
     (; β, a, N, n, n_bins) = cache
 
@@ -277,7 +278,7 @@ function loglik_and_grad!(
         # Terms from prior
 
         # Explicit marginal likelihood terms:
-        prior_term = 1/abs2(prior_length_scale) * 1/(1 + σ2 / abs2(prior_length_scale))
+        prior_term = 1/abs2(prior_length_scale) * 1/(1 + λ / abs2(prior_length_scale))
         ∂logq_∂λ = 1/2*dot(a, ∂K_∂λ, a) - 1/2 * tr(V * ∂K_∂λ) # V=R in Rasmussen
         # Implicit marginal likelihood terms
         b = ∂K_∂λ * ∂logp_∂β
@@ -286,12 +287,17 @@ function loglik_and_grad!(
         ∂logq_∂λ += prior_term
         ∂logq_∂λ *= λ
 
+        println("Grad σ2: ", ∂logq_∂σ2)
+        println("Grad λ: ", ∂logq_∂λ)
+
         # Write result to output:
-        copyto!(G, [∂logq_∂σ2, ∂logq_∂λ])
+        copyto!(G, [-∂logq_∂σ2, -∂logq_∂λ])
     end
     if F !== nothing
         prior_terms = -log(1 + σ2 / abs2(prior_variance_scale))
         prior_terms += -log(1 + λ / abs2(prior_length_scale))
-        return -1/2 * dot(a, β) + dot(β, N) - n*log(sum(u)) - logabsdet(L)[1]
+        log_ml = -1/2 * dot(a, β) + dot(β, N) - n*log(sum(u)) - logabsdet(L)[1]
+        @show log_ml
+        return -log_ml
     end
 end

@@ -1,6 +1,9 @@
 module BayesDensityLogisticGaussianProcess
 
-using BayesDensityCore
+using Reexport
+
+@reexport using BayesDensityCore
+import BayesDensityCore: support
 using BSplineKit
 using Distributions
 using Krylov

@@ -156,9 +156,10 @@ end
 function _pdf(lgp::LogisticGaussianProcess, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
     # Pdf has not been evaluated
     n_bins = lgp.data.n_bins
+    xmin, xmax = BayesDensityCore.support(lgp)
     eval_unnorm = exp.(params.β)
     norm = sum(eval_unnorm) / n_bins
-    eval_pdf_grid = eval_unnorm / norm
+    eval_pdf_grid = eval_unnorm / (norm * (xmax-xmin))
     return _pdf(lgp, eval_pdf_grid, t)
 end
 function _pdf(lgp::LogisticGaussianProcess{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
@@ -173,11 +174,12 @@ end
 function _pdf(lgp::LogisticGaussianProcess{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, Names, Vals, S<:Real}
     # Build evaluation matrix (normalization constants are not given)
     n_bins = lgp.data.n_bins
+    xmin, xmax = BayesDensityCore.support(lgp)
     eval_pdf_grid = Matrix{promote_type(T, S)}(undef, (n_bins, length(params)))
     for i in eachindex(params)
         eval_unnorm = exp.(params[i].β)
         norm = sum(eval_unnorm) / n_bins
-        eval_pdf_grid[:, i] = eval_unnorm / norm
+        eval_pdf_grid[:, i] = eval_unnorm / (norm * (xmax-xmin))
     end
     return _pdf(lgp, eval_pdf_grid, t)
 end
@@ -190,7 +192,7 @@ function _pdf(lgp::LogisticGaussianProcess, eval_pdf_grid::AbstractVector{<:Real
     t_trans = (t .- xmin) / (xmax - xmin)
     t_eval = clamp.(t_trans, 1/(2*n_bins), 1-1/(2*n_bins))
     f_interp = interpolate(x_grid, eval_pdf_grid, BSplineOrder(2))
-    f_samp = f_interp.(t_eval) * (xmax - xmin)
+    f_samp = f_interp.(t_eval)
     return ifelse.(xmin .≤ t .≤ xmax, f_samp, 0.0)
 end
 function _pdf(lgp::LogisticGaussianProcess, eval_pdf_grid::AbstractMatrix{T}, t::AbstractVector{S}) where {T<:Real, S<:Real}
@@ -202,7 +204,7 @@ function _pdf(lgp::LogisticGaussianProcess, eval_pdf_grid::AbstractMatrix{T}, t:
     f_samp = Matrix{promote_type(T, S)}(undef, (length(t), size(eval_pdf_grid, 2)))
     for i in axes(eval_pdf_grid, 2)
         f_interp = interpolate(x_grid, eval_pdf_grid[:, i], BSplineOrder(2))
-        f_samp[:,i] = ifelse.(xmin .≤ t .≤ xmax, f_interp.(t_eval) * (xmax - xmin), 0.0)
+        f_samp[:,i] = ifelse.(xmin .≤ t .≤ xmax, f_interp.(t_eval), 0.0)
     end
     return f_samp
 end
