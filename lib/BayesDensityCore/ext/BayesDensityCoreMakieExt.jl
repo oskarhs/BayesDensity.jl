@@ -6,17 +6,17 @@ import BayesDensityCore: linebandplot, linebandplot!
 
 for func in (:pdf, :cdf)
     @eval begin
-        Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior, ::typeof($func)) = Makie.convert_arguments(P, sample(ps, 1000), $func)
-        Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior, ::typeof($func), t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), $func, t)
-        Makie.plottype(::AbstractVIPosterior, ::typeof($func)) = LineBandPlot
-        Makie.plottype(::AbstractVIPosterior, ::typeof($func), ::AbstractVector{<:Real}) = LineBandPlot
+        Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractSampleablePosterior, ::typeof($func)) = Makie.convert_arguments(P, sample(ps, 1000), $func)
+        Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractSampleablePosterior, ::typeof($func), t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), $func, t)
+        Makie.plottype(::AbstractSampleablePosterior, ::typeof($func)) = LineBandPlot
+        Makie.plottype(::AbstractSampleablePosterior, ::typeof($func), ::AbstractVector{<:Real}) = LineBandPlot
     end
 end
 # Make pdf the default (i.e. the same as the PosteriorSamples default.)
-Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior) = Makie.convert_arguments(P, sample(ps, 1000))
-Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractVIPosterior, t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), t)
-Makie.plottype(::AbstractVIPosterior) = LineBandPlot
-Makie.plottype(::AbstractVIPosterior, ::AbstractVector{<:Real}) = LineBandPlot
+Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractSampleablePosterior) = Makie.convert_arguments(P, sample(ps, 1000))
+Makie.convert_arguments(P::Type{<:AbstractPlot}, ps::AbstractSampleablePosterior, t::AbstractVector{<:Real}) = Makie.convert_arguments(P, sample(ps, 1000), t)
+Makie.plottype(::AbstractSampleablePosterior) = LineBandPlot
+Makie.plottype(::AbstractSampleablePosterior, ::AbstractVector{<:Real}) = LineBandPlot
 
 Makie.@recipe LineBandPlot (ps, func, x) begin
     Makie.mixin_colormap_attributes()...

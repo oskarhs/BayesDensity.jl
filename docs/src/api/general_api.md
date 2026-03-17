@@ -135,34 +135,32 @@ pdf(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
 cdf(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
 ```
 
-## Variational inference
-The `varinf` method can be used to compute a variational approximation to the posterior distribution:
-```@docs
-varinf(::AbstractBayesDensityModel)
-```
+## Approximate inference
+BayesDensity.jl currently also supports two modes of approximate posterior inference, variational inference and Laplace approximation.
+These are typically considerably faster than MCMC sampling, but do incur some approximation error.
+Both of these methods use a tractable approximation to the true posterior distribution, and in both cases we can easily sample from the resulting approximate posteriors.
+This allows us to carry out posterior inference for ``f`` using Monte Carlo samples from the approximate posterior.
 
-Any call to `varinf` will return a subtype of the abstract type `AbstractVIPosterior`:
+BayesDensityCore exports the type `AbstractSampleablePosterior` as a super type for both of these methods, since the core logic behind the Monte Carlo approximations is the same in both cases.
 ```@docs
-AbstractVIPosterior
+AbstractSampleablePosterior
 ```
-
-For most models, `varinf` also returns an object which stores the result of the optimization procedure, see [`VariationalOptimizationResult`](@ref).
 
 The following convenience methods are also part of the public API:
 ```@docs
-model(::AbstractVIPosterior)
-BayesDensity.eltype(::AbstractVIPosterior)
+model(::AbstractSampleablePosterior)
+BayesDensity.eltype(::AbstractSampleablePosterior)
 ```
 
-#### Generating samples from the variational posterior
-The `sample` method makes it possible to generate independent samples from the variational posterior. This is particularly useful in cases where inference for multiple posterior quantities (e.g. medians, variances) is desired.
+#### Generating samples from the approximate posterior
+The `sample` method is used to generate independent samples from the approximate posterior. This is particularly useful in cases where inference for multiple posterior quantities (e.g. medians, variances) is desired.
 ```@docs
-sample(::AbstractVIPosterior, ::Int)
+sample(::AbstractSampleablePosterior, ::Int)
 ```
-As shown in the above docstring, using the `sample` method on a `AbstractVIPosterior` object returns an object of type [`PosteriorSamples`](@ref). As such, all of the convenience methods showcased in the previous subsection will also work for the object returned by `sample`.
+As shown in the above docstring, using the `sample` method on a `AbstractSampleablePosterior` object returns an object of type [`PosteriorSamples`](@ref). As such, all of the convenience methods showcased in the previous subsection will also work for the object returned by `sample`.
 
 #### Computing posterior summary statistics
-`BayesDensityCore` also provides convenience methods for `AbstractVIPosterior` objects that let us easily compute relevant summary statistics for the density ``f`` and the cdf ``F`` directly from the variational posterior object:
+`BayesDensityCore` also provides convenience methods for `AbstractSampleablePosterior` objects that let us easily compute relevant summary statistics for the density ``f`` and the cdf ``F`` directly from the approximate posterior object. Below, we show how this can be used with an variational approximation:
 
 ```@example general_api
 bsm = BSplineMixture(randn(1000))
@@ -182,16 +180,28 @@ nothing # hide
 
 The full list of available summary statistics is the same as that for `PosteriorSamples` objects:
 ```@docs
-mean(::AbstractVIPosterior)
-quantile(::AbstractVIPosterior)
-median(::AbstractVIPosterior)
-var(::AbstractVIPosterior)
-std(::AbstractVIPosterior)
+mean(::AbstractSampleablePosterior)
+quantile(::AbstractSampleablePosterior)
+median(::AbstractSampleablePosterior)
+var(::AbstractSampleablePosterior)
+std(::AbstractSampleablePosterior)
 ```
 
 !!! note
     Note that each call to `mean`, `quantile`, `median`, `var` or `std` in most cases will first simulate a random sample from the posterior distribution, and then uses this sample to compute a Monte Carlo approximation of the quantity of interest using these samples.
     If posterior inference for multiple quantities is desired, then it is recommended to first use [`sample`](@ref), and call these functions on this object as only a single batch of posterior samples is generated in this case.
+
+
+## Variational inference
+The `varinf` method can be used to compute a variational approximation to the posterior distribution:
+```@docs
+varinf(::AbstractBayesDensityModel)
+```
+
+Any call to `varinf` will return a subtype of the abstract type `AbstractVIPosterior`:
+```@docs
+AbstractVIPosterior
+```
 
 #### Storing info from the variational optimization
 In order to provide a simple way of performing convergence diagnostics for variational optimization problems, `BayesDensityCore` exports the [`VariationalOptimizationResult`](@ref) type.
@@ -203,3 +213,20 @@ converged
 tolerance
 posterior
 ```
+
+## Laplace apprioximation
+The `laplace_approximation` method can be used to compute the Laplace approximation to the posterior distribution:
+```@docs
+laplace_approximation
+```
+
+Calls to `laplace_approximation` returns an object which is a subtype `AbstractLaplacePosterior`:
+```@docs
+AbstractLaplacePosterior
+```
+
+Note that our implementation of the Laplace approximation is not fully Bayesian in the sense that point estimates are plugged in for select hyperparameters. These are found by maximizing the Laplace approximate marginal posterior. For more details, we refer to the individual method docs.
+
+#### Diagnostics for (Laplace) marginal likelihood optimization
+
+TODO: Implement some LaplaceOptimizationResult type to store convergence diagnostics.

@@ -8,5 +8,6 @@ projects = [
     "lib/BayesDensityPitmanYorMixture",
     "lib/BayesDensityFiniteGaussianMixture",
     "lib/BayesDensityRandomBernsteinPoly",
+    "lib/BayesDensityLogisticGaussianProcess",
     "lib/BayesDensity"
 ]

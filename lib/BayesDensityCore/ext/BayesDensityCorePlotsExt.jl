@@ -6,19 +6,19 @@ using Plots
 # To plot posterior functionals, we simulate from the posterior:
 for func in (:pdf, :cdf)
     @eval begin
-        @recipe function f(vip::AbstractVIPosterior, ::typeof($func))
+        @recipe function f(vip::AbstractSampleablePosterior, ::typeof($func))
             return sample(vip, 1000), $func
         end
-        @recipe function f(vip::AbstractVIPosterior, ::typeof($func), t::AbstractVector{<:Real})
+        @recipe function f(vip::AbstractSampleablePosterior, ::typeof($func), t::AbstractVector{<:Real})
             return sample(vip, 1000), $func, t
         end
     end 
 end
 # Fall back to default behavior for PosteriorSamples (i.e. plotting the pdf)
-@recipe function f(vip::AbstractVIPosterior)
+@recipe function f(vip::AbstractSampleablePosterior)
     return vip, pdf
 end
-@recipe function f(vip::AbstractVIPosterior, t::AbstractVector{<:Real})
+@recipe function f(vip::AbstractSampleablePosterior, t::AbstractVector{<:Real})
     return vip, pdf, t
 end
 

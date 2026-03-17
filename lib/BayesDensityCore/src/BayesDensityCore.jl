@@ -128,9 +128,15 @@ end
 include("monte_carlo.jl")
 export PosteriorSamples, sample, quantile, mean, median, var, std, model, n_burnin, drop_burnin, samples, n_samples
 
+include("AbstractSampleablePosterior.jl")
+export AbstractSampleablePosterior
+
 include("variational.jl")
 export AbstractVIPosterior, varinf
 export VariationalOptimizationResult, n_iter, elbo, tolerance, converged, posterior
+
+include("laplace.jl")
+export AbstractLaplacePosterior, laplace_approximation
 
 """
     default_grid_points(bdm::AbstractBayesDensityModel{T}) where {T} -> AbstractVector{T}
