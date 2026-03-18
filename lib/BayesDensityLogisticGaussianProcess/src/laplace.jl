@@ -102,7 +102,7 @@ julia> vip, info = laplace_approximation(lgp; rtol_newton=1e-4, max_iter_newton=
 """
 function laplace_approximation(
     lgp::LogisticGaussianProcess{T};
-    initial_params::NamedTuple = (σ2 = T(0.1), λ = T(1.0)),
+    initial_params::NamedTuple = (σ2 = T(5.0), λ = T(1.0)),
     max_iter_newton::Int       = 100,
     atol_newton::Real          = 1e-3,
     rtol_newton::Real          = 1e-3
@@ -137,26 +137,27 @@ function _laplace_approximation(
 
     # Find optimal hyperparameters using MAP estimation
     fg! = (F, G, η) -> loglik_and_grad!(F, G, η, cache, pairwise_dists, prior_variance_scale, prior_length_scale, max_iter_newton, atol_newton, rtol_newton)
-    result = Optim.optimize(NLSolversBase.only_fg!(fg!), η0, Optim.LBFGS())
+    #result = Optim.optimize(NLSolversBase.only_fg!(fg!), η0, Optim.LBFGS())
+    result = Optim.optimize(η -> loglik(η, cache, pairwise_dists, prior_variance_scale, prior_length_scale, max_iter_newton, atol_newton, rtol_newton), η0, Optim.NelderMead(), Optim.Options(x_abstol = 1e-3, x_reltol=1e-3, f_calls_limit=100))
     η = Optim.minimizer(result)
     σ2, λ = exp.(η)
 
     # Find the Laplace approximation given the optimal hyperparameters
-    ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ))
+    # Add jitter to K for better numerical conditioning.
+    ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ)) + 1e-6 * I(n_bins)
     K = σ2 * ∂K_∂σ2
     newton_rhapson!(cache, K, max_iter_newton, atol_newton, rtol_newton) # Get the posterior mode of β
     β = cache.β
+
+    # Get the posterior covariance matrix
     u = softmax(β)
     R = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R!(res, u, n, b), (res, b) -> mul_R_transpose!(res, u, n, b))
     B = Symmetric(Matrix(I(n_bins) + transpose(R) * K * R))
     chol_B = cholesky(B)
-    L = chol_B.L
-    U = chol_B.L
-    # V = inv(K + W⁻¹) = R * inv(I + transpose(R) * K * R)*transpose(R)
-    tmp = L \ transpose(Matrix(R))
-    V = Symmetric(Matrix(R * (U \ tmp)))
+    Σ = Symmetric(K - Matrix(K * R) * (chol_B \ Matrix(transpose(R) * K)))
 
-    return LogisticGaussianProcessLaplacePosterior{T}(β, V, σ2, λ, lgp)
+
+    return LogisticGaussianProcessLaplacePosterior{T}(β, Σ, σ2, λ, lgp)
 end
 
 # Struct used to store useful intermediate computations from the inner Newton-Rhapson solver.
@@ -177,33 +178,35 @@ function newton_rhapson!(
     rtol_newton::Real
 ) where {T<:Real}
     (; β, N, n, n_bins) = cache
-    a = Vector{Float64}(undef, n_bins)
+    a = Vector{T}(undef, n_bins)
 
     iter = 0
     converged = false
     while !converged && iter ≤ max_iter_newton
         iter = iter + 1
         u = softmax(β)
-        u = clamp.(u, 1e-12, 1 - 1e-12)
 
         # Compute v:
         v = n * (u .* β - u * dot(u, β)) + (N - n * u)
 
         # Compute linear operators:
         R = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R!(res, u, n, b), (res, b) -> mul_R_transpose!(res, u, n, b))
-        A = LinearOperator(T, n_bins, n_bins, true, true, (res, b) -> mul_A!(res, R, K, n_bins, b))
+        #A = LinearOperator(T, n_bins, n_bins, true, true, (res, b) -> mul_A!(res, R, K, n_bins, b))
         Kv = K * v
         RtCv = transpose(R) * Kv
         # Solve Az = RtCv using the conjugate gradient method:
         #z, _ = cg(A, RtCv; atol=1e-3, rtol=1e-3)
-        z, _ = gmres(A, RtCv; atol=1e-3, rtol=1e-3)
+        #z, _ = gmres(A, RtCv; atol=1e-3, rtol=1e-3)
+        B = Symmetric(Matrix(I(n_bins) + transpose(R) * K * R))
+        chol_B = cholesky(B)
+        z = chol_B \ RtCv
         # Finally, get the new mode:
-        a = v - R * z
+        a .= v - R * z
         β_new = K * a
 
         # Check convergence:
         converged = (norm(β_new - β) ≤ atol_newton + rtol_newton * norm(β))
-        β = β_new
+        copyto!(β, β_new)
     end
     cache.β .= β
     cache.a .= a
@@ -221,7 +224,42 @@ function mul_R_transpose!(res::AbstractVector{T}, u::AbstractVector{T}, n::Int, 
 end
 
 function mul_A!(res::AbstractVector{T}, R::LinearOperator{T}, K::AbstractMatrix{T}, n_bins::Int, b::AbstractVector{T}) where {T<:Real}
-    copyto!(res, (I(n_bins) + transpose(R) * K * R) * b)
+    tmp = R * b
+    tmp = K * tmp
+    res .= b .+ transpose(R) * tmp
+end
+
+function loglik(
+    η::AbstractVector{T},
+    cache::NewtonRhapsonCache{T},
+    pairwise_dists::AbstractMatrix{T},
+    prior_variance_scale::T,
+    prior_length_scale::T,
+    max_iter_newton::Int,
+    atol_newton::T,
+    rtol_newton::T
+) where {T<:Real}
+    σ2, λ = exp.(η) # Perform optimization in unconstrained space
+    ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ)) + 1e-6 * I(cache.n_bins)
+    K = σ2 * ∂K_∂σ2
+    ∂K_∂λ = (pairwise_dists / λ^2) .* K
+    newton_rhapson!(cache, K, max_iter_newton, atol_newton, rtol_newton)
+    (; β, a, N, n, n_bins) = cache
+
+    # Precompute shared quantities
+    u = softmax(β)
+    ∂logp_∂β = (N - n * u)
+    R = LinearOperator(T, n_bins, n_bins, false, false, (res, b) -> mul_R!(res, u, n, b), (res, b) -> mul_R_transpose!(res, u, n, b))
+    B = Symmetric(Matrix(I(n_bins) + transpose(R) * K * R))
+    chol_B = cholesky(B)
+    L = chol_B.L
+    U = chol_B.L
+
+    prior_terms = -log(1 + σ2 / abs2(prior_variance_scale))
+    prior_terms += -log(1 + λ / abs2(prior_length_scale))
+    log_ml = -1/2 * dot(a, β) + dot(β, N) - n*log(sum(exp.(β))) - logabsdet(L)[1]
+    log_obj = log_ml + prior_terms
+    return -log_obj
 end
 
 function loglik_and_grad!(
@@ -237,7 +275,9 @@ function loglik_and_grad!(
     rtol_newton::T
 ) where {T<:Real}
     σ2, λ = exp.(η) # Perform optimization in unconstrained space
-    ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ))
+    @show σ2
+    @show λ
+    ∂K_∂σ2 = Symmetric(exp.(-pairwise_dists / λ)) + 1e-6 * I(cache.n_bins)
     K = σ2 * ∂K_∂σ2
     ∂K_∂λ = (pairwise_dists / λ^2) .* K
     newton_rhapson!(cache, K, max_iter_newton, atol_newton, rtol_newton)
@@ -255,12 +295,17 @@ function loglik_and_grad!(
     # V = inv(K + W⁻¹) = R * inv(I + transpose(R) * K * R)*transpose(R)
     # Q = inv(I + KW) = I - K*V
     # S = inv(W + K⁻¹) = K - K * R * inv(B) * transpose(R) * K = K - K * R * inv(I + R^T * K * R) * transpose(R) * K
-    tmp = L \ transpose(Matrix(R))
-    V = Matrix(R * (U \ tmp))
-    C = L \ (Matrix(transpose(R) * K))
+    #tmp = L \ transpose(Matrix(R))
+    #V = Matrix(R * (U \ tmp))
+    R_mat = Matrix(R)
+    V = R_mat * (chol_B \ transpose(R_mat))
+    #C = L \ (Matrix(transpose(R) * K))
+    Σ = Symmetric(K - Matrix(K * R) * (chol_B \ Matrix(transpose(R) * K)))
+
     
     ∂3logp_∂β3 = -n* u .* (1 .- u) .* (1.0 .- 2*u)
-    s2 = -1/2 * (Diagonal(K) - Diagonal(transpose(C) * C)) * ∂3logp_∂β3
+    #s2 = -1/2 * (Diagonal(K) - Diagonal(transpose(C) * C)) * ∂3logp_∂β3
+    s2 = -1/2 * Diagonal(Σ) * ∂3logp_∂β3
     if G !== nothing
         # Derivative wrt σ2:
         # Terms from prior
@@ -296,7 +341,7 @@ function loglik_and_grad!(
     if F !== nothing
         prior_terms = -log(1 + σ2 / abs2(prior_variance_scale))
         prior_terms += -log(1 + λ / abs2(prior_length_scale))
-        log_ml = -1/2 * dot(a, β) + dot(β, N) - n*log(sum(u)) - logabsdet(L)[1]
+        log_ml = -1/2 * dot(a, β) + dot(β, N) - n*log(sum(exp.(β))) - logabsdet(L)[1]
         @show log_ml
         return -log_ml
     end
