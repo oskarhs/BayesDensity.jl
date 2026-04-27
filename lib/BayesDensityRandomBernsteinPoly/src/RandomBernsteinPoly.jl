@@ -83,13 +83,13 @@ Base.show(io::IO, rbp::RandomBernsteinPoly) = show(io, MIME("text/plain"), rbp)
 
 """
     pdf(
-        bsm::RandomBernsteinPoly,
+        rbp::RandomBernsteinPoly,
         params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
     pdf(
-        bsm::RandomBernsteinPoly,
+        rbp::RandomBernsteinPoly,
         params::AbstractVector{NamedTuple},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
@@ -105,13 +105,13 @@ Distributions.pdf(rbp::RandomBernsteinPoly, params::AbstractVector{<:NamedTuple}
 
 """
     cdf(
-        bsm::RandomBernsteinPoly,
+        rbp::RandomBernsteinPoly,
         params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
     cdf(
-        bsm::RandomBernsteinPoly,
+        rbp::RandomBernsteinPoly,
         params::AbstractVector{NamedTuple},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
@@ -179,6 +179,25 @@ for funcs in ((:_pdf, :pdf, :(xmax - xmin)), (:_cdf, :cdf, :(1)))
         end
     end
 end
+
+"""
+    quantile(
+        rbp::RandomBernsteinPoly,
+        params::NamedTuple,
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    quantile(
+        rbp::RandomBernsteinPoly,
+        params::AbstractVector{NamedTuple},
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate ``Q(p\\, |\\, \\boldsymbol{\\eta})`` for a given `RandomBernsteinPoly` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+
+The named tuple should contain a field named `:w`.
+"""
+Distributions.quantile(rbp::RandomBernsteinPoly, params::NamedTuple{Names, Vals}, p::Real) where {Names, Vals<:Tuple} = BayesDensityCore.quantile_bisect(rbp, params, p, BayesDensityCore.support(rbp)...)
 
 function _get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)

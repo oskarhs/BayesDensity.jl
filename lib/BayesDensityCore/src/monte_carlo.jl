@@ -56,7 +56,7 @@ model(ps::PosteriorSamples) = ps.model
 
 Get the element type of a `PosteriorSamples` object.
 """
-Base.eltype(::PosteriorSamples{T,V,M,A}) where {T, V, M, A} = T
+Base.eltype(::PosteriorSamples{T}) where {T<:Real} = T
 
 function Base.show(io::IO, ::MIME"text/plain", ps::PosteriorSamples{T, V, M, A}) where {T, V, M, A}
     println(io, "PosteriorSamples{", T, "} object holding ", ps.n_samples, " posterior samples, of which ", n_burnin(ps), " are burn-in samples.")
@@ -154,6 +154,20 @@ Distributions.cdf(ps::PosteriorSamples, t::Union{<:Real, AbstractVector{<:Real}}
 """
     quantile(
         ps::PosteriorSamples,
+        t::Union{<:Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate the quantile function ``Q(p \\,|\\,\\boldsymbol{\\eta})`` of the Bayesian density model to which `ps` was fit for every sample ``\\boldsymbol{\\eta}^{(s)}`` from the posterior and every element in the collection `p`.
+
+Note: `p` must be in the interval ``(0, 1)``.
+This function always returns a Matrix of size `(length(t), n_samples(ps) - n_burnin(ps))`.
+"""
+Distributions.quantile(ps::PosteriorSamples, p::Union{<:Real, AbstractVector{<:Real}}) = quantile(model(ps), samples(ps), p)
+
+
+"""
+    quantile(
+        ps::PosteriorSamples,
         [func = pdf],
         t::Union{Real, AbstractVector{<:Real}},
         q::RealAbstractVector{<:Real,
@@ -192,7 +206,7 @@ Distributions.quantile(ps::PosteriorSamples) = throw(MethodError(quantile, (ps))
 
 # Get posterior samples of pdf/cdf evaluated on a grid/single point.
 # Use the samples to compute the desired quantiles.
-for func in (:pdf, :cdf)
+for func in (:pdf, :cdf, :quantile)
     @eval begin
         function Distributions.quantile(ps::PosteriorSamples, ::typeof($func), t, q::Real)
             (0 ≤ q ≤ 1) || throws(DomainError("Requested quantile level is not in [0,1]."))
@@ -315,7 +329,7 @@ Distributions.std(ps::PosteriorSamples) = throw(MethodError(std, (ps)))
 # Use the PosteriorSamples object to evaluate func(t) on a grid/single point.
 # Then, use these samples to approximate the desired statistic.
 for statistic in (:median, :mean, :var, :std)
-    for func in (:pdf, :cdf)
+    for func in (:pdf, :cdf, :quantile)
         @eval begin
             function Distributions.$statistic(ps::PosteriorSamples, ::typeof($func), t::AbstractVector{<:Real})
                 func_samp = $func(model(ps), ps.samples[ps.non_burnin_ind], t)

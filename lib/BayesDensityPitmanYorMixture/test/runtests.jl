@@ -39,7 +39,7 @@ end
     @test typeof(output) == String
 end
 
-@testset "PitmanYorMixture: Marginal parameterization pdf and cdf" begin
+@testset "PitmanYorMixture: Marginal parameterization pdf, cdf and quantile" begin
     x = [1.0, -1.0]
 
     pym = PitmanYorMixture(x; strength = 1e-10)
@@ -54,13 +54,18 @@ end
     @test isapprox(pdf(pym, parameters_vec, 0.0), fill(pdf(Normal(0, 1), 0.0), (1, n_rep)))
     @test isapprox(cdf(pym, parameters, 0.0), cdf(Normal(0, 1), 0.0))
     @test isapprox(cdf(pym, parameters_vec, 0.0), fill(cdf(Normal(0, 1), 0.0), (1, n_rep)))
+    @test isapprox(quantile(pym, parameters, 0.4), quantile(Normal(0, 1), 0.4))
+    @test isapprox(quantile(pym, parameters_vec, 0.4), fill(quantile(Normal(0, 1), 0.4), (1, n_rep)))
 
     # Evaluate at multiple points:
     t = LinRange(-5, 5, 11)
+    qs = LinRange(0.01, 0.99, 99)
     @test isapprox(pdf(pym, parameters, t), pdf(Normal(0, 1), t))
     @test isapprox(pdf(pym, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
     @test isapprox(cdf(pym, parameters, t), cdf(Normal(0, 1), t))
     @test isapprox(cdf(pym, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+    @test isapprox(quantile(pym, parameters, qs), quantile(Normal(0, 1), qs))
+    @test isapprox(quantile(pym, parameters_vec, qs), mapreduce(x->quantile(Normal(0, 1), qs), hcat, fill(0, n_rep)))
 end
 
 @testset "PitmanYorMixture: Stickbreaking parameterization pdf and cdf" begin
@@ -77,13 +82,18 @@ end
     @test isapprox(pdf(pym, parameters_vec, 0.0), fill(pdf(Normal(0, 1), 0.0), (1, n_rep)))
     @test isapprox(cdf(pym, parameters, 0.0), cdf(Normal(0, 1), 0.0))
     @test isapprox(cdf(pym, parameters_vec, 0.0), fill(cdf(Normal(0, 1), 0.0), (1, n_rep)))
+    @test isapprox(quantile(pym, parameters, 0.4), quantile(Normal(0, 1), 0.4))
+    @test isapprox(quantile(pym, parameters_vec, 0.4), fill(quantile(Normal(0, 1), 0.4), (1, n_rep)))
 
     # Evaluate at multiple points:
     t = LinRange(-5, 5, 11)
+    qs = LinRange(0.01, 0.99, 99)
     @test isapprox(pdf(pym, parameters, t), pdf(Normal(0, 1), t))
     @test isapprox(pdf(pym, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
     @test isapprox(cdf(pym, parameters, t), cdf(Normal(0, 1), t))
     @test isapprox(cdf(pym, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+    @test isapprox(quantile(pym, parameters, qs), quantile(Normal(0, 1), qs))
+    @test isapprox(quantile(pym, parameters_vec, qs), mapreduce(x->quantile(Normal(0, 1), qs), hcat, fill(0, n_rep)))
 end
 
 @testset "PitmanYorMixture: sample" begin

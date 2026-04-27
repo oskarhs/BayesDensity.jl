@@ -59,7 +59,7 @@ end
     end
 end
 
-@testset "HistSmoother: pdf, cdf, support" begin
+@testset "HistSmoother: pdf, cdf, quantile and support" begin
     # Set all betas to 0. Then the pdf should equal the uniform density 
     x = collect(LinRange(0, 1, 51))
 
@@ -67,23 +67,28 @@ end
     shs = HistSmoother(x; K = K, bounds = (0, 1))
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     t = LinRange(bs_min, bs_max, 11)
+    qs = [0.2, 0.8]
 
     # Test evaluation for single parameter sample, vector of evaluation points
     @test isapprox(pdf(shs, (β = zeros(K),), t), fill(1/1.10, length(t)))
     @test isapprox(cdf(shs, (β = zeros(K),), t), collect(0:0.1:1))
+    @test isapprox(quantile(shs, (β = zeros(K),), qs), -0.05 .+ 1.1 .* qs)
 
     # Vector of parameter samples, vector of evaluation points
     n_fill = 20
     @test isapprox(pdf(shs, fill((β = zeros(K),), n_fill), t), fill(1/1.10, (length(t), n_fill)))
     @test isapprox(cdf(shs, fill((β = zeros(K),), n_fill), t), reduce(hcat, [collect(0:0.1:1) for _ in 1:n_fill]))
+    @test isapprox(quantile(shs, fill((β = zeros(K),), n_fill), qs), reduce(hcat, [-0.05 .+ 1.1 .* qs for _ in 1:n_fill]))
 
     # Single parameter, single evaluation point
     @test isapprox(pdf(shs, (β = zeros(K),), 0.5), 1/1.1)
     @test isapprox(cdf(shs, (β = zeros(K),), 0.5), 0.5)
+    @test isapprox(quantile(shs, (β = zeros(K),), 0.5), 0.5)
 
     # Vector of parameter samples, single evaluation point
     @test isapprox(pdf(shs, fill((β = zeros(K),), n_fill), 0.5), fill(1/1.10, (1, n_fill)))
     @test isapprox(cdf(shs, fill((β = zeros(K),), n_fill), 0.5), fill(0.5, (1, n_fill)))
+    @test isapprox(quantile(shs, fill((β = zeros(K),), n_fill), 0.5), fill(0.5, (1, n_fill)))
 
     # Now test values not in the support of the model:
     @test pdf(shs, (β = zeros(K),), bs_min - 1e-10) == 0.0

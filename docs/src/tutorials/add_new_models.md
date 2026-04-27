@@ -11,7 +11,7 @@ A good introduction to all three topics can be found in [Bishop2006pattern](@cit
 
 ## Bayesian inference for Bernstein densities.
 
-For our tutorial, we will illustrate by focusing on a Bayesian Bernstein-type density estimator for data supported on the unit interval.[^1] This section provides the theoretical background for the model we will later implement as an example, and can be skipped by readers who are more interested in the details of the implementation itself.
+For our tutorial, we will illustrate the implementation of a new model by focusing on a Bayesian Bernstein-type density estimator for data supported on the unit interval.[^1] This section provides the theoretical background for the model we will later implement as an example, and can be skipped by readers who are more interested in the details of the implementation itself.
 
 [^1]:
     A Bayesian Bernstein-type estimator, where the number ``K`` of mixture components is treated as a further random variable has been proposed by [Petrone1999bernstein](@citet). A `BayesDensity` implementation of this model is available as [`RandomBernsteinPoly`](@ref).
@@ -54,7 +54,7 @@ where ``\mathbf{1}_{\{k\}}(\cdot)`` is the indicator function and ``N_k = \sum_{
 ### Gibbs sampling
 To write down a Gibbs sampler for this model, we need to derive the full conditional distributions of ``\boldsymbol{\theta}`` and ``\boldsymbol{z}``. In this case, direct inspection of the joint posterior shows that
 ```math
-\boldsymbol{\theta}\, |\, \boldsymbol{z}, \boldsymbol{x} = \mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{N}),
+\boldsymbol{\theta}\, |\, \boldsymbol{z}, \boldsymbol{x} \sim \mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{N}),
 ```
 where ``\boldsymbol{N} = (N_1, N_2, \ldots, N_K)``. The full conditional distributions for ``\boldsymbol{z}`` are 
 
@@ -178,6 +178,15 @@ BayesDensityCore.support(::BernsteinDensity{T, D}) where {T, D} = (T(0.0), T(1.0
 BayesDensityCore.hyperparams(bdm::BernsteinDensity) = (a = bdm.a,)
 ```
 
+Next, we implement the `quantile` method to compute the quantile function ``Q(\cdot)``.
+The quantile function does not have a closed form for the Bernstein model, and we have to resort to numeric approximations.
+BayesDensityCore provides the [`BayesDensityCore.quantile_bisect`](@ref) method for computing the quantile function numerically provided we have implemented the `cdf` method.
+Note that the `quantile_bisect` method requires two numbers ``a`` and ``b`` as inputs which satisfy ``a \leq F(p) \leq b``.
+This is easily acheived for the model under consideration here, since the support of the model is ``[0, 1]``, so passing ``a = 0`` and ``b = 1`` as arguments suffices.
+Hence, a possible implementation of the quantile function is the following:
+```@example Bernstein; continued = true
+Distributions.quantile(bdm::BernsteinDensity, params::NamedTuple, p::Real) = BayesDensityCore.quantile_bisect(bdm, params, p, BayesDensityCore.support(bdm)...)
+```
 ### Gibbs sampler
 
 We now turn our attention to implementing the Gibbs sampler itself.
@@ -389,6 +398,10 @@ bdm = BernsteinDensity(x, K) # Create Bernstein density model object (a = 1)
 vip, info = varinf(bdm) # Compute the variational posterior.
 
 mean(vip, 0.2) # Compute the posterior mean of f(0.2)
+```
+
+```@example Bernstein
+median(vip, quantile, 0.5) # Compute the posterior median of Q(0.5)
 ```
 
 For instance, we can visualize the variational posterior fit by displaying the (variational) posterior means of ``f(t)`` and ``F(t)`` along with 95 % pointwise credible bands:

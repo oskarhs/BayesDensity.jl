@@ -39,6 +39,7 @@ PitmanYorMixture
 ```@docs
 BayesDensityPitmanYorMixture.pdf(::PitmanYorMixture, ::NamedTuple, ::Real)
 BayesDensityPitmanYorMixture.cdf(::PitmanYorMixture, ::NamedTuple, ::Real)
+BayesDensityPitmanYorMixture.quantile(::PitmanYorMixture, ::NamedTuple, ::Real)
 ```
 
 ### Utility functions

@@ -92,8 +92,33 @@ function Distributions.cdf(::AbstractBayesDensityModel, ::Any, ::Real) end
 
 export cdf
 
+include("quantile_bisect.jl")
+
+"""
+    quantile(
+        bdm::AbstractBayesDensityModel,
+        parameters::NamedTuple,
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+    
+    quantile(
+        bdm::AbstractBayesDensityModel,
+        parameters::AbstractVector{<:NamedTuple},
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate the quantile function ``Q(p\\,|\\, \\boldsymbol{\\eta}) = \\inf \\{x\\colon F(x) \\geq p\\}`` of the Bayesian density model `bdm` for every ``\\boldsymbol{\\eta}`` in `parameters` and every element in the collection `p`.
+
+If a single NamedTuple is passed to the parameters argument, this function outputs either a scalar or a vector depending on the input type of the third argument `p`.
+
+If a vector of NamedTuples is passed to the second positional argument, then this function returns a Matrix of size `(length(p), length(parameters))`.
+"""
+function Distributions.quantile(::AbstractBayesDensityModel, ::Any, ::Real) end
+
+export quantile
+
 # Generate fallback methods for pdf and cdf:
-for func in (:pdf, :cdf)
+for func in (:pdf, :cdf, :quantile)
     @eval begin
         function Distributions.$func(bdm::AbstractBayesDensityModel{S}, parameters::NamedTuple, t::AbstractVector{T}) where {S<:Real, T<:Real}
             f_samp = Vector{promote_type(T, S)}(undef, length(t))
