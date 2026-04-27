@@ -30,7 +30,7 @@ using BayesDensity
 ```
 
 ## Quick start
-To illustarte the basic use of the package, we show one can fit a histogram smoother to a simulated dataset.
+To illustrate the basic use of the package, we show how one can fit a histogram smoother to a simulated dataset.
 
 ```julia
 using BayesDensityHistSmoother, Distributions, Random

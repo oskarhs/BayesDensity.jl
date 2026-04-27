@@ -1,6 +1,6 @@
 # Plotting API
 
-Graphical displays are a powerful tool for providing informative vizual summaries of the result of a given Bayesian inference procedure for a univariate density. `BayesDensity` makes it easy to plot posterior summaries for ``f`` using the results from Markov chain Monte Carlo sampling or variational inference through its extensions for the [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) packages.
+Graphical displays are a powerful tool for providing informative visual summaries of the result of a given Bayesian inference procedure for a univariate density. `BayesDensity` makes it easy to plot posterior summaries for ``f`` using the results from Markov chain Monte Carlo sampling or variational inference through its extensions for the [Makie.jl](https://github.com/MakieOrg/Makie.jl) and [Plots.jl](https://github.com/JuliaPlots/Plots.jl) packages.
 
 In addition to documenting the plotting-related public API, this page also showcases the plotting capabilities of the `BayesDensityCore` package through examples. Although we will not delve deep into implementational details here, some familiarity with `Makie.jl` or `Plots.jl` is an advantage when reading this part of the documentation.
 
@@ -96,7 +96,7 @@ fig
 
 ![Makie showcase](../assets/plotting_api/makie.svg)
 
-Makie.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.
+Makie.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be achieved by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.
 
 ## Plotting with Plots.jl
 In general, the available plot method for [`PosteriorSamples`](@ref) and [`AbstractVIPosterior`](@ref) objects has the following signature:
@@ -183,4 +183,4 @@ plot(p1, p2, p3, p4, layout=(2,2), size=(550, 550))
 ![Plots showcase](../assets/plotting_api/plots.svg)
 
 
-Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be acheived by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `plot(elbo(info))`.
+Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be achieved by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `plot(elbo(info))`.

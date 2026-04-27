@@ -1,6 +1,6 @@
 name = "BayesDensityFiniteGaussianMixture"
 uuid = "588bb9d7-6d85-4df3-a9ca-7b66fb5e4296"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Oskar Høgberg Simensen"]
 
 [workspace]
@@ -15,7 +15,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-BayesDensityCore = "0.2.0"
+BayesDensityCore = "0.3.0"
 Distributions = "0.25.0"
 Random = "1"
 Reexport = "1"

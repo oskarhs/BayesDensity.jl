@@ -5,7 +5,7 @@ using BayesDensityBSplineMixture
 ```
 
 This page explains how to fit the Bayesian density models implemented in `BayesDensity.jl.`
-Most of the methods implemented in this package support two modes of posterior inference: simulation consistent inference through Markov chain Monte Carlo (MCMC) and approximate through variational inference (VI).
+Most of the methods implemented in this package support two modes of posterior inference: simulation consistent inference through Markov chain Monte Carlo (MCMC) and approximate inference through variational inference (VI).
 We also document most of the convenience methods available for computing select posterior quantities of interest, such as the posterior mean or quantiles of ``f(t)`` for some ``t \in \mathbb{R}``.
 
 The plotting API of this package is documented on a [separate page](plotting_api.md)
@@ -16,7 +16,7 @@ The first step to estimating a density with this package is to create a model ob
 AbstractBayesDensityModel
 ```
 
-In order to create a model object, we call the corresponding contructor with the data and other positional- and keyword arguments. For example, we can create a [`BSplineMixture`](@ref) object with default hyperparameters as follows:
+In order to create a model object, we call the corresponding constructor with the data and other positional- and keyword arguments. For example, we can create a [`BSplineMixture`](@ref) object with default hyperparameters as follows:
 ```@example general_api
 bsm = BSplineMixture(randn(1000))
 nothing # hide
@@ -213,7 +213,7 @@ posterior
 
 ## Dev API
 
-The methods displayes in this section are not intended for use by end users, but are used internally by BayesDensity.jl methods.
+The methods displayed in this section are not intended for use by end users, but are used internally by BayesDensity.jl methods.
 
 The quantile function of a given model is generally not easily computed, even in cases where a closed-form expression for the cdf exists.
 To this end, BayesDensity.jl provides the `quantile_bisect` method to help developers approximate the quantile function numerically.

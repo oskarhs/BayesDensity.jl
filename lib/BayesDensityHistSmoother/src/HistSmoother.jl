@@ -7,8 +7,8 @@ Struct representing a spline histogram smoother model.
     
     HistSmoother(x::AbstractVector{<:Real}; kwargs...)
     HistSmoother{T}(x::AbstractVector{<:Real}; kwargs...)
-    HistSmoother(hist::StasBase.Histogram; kwargs...)
-    HistSmoother{T}(hist::StasBase.Histogram; kwargs...)
+    HistSmoother(hist::StatsBase.Histogram; kwargs...)
+    HistSmoother{T}(hist::StatsBase.Histogram; kwargs...)
 
 # Arguments
 * `x`: The data vector.
@@ -43,7 +43,7 @@ julia> shs = HistSmoother(x; K = 80, prior_scale_fixed = 1e5);
 
 ### Binning
 The binning step used by the spline histogram smoother is an essential part of the model fitting procedure, and can as such not be disabled.
-Using a greater number of bins means that less precision is lost due to the binning step, but makes the model fitting procedure slower due to a larger compuatational burden.
+Using a greater number of bins means that less precision is lost due to the binning step, but makes the model fitting procedure slower due to a larger computational burden.
 Note that the number of bins only affects the model fitting process, and does otherwise not affect the returned model object.
 
 ### Hyperparameter selection

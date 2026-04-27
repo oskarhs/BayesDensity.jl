@@ -1,6 +1,6 @@
 name = "BayesDensityHistSmoother"
 uuid = "4ec5b509-5e49-418c-a128-3e7a20b6d93e"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["oskarhs <oskarhsimensen@gmail.com>"]
 
 [workspace]
@@ -22,7 +22,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 BSplineKit = "0.19.0"
-BayesDensityCore = "0.2.0"
+BayesDensityCore = "0.3.0"
 DataFrames = "1.0.0"
 Distributions = "0.25.0"
 LinearAlgebra = "1.0.0"

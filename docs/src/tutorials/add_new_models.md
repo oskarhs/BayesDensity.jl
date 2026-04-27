@@ -120,7 +120,7 @@ end
 BernsteinDensity(args...; kwargs...) = BernsteinDensity{Float64}(args...; kwargs...) # For convenience
 ```
 In the above implementation, we store the values of ``\varphi_k(x_i)`` for ``1 \leq i \leq n`` and ``1 \leq k \leq K``, as these values are reused repeatedly in the model fitting processes later.
-We also mantain a copy of the original dataset `x` in the `data` field.
+We also maintain a copy of the original dataset `x` in the `data` field.
 By default, the original data stored under the field `bdm.data.x` is used to select a default grid for the first coordinate axis when plotting fitted model objects via the fallback implementation of [`default_grid_points`](@ref).
 If the original data cannot be found under `bdm.data.x`, then trying to plot a [`PosteriorSamples`](@ref) or [`AbstractVIPosterior`](@ref) object without supplying a plotting grid as the second argument will fail, in which case implementing `default_plot_grid` for this model class will resolve this issue.
 
@@ -182,7 +182,7 @@ Next, we implement the `quantile` method to compute the quantile function ``Q(\c
 The quantile function does not have a closed form for the Bernstein model, and we have to resort to numeric approximations.
 BayesDensityCore provides the [`BayesDensityCore.quantile_bisect`](@ref) method for computing the quantile function numerically provided we have implemented the `cdf` method.
 Note that the `quantile_bisect` method requires two numbers ``a`` and ``b`` as inputs which satisfy ``a \leq F(p) \leq b``.
-This is easily acheived for the model under consideration here, since the support of the model is ``[0, 1]``, so passing ``a = 0`` and ``b = 1`` as arguments suffices.
+This is easily achieved for the model under consideration here, since the support of the model is ``[0, 1]``, so passing ``a = 0`` and ``b = 1`` as arguments suffices.
 Hence, a possible implementation of the quantile function is the following:
 ```@example Bernstein; continued = true
 Distributions.quantile(bdm::BernsteinDensity, params::NamedTuple, p::Real) = BayesDensityCore.quantile_bisect(bdm, params, p, BayesDensityCore.support(bdm)...)
@@ -235,7 +235,7 @@ The above implementation allows the user to supply the initial value of ``\theta
 
 #### Example usage
 
-Having implemented the model struct and the `pdf`- and `sample` methods, we can run the MCMC algorithm and perform posterior inference as with any of the other density esitmators implemented in this package:
+Having implemented the model struct and the `pdf`- and `sample` methods, we can run the MCMC algorithm and perform posterior inference as with any of the other density estimators implemented in this package:
 
 ```@example Bernstein
 d_true = Kumaraswamy(2, 5) # Simulate some data from a density supported on [0, 1]
