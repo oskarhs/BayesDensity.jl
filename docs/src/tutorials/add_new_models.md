@@ -38,10 +38,11 @@ The form taken by the likelihood function above makes Bayesian inference challen
 ```math
 \begin{align*}
     x_i\,|\, \{z_i = k\} &\sim \varphi_k(x_i), &i = 1,\ldots, n,\\
-    z_i\,|\, \boldsymbol{\theta} &\sim \text{Multinomial}(1, \boldsymbol{\theta}), &i = 1, \ldots, n,\\
+    z_i\,|\, \boldsymbol{\theta} &\sim \text{Cat}(K, \boldsymbol{\theta}), &i = 1, \ldots, n,\\
     \boldsymbol{\theta} &\sim \text{Dirichlet}_K(\boldsymbol{a}).
 \end{align*}
 ```
+Here, ``\text{Cat}(K, \boldsymbol{\theta})`` denotes the ``K``-dimensional [categorical distribution](https://en.wikipedia.org/wiki/Categorical_distribution).
 When ``\boldsymbol{z}`` is marginalized out, we recover the Bernstein density likelihood, so the two model formulations are equivalent. However, as it turns out that Bayesian inference based on the augmented posterior ``p(\boldsymbol{\theta}, \boldsymbol{z}\,|\, \boldsymbol{x})`` is much simpler than working with the marginal posterior of ``\boldsymbol{\theta}``, we work with the augmented formulation instead.
 
 Under this data augmentation strategy it can then be shown that joint posterior of ``\boldsymbol{\theta}, \boldsymbol{z}`` is
@@ -53,7 +54,7 @@ where ``\mathbf{1}_{\{k\}}(\cdot)`` is the indicator function and ``N_k = \sum_{
 ### Gibbs sampling
 To write down a Gibbs sampler for this model, we need to derive the full conditional distributions of ``\boldsymbol{\theta}`` and ``\boldsymbol{z}``. In this case, direct inspection of the joint posterior shows that
 ```math
-p(\boldsymbol{\theta}\, |\, \boldsymbol{z}, \boldsymbol{x}) = \mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{N}),
+\boldsymbol{\theta}\, |\, \boldsymbol{z}, \boldsymbol{x} = \mathrm{Dirichlet}(\boldsymbol{a} + \boldsymbol{N}),
 ```
 where ``\boldsymbol{N} = (N_1, N_2, \ldots, N_K)``. The full conditional distributions for ``\boldsymbol{z}`` are 
 

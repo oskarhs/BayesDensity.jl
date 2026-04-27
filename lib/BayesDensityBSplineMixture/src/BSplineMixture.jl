@@ -263,29 +263,29 @@ The named tuple should contain a field named `:spline_coefs` or `:β`.
 function Distributions.pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::Real) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
+function Distributions.pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
 function Distributions.pdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::Real) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
-function Distributions.pdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{T}) where {Names, Vals<:Tuple, T<:Real}
+function Distributions.pdf(bsm::BSplineMixture, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{<:Real}) where {Names, Vals<:Tuple}
     _pdf(bsm, params, t, Val(:spline_coefs in Names))
 end
 
 # Compile-time dispatch
-function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{true}) where {Names, Vals}
+function _pdf(bsm::BSplineMixture, params::NamedTuple, t, ::Val{true})
     # Coefs given, no need to compute them
     spline_coefs = params.spline_coefs
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
+function _pdf(bsm::BSplineMixture, params::NamedTuple, t, ::Val{false})
     # Coefs not given, compute them from β
     θ = logistic_stickbreaking(params.β)
     spline_coefs = theta_to_coef(θ, basis(bsm))
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
+function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{<:NamedTuple}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, S<:Real}
     # Build coefficient matrix (coefs are given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -293,7 +293,7 @@ function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, V
     end
     return _pdf(bsm, spline_coefs, t)
 end
-function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, Names, Vals, S<:Real}
+function _pdf(bsm::BSplineMixture{T}, params::AbstractVector{<:NamedTuple}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, S<:Real}
     # Build coefficient matrix (coefs not given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -353,18 +353,18 @@ function Distributions.cdf(bsm::BSplineMixture, params::AbstractVector{NamedTupl
 end
 
 # Compile-time dispatch
-function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{true}) where {Names, Vals}
+function _cdf(bsm::BSplineMixture, params::NamedTuple, t, ::Val{true})
     # Coefs given, no need to compute them
     spline_coefs = params.spline_coefs
     return _cdf(bsm, spline_coefs, t)
 end
-function _cdf(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, t, ::Val{false}) where {Names, Vals}
+function _cdf(bsm::BSplineMixture, params::NamedTuple, t, ::Val{false})
     # Coefs not given, compute them from β
     θ = logistic_stickbreaking(params.β)
     spline_coefs = theta_to_coef(θ, basis(bsm))
     return _cdf(bsm, spline_coefs, t)
 end
-function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, Names, Vals, S<:Real}
+function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{<:NamedTuple}, t::Union{S, AbstractVector{S}}, ::Val{true}) where {T<:Real, S<:Real}
     # Build coefficient matrix (coefs are given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)
@@ -372,7 +372,7 @@ function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, V
     end
     return _cdf(bsm, spline_coefs, t)
 end
-function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, Names, Vals, S<:Real}
+function _cdf(bsm::BSplineMixture{T}, params::AbstractVector{<:NamedTuple}, t::Union{S, AbstractVector{S}}, ::Val{false}) where {T<:Real, S<:Real}
     # Build coefficient matrix (coefs not given)
     spline_coefs = Matrix{promote_type(T, S)}(undef, (length(bsm), length(params)))
     for i in eachindex(params)

@@ -10,6 +10,10 @@ using DocumenterCitations
 using DocumenterInterLinks
 using Random
 
+using TOML
+
+const pkg_version = TOML.parsefile(joinpath(@__DIR__, "../lib/BayesDensity/Project.toml"))["version"]
+
 bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:authoryear)
 
 #= DocMeta.setdocmeta!(BayesDensity, :DocTestSetup, :(
@@ -37,7 +41,10 @@ makedocs(;
     ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
-    format=Documenter.HTML(; assets=["assets/favicon.ico"]),
+    format=Documenter.HTML(;
+        assets=["assets/favicon.ico"],
+        inventory_version=pkg_version
+        ),
     pages=[
         "Home" => "index.md",
         "A primer on Bayesian nonparametric density estimation" => "density_estimation_primer.md",

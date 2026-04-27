@@ -212,7 +212,7 @@ function Distributions.pdf(shs::HistSmoother, params::AbstractVector{NamedTuple{
 end
 
 # If normalization constant is provided, we do not have to compute it
-function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{true}) where {Names, Vals<:Tuple}
+function _pdf(shs::HistSmoother, params::NamedTuple, t::AbstractVector{<:Real}, ::Val{true})
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     bs_min, bs_max = boundaries(shs.bs)
@@ -224,7 +224,7 @@ function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVec
     linpreds = C * params.β
     return exp.(linpreds) / (l1_norm*(bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
-function _pdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
+function _pdf(shs::HistSmoother{T}, params::AbstractVector{<:NamedTuple}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
@@ -246,7 +246,7 @@ function _pdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Val
 end
 
 # Normalization constant not provided, so it must be computed first.
-function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVector{<:Real}, ::Val{false}) where {Names, Vals<:Tuple}
+function _pdf(shs::HistSmoother, params::NamedTuple, t::AbstractVector{<:Real}, ::Val{false})
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
     bs_min, bs_max = boundaries(shs.bs)
@@ -258,7 +258,7 @@ function _pdf(shs::HistSmoother, params::NamedTuple{Names, Vals}, t::AbstractVec
     linpreds = C * params.β
     return exp.(linpreds) / (l1_norm * (bounds[2] - bounds[1])) .* ifelse.(bs_min .≤ t_trans .≤ bs_max, 1, 0)
 end
-function _pdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
+function _pdf(shs::HistSmoother{T}, params::AbstractVector{<:NamedTuple}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, S<:Real}
     R = promote_type(T, S)
     bounds = shs.data.bounds
     t_trans = (t .- bounds[1]) / (bounds[2] - bounds[1])
@@ -311,7 +311,7 @@ function Distributions.cdf(shs::HistSmoother, params::AbstractVector{NamedTuple{
 end
 
 # If cdf has been evaluated on a grid, we use this to compute the linear interpolant:
-function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{true}) where {T, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::NamedTuple, t::AbstractVector{S}, ::Val{true}) where {T, S<:Real}
     R = promote_type(T, S)
     bs_min, bs_max = boundaries(shs.bs)
     bounds = shs.data.bounds
@@ -324,7 +324,7 @@ function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::Abstract
     F_samp[t_trans .< bs_min] .= zero(T)
     return F_samp
 end
-function _cdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::AbstractVector{<:NamedTuple}, t::AbstractVector{S}, ::Val{true}) where {T<:Real, S<:Real}
     R = promote_type(T, S)
     bs_min, bs_max = boundaries(shs.bs)
     bounds = shs.data.bounds
@@ -341,7 +341,7 @@ function _cdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Val
 end
 
 # If cdf has not been evaluated on a grid, we must evaluate it first:
-function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::NamedTuple, t::AbstractVector{S}, ::Val{false}) where {T<:Real, S<:Real}
     R = promote_type(T, S)
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
@@ -354,7 +354,7 @@ function _cdf(shs::HistSmoother{T}, params::NamedTuple{Names, Vals}, t::Abstract
     F_samp[t_trans .> bs_max] .= one(T)
     return F_samp
 end
-function _cdf(shs::HistSmoother{T}, params::AbstractVector{NamedTuple{Names, Vals}}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, Names, Vals<:Tuple, S<:Real}
+function _cdf(shs::HistSmoother{T}, params::AbstractVector{<:NamedTuple}, t::AbstractVector{S}, ::Val{false}) where {T<:Real, S<:Real}
     R = promote_type(T, S)
     eval_grid, val_cdf, _ = compute_norm_constants_cdf_grid(shs, params)
     bs_min, bs_max = BayesDensityHistSmoother.support(shs)

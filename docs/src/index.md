@@ -55,5 +55,9 @@ The resulting fits can easily be plotted using the [Plots.jl](https://github.com
 ```julia
 using CairoMakie
 plot(mcmc_fit) # Based on MCMC
-plit(vi_fit)   # Based on VI
+plot(vi_fit)   # Based on VI
 ```
+
+## Examples
+
+Although nonparametric density estimation is often used for simple univariate data visualizations, they are routinely used for more complex modeling tasks. We encourage you to also have a look at the [Examples](examples/naive_bayes.md) section of the documentation, which showcases the application of BayesDensity.jl to problems beyond mere data visualization.

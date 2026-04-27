@@ -105,7 +105,7 @@ function BayesDensityCore.varinf(shs::HistSmoother;
     return _variational_inference(shs, initial_params, max_iter, rtol)
 end
 
-function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T}
+function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T<:Real}
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
     (; n, x_grid, N, C, LZ, bounds) = data
     # Use MixedModels.jl to find initial parameter estimate:
@@ -149,7 +149,7 @@ function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T}
     return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt)
 end
 
-function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::NamedTuple, max_iter::Int, rtol::Real) where {T, A, D}
+function _variational_inference(shs::HistSmoother{T}, initial_params::NamedTuple, max_iter::Int, rtol::Real) where {T<:Real}
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
     (; n, x_grid, N, C, LZ, bounds) = data
     (; μ_opt, Σ_opt, b_σ_opt) = initial_params
@@ -177,7 +177,6 @@ function _variational_inference(shs::HistSmoother{T, A, D}, initial_params::Name
         relative_change = abs(b_σ_opt/b_σ_new - 1)
 
         # Update q(β)
-        #w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
         Λ = Diagonal(vcat(fill(1/prior_scale_fixed^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
         inv_Σ_opt = transpose(C) * (C .* w) + Λ
         Σ_opt = inv(inv_Σ_opt)
