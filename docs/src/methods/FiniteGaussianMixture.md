@@ -36,6 +36,7 @@ FiniteGaussianMixture
 ```@docs
 BayesDensityFiniteGaussianMixture.pdf(::FiniteGaussianMixture, ::NamedTuple, ::Real)
 BayesDensityFiniteGaussianMixture.cdf(::FiniteGaussianMixture, ::NamedTuple, ::Real)
+BayesDensityFiniteGaussianMixture.quantile(::FiniteGaussianMixture, ::NamedTuple, ::Real)
 ```
 
 ### Utility functions

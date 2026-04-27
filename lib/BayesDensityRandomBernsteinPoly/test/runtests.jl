@@ -35,7 +35,7 @@ include("aqua.jl")
     @test output isa String
 end
 
-@testset "RandomBernsteinPoly: pdf and cdf" begin
+@testset "RandomBernsteinPoly: pdf, cdf and quantile" begin
     x = [0.5, 0.7]
     
     rbp = RandomBernsteinPoly(x; prior_strength = 1, bounds=(0.0, 1.0))
@@ -50,13 +50,18 @@ end
     @test isapprox(pdf(rbp, parameters_vec, 0.0), fill(pdf(dist_ref, 0.0), (1, n_rep)))
     @test isapprox(cdf(rbp, parameters, 0.0), cdf(dist_ref, 0.0))
     @test isapprox(cdf(rbp, parameters_vec, 0.0), fill(cdf(dist_ref, 0.0), (1, n_rep)))
+    @test isapprox(quantile(rbp, parameters, 0.4), quantile(dist_ref, 0.4))
+    @test isapprox(quantile(rbp, parameters_vec, 0.4), fill(quantile(dist_ref, 0.4), (1, n_rep)))
 
     # Evaluate at multiple points:
     t = LinRange(-5, 5, 11)
+    qs = LinRange(0.01, 0.99, 99)
     @test isapprox(pdf(rbp, parameters, t), pdf(dist_ref, t))
     @test isapprox(pdf(rbp, parameters_vec, t), mapreduce(x->pdf(dist_ref, t), hcat, fill(0, n_rep)))
     @test isapprox(cdf(rbp, parameters, t), cdf(dist_ref, t))
     @test isapprox(cdf(rbp, parameters_vec, t), mapreduce(x->cdf(dist_ref, t), hcat, fill(0, n_rep)))
+    @test isapprox(quantile(rbp, parameters, qs), quantile(dist_ref, qs))
+    @test isapprox(quantile(rbp, parameters_vec, qs), mapreduce(x->quantile(dist_ref, qs), hcat, fill(0, n_rep)))
 end
 
 @testset "FiniteGaussianMixture: MCMC sample" begin

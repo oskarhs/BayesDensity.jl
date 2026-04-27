@@ -78,13 +78,18 @@ end
             @test isapprox(pdf(gm, parameters_vec, 0.0), fill(pdf(Normal(0, 1), 0.0), (1, n_rep)))
             @test isapprox(cdf(gm, parameters, 0.0), cdf(Normal(0, 1), 0.0))
             @test isapprox(cdf(gm, parameters_vec, 0.0), fill(cdf(Normal(0, 1), 0.0), (1, n_rep)))
+            @test isapprox(quantile(gm, parameters, 0.4), quantile(Normal(0, 1), 0.4))
+            @test isapprox(quantile(gm, parameters_vec, 0.4), fill(quantile(Normal(0, 1), 0.4), (1, n_rep)))
 
             # Evaluate at multiple points:
             t = LinRange(-5, 5, 11)
+            qs = LinRange(0.01, 0.99, 99)
             @test isapprox(pdf(gm, parameters, t), pdf(Normal(0, 1), t))
             @test isapprox(pdf(gm, parameters_vec, t), mapreduce(x->pdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
             @test isapprox(cdf(gm, parameters, t), cdf(Normal(0, 1), t))
             @test isapprox(cdf(gm, parameters_vec, t), mapreduce(x->cdf(Normal(0, 1), t), hcat, fill(0, n_rep)))
+            @test isapprox(quantile(gm, parameters, qs), quantile(Normal(0, 1), qs))
+            @test isapprox(quantile(gm, parameters_vec, qs), mapreduce(x->quantile(Normal(0, 1), qs), hcat, fill(0, n_rep)))
         end
     end
 end

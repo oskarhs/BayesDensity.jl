@@ -67,6 +67,11 @@ function Distributions.cdf(rhm::RandomHistogram, params::NT, t::Real) where {NT<
     return val
 end
 
+# Quantile method using quantile_bisect (note: support is [0, 1])
+function Distributions.quantile(rhm::RandomHistogram, params::NamedTuple, t::Real)
+    return BayesDensityCore.quantile_bisect(rhm, params, t, 0, 1)
+end
+
 function StatsBase.sample(rng::Random.AbstractRNG, rhm::RandomHistogram{T, NT}, n_samples::Int; n_burnin = min(1000, div(n_samples, 5))) where {T, NT}
     (; data, K, a) = rhm
     samples = Vector{NamedTuple{(:θ,), Tuple{Vector{T}}}}(undef, n_samples)
@@ -119,7 +124,7 @@ end
     @test default_grid_points(rhm) == t
 end
 
-@testset "Core: pdf and cdf fallback methods" begin
+@testset "Core: pdf, cdf and quantile fallback methods" begin
     K = 15
     a = 1.0
     x = vcat(fill(0.11, 100), fill(0.51, 100), fill(0.91, 100))
@@ -148,6 +153,15 @@ end
 
     # Test evaluation for vector of params, vector of t's
     @test cdf(rhm, params_vec, LinRange(0, 1, L)) ≈ [j/(L-1) for j in 0:(L-1), i in eachindex(params_vec)]
+
+    # Test evaluation for single params, a collection of t's
+    @test quantile(rhm, params, LinRange(1/L, 1-1/L, L-1)) ≈ [j/L for j in 1:(L-1)]
+
+    # Test evaluation for vector of params, single t
+    @test quantile(rhm, params_vec, 0.2) ≈ fill(0.2, (1, length(params_vec)))
+
+    # Test evaluation for vector of params, vector of t's
+    @test quantile(rhm, params_vec, LinRange(1/L, 1-1/L, L-1)) ≈ [j/L for j in 1:(L-1), i in eachindex(params_vec)]
 end
 
 @testset "Core: MC sample" begin
@@ -203,32 +217,42 @@ end
     posterior = PosteriorSamples{Float64}(params_vec, rhm, n_samples, 0)
 
     t = LinRange(0, 1, 1001)
+    q = LinRange(0.05, 0.995, 20)
     posterior_mean_pdf = mean(posterior, t)
     posterior_mean_cdf = mean(posterior, cdf, t)
+    posterior_mean_quantile = mean(posterior, quantile, q)
     posterior_median_pdf = median(posterior, t)
     posterior_median_cdf = median(posterior, cdf, t)
+    posterior_median_quantile = median(posterior, quantile, q)
     posterior_std_pdf = std(posterior, t)
     posterior_std_cdf = std(posterior, cdf, t)
+    posterior_std_quantile = std(posterior, quantile, q)
+
 
     # Test vector version (mean)
     @test isapprox(posterior_mean_pdf, pdf(rhm, params_vec[1], t))
     @test isapprox(posterior_mean_cdf, cdf(rhm, params_vec[1], t))
+    @test isapprox(posterior_mean_quantile, quantile(rhm, params_vec[1], q))
 
     # Test scalar version (mean)
     @test isapprox(posterior_mean_pdf[1], mean(posterior, t[1]))
     @test isapprox(posterior_mean_cdf[1], mean(posterior, cdf, t[1]))
+    @test isapprox(posterior_mean_quantile[1], mean(posterior, quantile, q[1]))
 
     # Test vector version (std)
     @test posterior_std_pdf[1] == std(posterior, t[1])
     @test posterior_std_cdf[1] == std(posterior, cdf, t[1])
+    @test posterior_std_quantile[1] == std(posterior, quantile, q[1])
 
     # Test vector version (median)
     @test isapprox(posterior_median_pdf, pdf(rhm, params_vec[1], t))
     @test isapprox(posterior_median_cdf, cdf(rhm, params_vec[1], t))
+    @test isapprox(posterior_median_quantile, quantile(rhm, params_vec[1], q))
 
     # Test scalar version (median)
     @test isapprox(posterior_median_pdf[1], median(posterior, t[1]))
     @test isapprox(posterior_median_cdf[1], median(posterior, cdf, t[1]))
+    @test isapprox(posterior_median_quantile[1], median(posterior, quantile, q[1]))
 end
 
 @testset "Core: VI: varinf, sample, eltype, show" begin
@@ -256,6 +280,7 @@ end
 
     @test pdf(ps, 0.5) == pdf(model(ps), samples(ps), 0.5)
     @test cdf(ps, 0.5) == cdf(model(ps), samples(ps), 0.5)
+    @test quantile(ps, 0.5) == quantile(model(ps), samples(ps), 0.5)
 
     @test posterior(info) isa AbstractVIPosterior{Float64}
 
@@ -277,25 +302,31 @@ end
     rhp = RHPosterior{Float64}(rhm)
 
     t = LinRange(0, 1, 11)
+    p = [0.4, 0.7]
     qs = [0.2, 0.8]
 
     @test isapprox(quantile(rng, rhp, t[end], 0.2), 1.0; atol=1e-3)
     @test isapprox(quantile(rng, rhp, cdf, t[end], 0.2), t[end]; atol=1e-3)
+    @test isapprox(quantile(rng, rhp, quantile, p[end], 0.2), p[end]; atol=1e-3)
 
     @test isapprox(quantile(rng, rhp, t, 0.2), ones(length(t)); atol=1e-3)
     @test isapprox(quantile(rng, rhp, cdf, t, 0.2), collect(t); atol=1e-3)
+    @test isapprox(quantile(rng, rhp, quantile, p, 0.2), collect(p); atol=1e-3)
 
     @test isapprox(quantile(rng, rhp, t, qs), ones((length(t), length(qs))); atol=1e-3)
     @test isapprox(quantile(rng, rhp, cdf, t, qs), reduce(hcat, [collect(t) for _ in eachindex(qs)]); atol=1e-3)
+    @test isapprox(quantile(rng, rhp, cdf, p, qs), reduce(hcat, [collect(p) for _ in eachindex(qs)]); atol=1e-3)
 
     # Evaluate for scalar and vector inputs:
     for statistic in (:mean, :median)
         @eval begin
             @test isapprox($statistic($rng, $rhp, $t), ones(length($t)); atol=1e-3)
             @test isapprox($statistic($rng, $rhp, cdf, $t), collect($t); atol=1e-3)
+            @test isapprox($statistic($rng, $rhp, quantile, $p), collect($p); atol=1e-3)
 
             @test isapprox($statistic($rng, $rhp, $t[1]), 1.0; atol=1e-3)
             @test isapprox($statistic($rng, $rhp, cdf, $t[1]), $t[1]; atol=1e-3)
+            @test isapprox($statistic($rng, $rhp, quantile, $p[1]), $p[1]; atol=1e-3)
         end
     end
 
@@ -304,20 +335,22 @@ end
         @eval begin
             @test isapprox($statistic($rng, $rhp, $t), zeros(length($t)); atol=1e-3)
             @test isapprox($statistic($rng, $rhp, cdf, $t), zeros(length($t)); atol=1e-3)
+            @test isapprox($statistic($rng, $rhp, quantile, $p), zeros(length($p)); atol=1e-3)
 
             @test isapprox($statistic($rng, $rhp, $t[1]), 0.0; atol=1e-3)
             @test isapprox($statistic($rng, $rhp, cdf, $t[1]), 0.0; atol=1e-3)
+            @test isapprox($statistic($rng, $rhp, quantile, $p[1]), 0.0; atol=1e-3)
         end
     end
 
     # Test that rng-less fallback versions also return the right output type.
-    for func in (:pdf, :cdf)
+    for func in (:pdf, :cdf, :quantile)
         for statistic in (:mean, :var, :std, :median)
             @eval @test $statistic($rhp, $func, 0.5) isa Float64
         end
     end
 
-    for func in (:pdf, :cdf)
+    for func in (:pdf, :cdf, :quantile)
         @eval @test quantile($rhp, $func, 0.5, [0.2, 0.8]) isa AbstractMatrix{Float64}
     end
 end

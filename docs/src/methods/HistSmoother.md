@@ -30,6 +30,7 @@ HistSmoother
 ```@docs
 BayesDensityHistSmoother.pdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 BayesDensityHistSmoother.cdf(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
+BayesDensityHistSmoother.quantile(::HistSmoother, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 ```
 
 ### Utility functions

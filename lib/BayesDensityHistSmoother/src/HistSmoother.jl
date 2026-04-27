@@ -371,6 +371,29 @@ function _cdf(shs::HistSmoother{T}, params::AbstractVector{<:NamedTuple}, t::Abs
     return F_samp
 end
 
+"""
+    quantile(
+        shs::HistSmoother,
+        params::NamedTuple,
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    quantile(
+        shs::HistSmoother,
+        params::AbstractVector{NamedTuple},
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate ``Q(p\\, |\\, \\boldsymbol{\\eta})`` for a given `HistSmoother` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+
+The named tuple should contain a field named `:β`.
+If the `parameters` argument does not contain a field named `:norm`, then the normalization constant will be computed using Simpson's method.
+Alternatively, if `parameters` contains the field `:norm`, then this value is used instead.
+
+Internally, this function computes the cdf on a predefined regular grid, and uses linear interpolation to approximate the cdf.
+"""
+Distributions.quantile(shs::HistSmoother, params::NamedTuple{Names, Vals}, p::Real) where {Names, Vals<:Tuple} = BayesDensityCore.quantile_bisect(shs, params, p, BayesDensityCore.support(shs)...)
+
 function _get_default_bounds(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     R = xmax - xmin

@@ -97,13 +97,13 @@ Base.show(io::IO, gm::FiniteGaussianMixture) = show(io, MIME("text/plain"), gm)
 
 """
     pdf(
-        bsm::FiniteGaussianMixture,
+        fgm::FiniteGaussianMixture,
         params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
     pdf(
-        bsm::FiniteGaussianMixture,
+        fgm::FiniteGaussianMixture,
         params::AbstractVector{NamedTuple},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
@@ -119,13 +119,13 @@ Distributions.pdf(fgm::FiniteGaussianMixture, params::AbstractVector{<:NamedTupl
 
 """
     cdf(
-        bsm::FiniteGaussianMixture,
+        fgm::FiniteGaussianMixture,
         params::NamedTuple,
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Union{Real, Vector{<:Real}}
 
     cdf(
-        bsm::FiniteGaussianMixture,
+        fgm::FiniteGaussianMixture,
         params::AbstractVector{NamedTuple},
         t::Union{Real, AbstractVector{<:Real}}
     ) -> Matrix{<:Real}
@@ -188,4 +188,40 @@ for funcs in ((:_pdf, :pdf), (:_cdf, :cdf))
             end
         end
     end
+end
+
+"""
+    quantile(
+        fgm::RandomFiniteGaussianMixture,
+        params::NamedTuple,
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    cdf(
+        fgm::RandomFiniteGaussianMixture,
+        params::AbstractVector{NamedTuple},
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate ``Q(p\\, |\\, \\boldsymbol{\\eta})`` for a given `FiniteGaussianMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+
+The named tuple should contain fields named `:μ`, `:σ2`, `:w` and optionally `:β`.
+"""
+function Distributions.quantile(fgm::FiniteGaussianMixture{T}, params::NamedTuple, p::S) where {T<:Real, S<:Real}
+    R = promote_type(T, S)
+    (; μ, σ2) = params
+
+    # Here we use that the mixture distribution quantile must be bracketed by the largest and smallest quantiles of each mixture component:
+    lower_bound = R(Inf)
+    upper_bound = R(-Inf)
+    @inbounds for i in eachindex(μ)
+        component_quantile = quantile(Normal(μ[i], sqrt(σ2[i])), p)
+        if component_quantile < lower_bound
+            lower_bound = component_quantile
+        end
+        if component_quantile > upper_bound
+            upper_bound = component_quantile
+        end
+    end
+    return BayesDensityCore.quantile_bisect(fgm, params, p, lower_bound, upper_bound)
 end

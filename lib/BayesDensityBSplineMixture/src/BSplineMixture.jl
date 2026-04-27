@@ -398,6 +398,25 @@ function _cdf(bsm::BSplineMixture, spline_coefs::AbstractVector{<:Real}, t::Unio
     return F.(t)
 end
 
+"""
+    quantile(
+        bsm::BSplineMixture,
+        params::NamedTuple,
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Union{Real, Vector{<:Real}}
+
+    quantile(
+        bsm::BSplineMixture,
+        params::AbstractVector{NamedTuple},
+        p::Union{Real, AbstractVector{<:Real}}
+    ) -> Matrix{<:Real}
+
+Evaluate ``Q(p\\, |\\, \\boldsymbol{\\eta})`` for a given `BSplineMixture` when the model parameters of the NamedTuple `params` are given by ``\\boldsymbol{\\eta}``.
+
+The named tuple should contain a field named `:spline_coefs` or `:β`.
+"""
+Distributions.quantile(bsm::BSplineMixture, params::NamedTuple{Names, Vals}, p::Real) where {Names, Vals<:Tuple} = BayesDensityCore.quantile_bisect(bsm, params, p, BayesDensityCore.support(bsm)...)
+
 # More efficient version of the posterior mean (we only need to average the coefficients)
 for func in (:pdf, :cdf)
     @eval begin

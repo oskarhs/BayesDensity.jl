@@ -33,11 +33,16 @@ pdf(::AbstractBayesDensityModel, ::Any, ::Real)
 
 For models that only implement the signature `pdf(::AbstractBayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
 
-The cumulative distribution function of a model can be computed in a similar way by using the `cdf` method:
+The cumulative distribution function ``F(t\,|\, \boldsymbol{\eta}) = \int_0^\infty f(t\,|\, \boldsymbol{\eta})\, \text{d}t`` of a model can be computed in a similar way by using the `cdf` method:
 ```@docs
 cdf(::AbstractBayesDensityModel, ::Any, ::Real)
 ```
 Generic fallback methods for computing the cdf for vectors of parameters and vector evaluation grids are also provided for models that implement the signature `cdf(::AbstractBayesDensityModel, ::Any, ::Real)`.
+
+The quantile function ``Q(p \,|\, \boldsymbol{\eta}) = \inf \{t\colon F(t\,|\,\boldsymbol{\eta}) \geq p\}`` of a model may be computed as follows:
+```@docs
+quantile(::AbstractBayesDensityModel, ::Any, ::Real)
+```
 
 ### Other methods
 All of the density models implemented in this package depend on the choice of various hyperparameters, which can be retrieved by utilizing the following method:
@@ -54,11 +59,6 @@ BayesDensityCore.support(::AbstractBayesDensityModel{T}) where {T}
 The element type of the model object can be determined via the `eltype` method:
 ```@docs
 BayesDensityCore.eltype(::AbstractBayesDensityModel{T}) where {T}
-```
-
-The following function is used to select a grid used for plotting of fitted model objects. A default fallback is provided, but it may be necessary to overload this method when implementing new models in order to make plotting functions work without having to supply an explicit grid of values for the first coordinate axis.
-```@docs
-default_grid_points
 ```
 
 ## Markov chain Monte Carlo
@@ -109,10 +109,13 @@ quantile(posterior, 0.5, [0.05, 0.95]) == quantile(posterior, pdf, 0.5, [0.05, 0
 nothing # hide
 ```
 
-In some cases it may also be of interest to carry out posterior inference for the cumulative distribution function ``F(t) = \int_{-\infty}^t f(s)\, \text{d}s``. Computing posterior summary statistics for the cdf instead of the pdf is easily achieved by replacing the `pdf` in the second argument with `cdf` instead:
+In some cases it may also be of interest to carry out posterior inference for the cumulative distribution function ``F(t) = \int_{-\infty}^t f(s)\, \text{d}s`` or the quantile function ``Q(\cdot)``. Computing posterior summary statistics for the cdf/quantile functions instead of the pdf is easily achieved by replacing the `pdf` in the second argument with `cdf` or `quantile`:
 ```@example general_api
 # Compute the posterior mean of F(0.5)
 mean(posterior, cdf, 0.5)
+
+# Compute the posterior median of Q(0.4)
+median(posterior, quantile, 0.4)
 
 # Compute the posterior 0.05 and 0.95-quantiles of F(0.5)
 # Note that supplying cdf as the second argument is necessary here
@@ -129,10 +132,11 @@ var(::PosteriorSamples)
 std(::PosteriorSamples)
 ```
 
-It is also possible to evaluate the pdf or cdf for all non-burn in samples at a grid of input points:
+It is also possible to evaluate the pdf, cdf or the quantile function for all non-burn in samples at a grid of input points:
 ```@docs
 pdf(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
 cdf(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
+quantile(::PosteriorSamples, ::Union{<:Real, AbstractVector{<:Real}})
 ```
 
 ## Variational inference
@@ -162,7 +166,7 @@ sample(::AbstractVIPosterior, ::Int)
 As shown in the above docstring, using the `sample` method on a `AbstractVIPosterior` object returns an object of type [`PosteriorSamples`](@ref). As such, all of the convenience methods showcased in the previous subsection will also work for the object returned by `sample`.
 
 #### Computing posterior summary statistics
-`BayesDensityCore` also provides convenience methods for `AbstractVIPosterior` objects that let us easily compute relevant summary statistics for the density ``f`` and the cdf ``F`` directly from the variational posterior object:
+`BayesDensityCore` also provides convenience methods for `AbstractVIPosterior` objects that let us easily compute relevant summary statistics for the density ``f``, the cdf ``F`` and the quantile function ``Q`` directly from the variational posterior object:
 
 ```@example general_api
 bsm = BSplineMixture(randn(1000))
@@ -174,8 +178,11 @@ mean(viposterior, pdf, 0.5)
 # Compute the (variational) posterior median of F(0.5)
 median(viposterior, cdf, 0.5)
 
+# Compute the (variational) posterior median of Q(0.4)
+median(viposterior, quantile, 0.4)
+
 # Compute the (variational) posterior 0.05 and 0.95-quantiles of f(0.5)
-# Note that supplying pdf as the second argument is optional here
+# Note that supplying pdf as the second argument is optional
 quantile(viposterior, 0.5, [0.05, 0.95]) ≈ quantile(viposterior, pdf, 0.5, [0.05, 0.95])
 nothing # hide
 ```
@@ -202,4 +209,19 @@ n_iter
 converged
 tolerance
 posterior
+```
+
+## Dev API
+
+The methods displayes in this section are not intended for use by end users, but are used internally by BayesDensity.jl methods.
+
+The quantile function of a given model is generally not easily computed, even in cases where a closed-form expression for the cdf exists.
+To this end, BayesDensity.jl provides the `quantile_bisect` method to help developers approximate the quantile function numerically.
+```@docs
+BayesDensityCore.quantile_bisect
+```
+
+The following function is used to select a grid used for plotting of fitted model objects. A default fallback is provided, but it may be necessary to overload this method when implementing new models in order to make plotting functions work without having to supply an explicit grid of values for the first coordinate axis.
+```@docs
+default_grid_points
 ```

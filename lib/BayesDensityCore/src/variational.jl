@@ -97,7 +97,7 @@ julia> quantile(Random.Xoshiro(1), vip, [0.2, 0.8], [0.05, 0.95])
 Distributions.quantile(vip::AbstractVIPosterior) = throw(MethodError(quantile, (vip)))
 
 # We can just use the methods for PosteriorSamples as a fallback here.
-for func in (:pdf, :cdf)
+for func in (:pdf, :cdf, :quantile)
     @eval begin
         Distributions.quantile(vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, q::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(sample(vip, n_samples), $func, t, q)
         Distributions.quantile(rng::AbstractRNG, vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, q::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = quantile(sample(rng, vip, n_samples), $func, t, q)
@@ -204,7 +204,7 @@ Distributions.std(vip::AbstractVIPosterior) = throw(MethodError(std, (vip)))
 
 # Just reuse the methods defined for PosteriorSamples.
 for statistic in (:median, :mean, :var, :std)
-    for func in (:pdf, :cdf)
+    for func in (:pdf, :cdf, :quantile)
         @eval begin
             Distributions.$statistic(vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(vip, n_samples), $func, t)
             Distributions.$statistic(rng::AbstractRNG, vip::AbstractVIPosterior, ::typeof($func), t::Union{Real, <:AbstractVector{<:Real}}, n_samples::Int=1000) = $statistic(sample(rng, vip, n_samples), $func, t)
@@ -242,7 +242,7 @@ struct VariationalOptimizationResult{T<:Real, V<:AbstractVector, A<:AbstractVIPo
 end
 
 # Print method:
-function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizationResult{T, V}) where {T, V}
+function Base.show(io::IO, ::MIME"text/plain", varoptinf::VariationalOptimizationResult{T}) where {T}
     status_msg = ifelse(
         converged(varoptinf),
         " Converged in $(n_iter(varoptinf)) iterations.",

@@ -34,6 +34,7 @@ BSplineMixture
 ```@docs
 BayesDensityBSplineMixture.pdf(::BSplineMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 BayesDensityBSplineMixture.cdf(::BSplineMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
+BayesDensityBSplineMixture.quantile(::BSplineMixture, ::NamedTuple{Names, Vals}, ::Real) where {Names, Vals<:Tuple}
 ```
 
 ### Utility functions

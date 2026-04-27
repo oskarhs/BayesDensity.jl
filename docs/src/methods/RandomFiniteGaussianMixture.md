@@ -48,6 +48,7 @@ RandomFiniteGaussianMixture
 ```@docs
 BayesDensityFiniteGaussianMixture.pdf(::RandomFiniteGaussianMixture, ::NamedTuple, ::Real)
 BayesDensityFiniteGaussianMixture.cdf(::RandomFiniteGaussianMixture, ::NamedTuple, ::Real)
+BayesDensityFiniteGaussianMixture.quantile(::RandomFiniteGaussianMixture, ::NamedTuple, ::Real)
 ```
 
 ### Utility functions

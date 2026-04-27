@@ -25,7 +25,7 @@ Base.:(==)(bd1::BernsteinDensity, bd2::BernsteinDensity) = bd1.data == bd2.data 
 
 BayesDensityCore.default_grid_points(::BernsteinDensity{T}) where {T} = LinRange{T}(0, 1, 2001)
 
-function Distributions.pdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S) where {T<:Real, D, S<:Real}
+function Distributions.pdf(bdm::BernsteinDensity{T}, params::NamedTuple, t::S) where {T<:Real, S<:Real}
     K = bdm.K
     (; θ) = params
     f = zero(promote_type(T, S))
@@ -35,7 +35,7 @@ function Distributions.pdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S
     return f
 end
 
-function Distributions.cdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S) where {T<:Real, D, S<:Real}
+function Distributions.cdf(bdm::BernsteinDensity{T}, params::NamedTuple, t::S) where {T<:Real, S<:Real}
     K = bdm.K
     (; θ) = params
     f = zero(promote_type(T, S))
@@ -45,10 +45,12 @@ function Distributions.cdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S
     return f
 end
 
-BayesDensityCore.support(::BernsteinDensity{T, D}) where {T, D} = (T(0.0), T(1.0))
+BayesDensityCore.support(::BernsteinDensity{T}) where {T} = (T(0.0), T(1.0))
 BayesDensityCore.hyperparams(bdm::BernsteinDensity) = (a = bdm.a,)
 
-function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T, D}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000), init_params::NamedTuple=(θ = fill(1/K, K),)) where {T, D}
+Distributions.quantile(bdm::BernsteinDensity, params::NamedTuple, p::Real) = BayesDensityCore.quantile_bisect(bdm, params, p, BayesDensityCore.support(bdm)...)
+
+function StatsBase.sample(rng::AbstractRNG, bdm::BernsteinDensity{T}, n_samples::Int; n_burnin=min(div(length(x), 5), 1000), init_params::NamedTuple=(θ = fill(1/K, K),)) where {T}
     (; K, data, a) = bdm
     (; x, n, φ_x) = data
 
@@ -192,7 +194,7 @@ ax1 = Axis(fig[1,1], xlabel="x", ylabel="Density")
 plot!(ax1, vip, t, label="VI") # Plot the posterior mean and credible bands:
 lines!(ax1, t, pdf(d_true, t), label="Truth", color=:black) # Also plot truth for comparison
 
-ax2 = Axis(fig[1,2], xlabel="x", ylabel="Cumulative distribution")
+ax2 = Axis(fig[1,2], xlabel="x", ylabel="Quantile function")
 plot!(ax2, vip, cdf, t, label="VI")
 lines!(ax2, t, cdf(d_true, t), label="Truth", color=:black)
 

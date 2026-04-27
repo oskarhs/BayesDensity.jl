@@ -30,6 +30,7 @@ RandomBernsteinPoly
 ```@docs
 BayesDensityRandomBernsteinPoly.pdf(::RandomBernsteinPoly, ::NamedTuple, ::Real)
 BayesDensityRandomBernsteinPoly.cdf(::RandomBernsteinPoly, ::NamedTuple, ::Real)
+BayesDensityRandomBernsteinPoly.quantile(::RandomBernsteinPoly, ::NamedTuple, ::Real)
 ```
 
 ### Utility functions

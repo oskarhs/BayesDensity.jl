@@ -79,7 +79,7 @@ end
     @test sample(rng, bsm3, 100) isa PosteriorSamples{Float64}
 end
 
-@testset "BSplineMixture: MC: pdf, cdf and mean" begin
+@testset "BSplineMixture: MC: pdf, cdf, quantile and mean" begin
     K = 20
     x = collect(0:0.1:1)
     L = 11
@@ -98,14 +98,20 @@ end
     @test isapprox(cdf(bsm, samples1, 0.5), fill(0.5, (1, 10)))
     @test isapprox(cdf(bsm, (spline_coefs = ones(K),), 0.5), 0.5)
 
+    @test isapprox(quantile(bsm, samples1, LinRange(1/(L-1), 1-1/(L-1), L-2)), [j/(L-1) for j in 1:(L-2), i in eachindex(samples1)])
+    @test isapprox(quantile(bsm, samples1, 0.5), fill(0.5, (1, 10)))
+    @test isapprox(quantile(bsm, (spline_coefs = ones(K),), 0.5), 0.5)
+
     @test isapprox(mean(ps1, t), ones(length(t)))
 
     samples2 = [(β = BayesDensityBSplineMixture.compute_μ(basis(bsm)),) for _ in 1:10]
     ps2 = PosteriorSamples{Float64}(samples2, bsm, 10, 0)
     @test isapprox(pdf(bsm, samples2, t), ones((length(t), length(samples2))))
     @test isapprox(cdf(bsm, samples2, t), [j/(L-1) for j in 0:(L-1), i in eachindex(samples2)])
+    @test isapprox(quantile(bsm, samples2, LinRange(1/(L-1), 1-1/(L-1), L-2)), [j/(L-1) for j in 1:(L-2), i in eachindex(samples2)])
     @test isapprox(pdf(bsm, samples2[1], t), ones(length(t)))
     @test isapprox(cdf(bsm, samples2[1], t), [j/(L-1) for j in 0:(L-1)])
+    @test isapprox(quantile(bsm, samples2[1], LinRange(1/(L-1), 1-1/(L-1), L-2)), [j/(L-1) for j in 1:(L-2)])
 end
 
 @testset "BSplineMixture: VI: varinf, sample, print" begin
