@@ -30,3 +30,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.DOCUMENTER_KEY }}
           subdir: lib/BayesDensity
+          tag_prefix: NO_PREFIX
