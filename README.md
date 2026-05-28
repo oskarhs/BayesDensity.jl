@@ -30,6 +30,8 @@ Alternatively, it is possible to install each of the Bayesian density estimators
 Pkg.add("BayesDensityHistSmoother")
 ```
 
+If you encounter any problems during the installation process, we encourage you to open an issue in this repository!
+
 ## Quick start
 
 To get started, we illustrate the basic use of the package by fitting a histogram smoother to a two-component mixture of normal densities:
@@ -62,3 +64,10 @@ plot(vi_fit)   # Based on VI
 ```
 
 For a more thorough introduction to the API and the capabilities of the package, we refer the interested reader to the [documentation](https://oskarhs.github.io/BayesDensity.jl).
+
+
+## Supported versions
+
+This package makes use of the workspaces feature introduced in Julia 1.12. As a result, this package currently supports release 1.12.0 and newer ones. In the future, the plan is to support the Long-Term Support (LTS) release and newer versions, but only after the version of the LTS release exceeds 1.12.0.
+
+The package is continuously tested via CI on the latest stable Julia 1.12 release as well as Julia `pre` releases (i.e. upcoming versions in their pre-release stage). This helps ensure compatibility with future Julia versions while maintaining stability on the current stable release.
