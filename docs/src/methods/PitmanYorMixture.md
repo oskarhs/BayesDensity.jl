@@ -26,7 +26,7 @@ where ``\phi(\cdot)`` is the density of the standard normal distribution and ``w
 For Markov chain Monte Carlo based inference, this module implements algorithm 2 by [Neal2000Markov](@citet).
 For variational inference, we implement the truncated stickbreaking approach of [Blei2006DirichletVariational](@citet).
 
-The default hyperparameter values are the same as those in the BNPmix package [Corradin2021BNPmix](@citet). A discussion of the role of the strength parameter ``\alpha`` and the discount parameter ``\theta`` can be found in [Deblasi2015Gibbs](@citet).
+The default hyperparameter values are the same as those in the BNPmix package [Corradin2021BNPmix](@citep). A discussion of the role of the strength parameter ``\alpha`` and the discount parameter ``\theta`` can be found in [Deblasi2015Gibbs](@citet).
 
 !!! note
     Since Dirichlet process mixture models are equivalent to a Pitman-Yor mixture model with discount parameter equal to `0`, this module can also be used to fit the former type of models.
