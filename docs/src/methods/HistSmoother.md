@@ -20,6 +20,8 @@ The estimates are then obtained by smoothing a likelihood based on the Poisson a
 
 This module implements the Gibbs sampling approach of [Wand2022engines](@citet) for Markov chain Monte Carlo-based inference. We also provide an implementation of the semiparametric mean-field variational inference algorithm proposed in the same paper.
 
+The default hyperparameter values are based on [Wand2022engines](@citet).
+
 ## Module API
 
 ```@docs

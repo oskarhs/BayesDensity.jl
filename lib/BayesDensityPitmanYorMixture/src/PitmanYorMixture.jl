@@ -32,8 +32,6 @@ Hyperparameters:
 
 julia> pym = PitmanYorMixture(x; strength = 2, discount = 0.5);
 ```
-
-# Extended help
 """
 struct PitmanYorMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT

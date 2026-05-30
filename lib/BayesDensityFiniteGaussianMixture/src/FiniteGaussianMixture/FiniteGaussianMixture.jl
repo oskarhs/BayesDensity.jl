@@ -33,6 +33,15 @@ Hyperparameters:
 
 julia> fgm = FiniteGaussianMixture(x; prior_strength=10);
 ```
+
+# Extended help
+### The number of mixture components
+The value of the number of mixture components `K` controls the flexibility of the model.
+Setting this to a larger value makes the model able to capture more complex shapes, but may come at the cost of increased variance.
+
+### The prior strength parameter
+The `prior_strength` plays a key role in determining the number of "active" components.
+For smaller values of this parameter, some of the mixture components will tend to be assigned low weight, and only a few components will contribute to the estimate.
 """
 struct FiniteGaussianMixture{T<:Real, NT<:NamedTuple} <: AbstractBayesDensityModel{T}
     data::NT
