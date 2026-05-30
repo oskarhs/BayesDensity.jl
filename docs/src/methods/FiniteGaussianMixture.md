@@ -26,6 +26,8 @@ where ``\phi(\cdot)`` denotes the density of the standard normal distribution, `
 For Markov chain Monte Carlo based inference, this module implements an augmented Gibbs sampling approach. The algorithm used is essentially the Gibbs sampler sweep (excluding the reversible jump-move) of [Richardson1997Mixtures](@citet).
 For variational inference, we implement a variant of algorithm 5 in [Ormerod2010explaining](@citet). Note that our version also includes an additional hyperprior on the rate parameters of the mixture scales and that the algorithm has been adjusted to account for this fact.
 
+For a discussion on the selection of the hyperparameters in such models, we refer the intereted reader to [Fruhwirth2006Finite](@citet) and [Rousseau2011Overfitted](@citet). The default hyperparameter values are based on [Richardson1997Mixtures](@citet).
+
 ## Module API
 
 ```@docs

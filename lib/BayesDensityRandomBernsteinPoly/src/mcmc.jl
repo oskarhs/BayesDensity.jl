@@ -126,7 +126,7 @@ function _sample_posterior(
 
         # Sample from p(w|K, y)
         cluster_counts = StatsBase.counts(cluster_alloc, K)
-        w = rand(rng, Dirichlet(prior_strength .+ cluster_counts))
+        w = rand(rng, Dirichlet(prior_strength/K .+ cluster_counts))
 
         # Store the samples
         samples[m] = (w = w,)

@@ -15,7 +15,7 @@ where ``b_{K,k}(\cdot)`` denotes the probability density function of the ``\text
 
 Although this model is formulated in terms of data on the unit interval, it can be also be applied more broadly to data on the entire real line. By default, we estimate the support of the Bernstein density based on the extrema of the data set, but it is also possible to use a prespecified support via the `bounds` keyword argument.
 
-This module implements the Gibbs sampler of [Petrone1999bernstein](@citet) for Markov chain Monte Carlo-based posterior inference.
+This module implements the Gibbs sampler of [Petrone1999bernstein](@citet) for Markov chain Monte Carlo-based posterior inference. We refer the interested reader to the same paper for a discussion of the role of the `prior_strength` hyperparameter. The default value of `prior_strength = 1.0` is based on the discussion in [Petrone2002Consistency](@citet).
 
 !!! note
     Keep in mind that this sampler is quite slow even for moderate sample sizes, due to the expensive sweeps involved in the Gibbs sampler.

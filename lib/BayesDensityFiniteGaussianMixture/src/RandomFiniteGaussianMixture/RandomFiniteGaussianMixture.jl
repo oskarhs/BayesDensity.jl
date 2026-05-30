@@ -33,6 +33,11 @@ Hyperparameters:
 
 julia> rfgm = RandomFiniteGaussianMixture(x; prior_components = DiscreteNonParametric(1:12, fill(1/12, 12)));
 ```
+
+# Extended help
+### The prior strength parameter
+The `prior_strength` plays a key role in determining the number of "active" components for a given value of `K`.
+For smaller values of this parameter, some of the mixture components will tend to be assigned low weight, and only a few components will contribute to the estimate.
 """
 struct RandomFiniteGaussianMixture{T<:Real, NT<:NamedTuple, W<:DiscreteNonParametric{Int, T}} <: AbstractBayesDensityModel{T}
     data::NT

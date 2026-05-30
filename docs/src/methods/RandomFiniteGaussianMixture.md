@@ -38,6 +38,8 @@ There are two main ways of proceeding with Bayesian inference for the variationa
 
 Another possibility is to take a fully Bayesian approach, where we do not condition on a single value of ``K``, but treat it as a random variable. To pursure this approach to posterior inference, one can simply use the object returned by calling [`varinf`](@ref) directly (e.g. for plotting or computing other posterior summary statistics).
 
+The default hyperparameter values follow [Richardson1997Mixtures](@citet). A detailed discussion of the role of the `prior_strength` parameter can be found in [Fruhwirth2021Telescope](@citet).
+
 ## Module API
 
 ```@docs
