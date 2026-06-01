@@ -126,9 +126,10 @@ function BayesDensityCore.Plots.check_chains(
         t_label = "t = $(round(grid[i], sigdigits=3))"
 
         for (j, post) in enumerate(ps)
+            pdf_eval_acf = pdf(model(post), samples(post; include_burnin=false), grid)
             pdf_eval     = pdf(model(post), samples(post; include_burnin=include_burnin), grid)
             n_samples    = size(pdf_eval, 2)
-            acf          = transpose(autocor(transpose(pdf_eval), lags))
+            acf          = transpose(autocor(transpose(pdf_eval_acf), lags))
             running_mean = mapslices(x -> cumsum(x) ./ (1:length(x)), pdf_eval; dims=2)
 
             if j == 1

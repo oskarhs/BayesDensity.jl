@@ -133,10 +133,12 @@ function BayesDensityCore.Makie.check_chains(
         ax_trace_dum = ax_trace
 
         for (j, post) in enumerate(ps)
+            pdf_eval_acf = pdf(model(post), samples(post; include_burnin=false), grid)
             pdf_eval     = pdf(model(post), samples(post; include_burnin=include_burnin), grid)
             n_samples    = size(pdf_eval, 2)
-            acf          = transpose(autocor(transpose(pdf_eval), lags))
+            acf          = transpose(autocor(transpose(pdf_eval_acf), lags))
             running_mean = mapslices(x -> cumsum(x) ./ (1:length(x)), pdf_eval; dims=2)
+            
             # Trace plot
             lines!(ax_trace, 1:n_samples, pdf_eval[i, :]; label=labels[j])
             # Autocorrelation plot
