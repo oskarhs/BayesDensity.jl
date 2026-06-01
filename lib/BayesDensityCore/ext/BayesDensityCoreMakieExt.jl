@@ -2,6 +2,7 @@ module BayesDensityCoreMakieExt
 
 using BayesDensityCore
 using Makie
+using StatsBase
 import BayesDensityCore: linebandplot, linebandplot!
 
 for func in (:pdf, :cdf)
@@ -97,5 +98,64 @@ Makie.plottype(::PosteriorSamples, ::AbstractVector{<:Real}) = LineBandPlot
 
 Makie.convert_arguments(P::Type{<:AbstractPlot}, varinfopt::VariationalOptimizationResult) = convert_arguments(P, collect(1:n_iter(varinfopt)), elbo(varinfopt))
 Makie.plottype(::VariationalOptimizationResult) = Makie.Lines
+
+# check_chains
+function BayesDensityCore.Makie.check_chains(
+    ps::PosteriorSamples...;
+    grid::Union{Real, AbstractVector{<:Real}} = BayesDensityCore._default_check_chains_grid(ps[1]),
+    include_burnin::Bool                      = false,
+    lags::AbstractUnitRange{<:Integer}        = 1:40
+)
+    # Check for equality of model objects
+    all(model(ps[1]) == model(post) for post in ps) || throw(ArgumentError("The supplied PosteriorSamples objects were not fitted to the same model."))
+
+    labels = ["Chain $i" for i in eachindex(ps)]
+
+    fig = Figure(size = (400 * 3, 250 * length(grid)))
+
+    # Column headers
+    Label(fig[0, 2], "Trace";           tellwidth=false, fontsize=22, font=:bold)
+    Label(fig[0, 3], "Autocorrelation"; tellwidth=false, fontsize=22, font=:bold)
+    Label(fig[0, 4], "Running Mean";    tellwidth=false, fontsize=22, font=:bold)
+
+    ax_trace_dum = nothing
+    for i in eachindex(grid)
+        t_label = "t = $(round(grid[i], sigdigits=3))"
+
+        # Row label
+        Label(fig[i, 1], t_label; tellheight=false, rotation=π/2, fontsize=18, padding=(0, 0, 0, 0))
+
+        # Axes
+        ax_trace = Makie.Axis(fig[i, 2])
+        ax_acf   = Makie.Axis(fig[i, 3])
+        ax_mean  = Makie.Axis(fig[i, 4])
+
+        ax_trace_dum = ax_trace
+
+        for (j, post) in enumerate(ps)
+            pdf_eval_acf = pdf(model(post), samples(post; include_burnin=false), grid)
+            pdf_eval     = pdf(model(post), samples(post; include_burnin=include_burnin), grid)
+            n_samples    = size(pdf_eval, 2)
+            acf          = transpose(autocor(transpose(pdf_eval_acf), lags))
+            running_mean = mapslices(x -> cumsum(x) ./ (1:length(x)), pdf_eval; dims=2)
+            
+            # Trace plot
+            lines!(ax_trace, 1:n_samples, pdf_eval[i, :]; label=labels[j])
+            # Autocorrelation plot
+            lines!(ax_acf, collect(lags), acf[i, :]; label=labels[j])
+            hlines!(ax_acf, [0.0]; color=(:black, 0.2), linestyle=:dot)
+            # Running mean plot
+            lines!(ax_mean, 1:n_samples, running_mean[i, :]; label=labels[j])
+        end
+    end
+    if length(ps) >= 2
+        Legend(fig[length(grid) + 1, 1:4], ax_trace_dum; orientation=:horizontal, tellwidth=false, labelsize=20)
+    end
+
+    # Tighten gap between row labels and plots
+    colgap!(fig.layout, 1, 5)
+
+    return fig
+end
 
 end # module

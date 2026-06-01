@@ -8,6 +8,8 @@ The following sections are structured so that the `Makie`- and the `Plots`-porti
 
 ## Plotting with Makie.jl
 
+### Visualizing posterior estimates
+
 In general, the available plot method for [`PosteriorSamples`](@ref) and [`AbstractVIPosterior`](@ref) objects has the following signature:
 ```julia
 plot(
@@ -32,6 +34,17 @@ Of particular note are `strokecolor`, which controls the color of the density es
 The `alpha` keyword argument controls the transparency of the credible bands.
 The line width of the density estimate is controlled through the `:strokewidth` keyword argument.
 
+### MCMC model diagnostics
+
+Makie can also be used to create a diagnostic plot for the MCMC output:
+```@docs
+BayesDensityCore.Makie.check_chains
+```
+
+!!! note
+    The above function is not exported by its parent module `BayesDensityCore`, but it is exported by `BayesDensityCore.Makie`.
+    This method requires `Makie` to be loaded, and can be accessed as `BayesDensityCore.Makie.check_chains`.
+
 ### Example
 
 To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
@@ -44,7 +57,7 @@ d_true = MixtureModel(
     vcat(Normal(0, 1), [Normal(0.5*j, 0.1) for j in -2:2]),
     [0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
 )
-x = rand(rng, d_true, 1000)
+x = rand(rng, d_true, 5000)
 
 # Fit the model via MCMC and VI
 histsmoother = HistSmoother(x)
@@ -96,6 +109,15 @@ fig
 
 ![Makie showcase](../assets/plotting_api/makie.svg)
 
+The [`BayesDensityCore.Makie.check_chains`](@ref) method can be used as follows:
+```julia
+BayesDensityCore.Makie.check_chains(
+    posterior_sample;
+    grid = quantile(x, [j/6 for j in 1:5])
+)
+```
+![Makie mcmc showcase](../assets/plotting_api/makie_mcmc_diag_single.svg)
+
 Makie.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be achieved by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `lines(elbo(info))`.
 
 ## Plotting with Plots.jl
@@ -122,9 +144,19 @@ Other keyword arguments mostly control the appearance of the drawn lines and cre
 Of particular note are `color`, which controls the color of the density estimate, and `fillcolor`, which controls the color of the credible bands. 
 The `fillalpha` keyword argument controls the transparency of the credible bands.
 
+### MCMC diagnostic plots
+Plots can also be used to create a diagnostic plot for the MCMC output:
+```@docs
+BayesDensityCore.Plots.check_chains
+```
+
+!!! note
+    The above function is not exported by its parent module `BayesDensityCore`, but it is exported by `BayesDensityCore.Plots`.
+    This method requires `Plots` to be loaded, and can be accessed as `BayesDensityCore.Plots.check_chains`.
+
 ### Example
 
-To show the plotting-capabilities of the Makie extension in practice, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
+To show the plotting-capabilities of the Plots extension in practice, we start by importing the required packages and fit a `BayesDensity` model to some simulated data:
 ```julia
 using BayesDensityHistSmoother, Plots, Distributions, Random
 rng = Random.Xoshiro(1)
@@ -181,6 +213,15 @@ plot(p1, p2, p3, p4, layout=(2,2), size=(550, 550))
 ```
 
 ![Plots showcase](../assets/plotting_api/plots.svg)
+
+The [`BayesDensityCore.Plots.check_chains`](@ref) method can be used as follows:
+```julia
+BayesDensityCore.Plots.check_chains(
+    posterior_sample;
+    grid = quantile(x, [j/6 for j in 1:5])
+)
+```
+![Makie mcmc showcase](../assets/plotting_api/plots_mcmc_diag_single.svg)
 
 
 Plots.jl plots can also be used to perform model diagnostics for variational inference by plotting the evolution of the evidence lower bound (ELBO) on a per-iteration basis. This can be achieved by calling `plot(info)` on a [`VariationalOptimizationResult`](@ref). Note that this is effectively just a thin wrapper around `plot(elbo(info))`.
