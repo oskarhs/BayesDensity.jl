@@ -9,10 +9,11 @@
 
 Compute the `p`-quantile of the Bayesian density model `bdm` for given parameters using the bisection method.
 
-Note: This function is indended for developer use and is not exported.
-To compute quantiles for given model parameters, use [`quantile`](@ref) instead.
+!!! note
+    This function is indended for developer use and is not exported.
+    To compute quantiles for given model parameters, use [`quantile`](@ref) instead.
 
-This function is intended as a helper function for developers to implement the [`quantile`](@ref) method for models for which the cdf is easily computed,
+This function is intended as a helper function for developers to implement the `quantile` method for models for which the cdf is easily computed,
 but where no closed-form expression for the quantile function is available.
 In order for this method to work, the last two positional arguments must satisfy `lower_bound <= cdf(bdm, parameters, p) <= upper_bound`.
 This method checks that `0 < p < 1`, and throws an error if this condition is not satisfied.

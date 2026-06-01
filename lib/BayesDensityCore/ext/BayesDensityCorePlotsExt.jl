@@ -2,6 +2,7 @@ module BayesDensityCorePlotsExt
 
 using BayesDensityCore
 using Plots
+using StatsBase
 
 # To plot posterior functionals, we simulate from the posterior:
 for func in (:pdf, :cdf)
@@ -107,6 +108,64 @@ end
 
 @recipe function f(varinfopt::VariationalOptimizationResult)
     1:n_iter(varinfopt), elbo(varinfopt)
+end
+
+# check_chains
+# check_chains
+function BayesDensityCore.Plots.check_chains(
+    ps::PosteriorSamples...;
+    grid::Union{Real, AbstractVector{<:Real}} = BayesDensityCore._default_check_chains_grid(ps[1]),
+    include_burnin::Bool                      = false,
+    lags::AbstractUnitRange{<:Integer}        = 1:40
+)
+    all(model(ps[1]) == model(post) for post in ps) || throw(ArgumentError("The supplied PosteriorSamples objects were not fitted to the same model."))
+    n_rows = length(grid)
+    plts   = Matrix{Any}(undef, 3, n_rows)
+
+    for i in eachindex(grid)
+        t_label = "t = $(round(grid[i], sigdigits=3))"
+
+        for (j, post) in enumerate(ps)
+            pdf_eval     = pdf(model(post), samples(post; include_burnin=include_burnin), grid)
+            n_samples    = size(pdf_eval, 2)
+            acf          = transpose(autocor(transpose(pdf_eval), lags))
+            running_mean = mapslices(x -> cumsum(x) ./ (1:length(x)), pdf_eval; dims=2)
+
+            if j == 1
+                plts[1, i] = Plots.plot(
+                    1:n_samples, pdf_eval[i, :];
+                    ylabel    = t_label,
+                    title     = i == 1 ? "Trace" : "",
+                    legend    = false,
+                    titlefont = font(11),
+                )
+                plts[2, i] = Plots.plot(
+                    collect(lags), acf[i, :];
+                    title     = i == 1 ? "Autocorrelation" : "",
+                    legend    = false,
+                    titlefont = font(11),
+                )
+                Plots.plot!(plts[2, i], [extrema(lags)...], [0.0, 0.0]; color=:black, alpha=0.3, primary=false, linestyle=:dot)
+                plts[3, i] = Plots.plot(
+                    1:n_samples, running_mean[i, :];
+                    title     = i == 1 ? "Running Mean" : "",
+                    legend    = false,
+                    titlefont = font(11),
+                )
+            else
+                Plots.plot!(plts[1, i], 1:n_samples, pdf_eval[i, :])
+                Plots.plot!(plts[2, i], collect(lags), acf[i, :])
+                Plots.plot!(plts[2, i], [extrema(lags)...], [0.0, 0.0]; color=:black, alpha=0.3, primary=false, linestyle=:dot)
+                Plots.plot!(plts[3, i], 1:n_samples, running_mean[i, :])
+            end
+        end
+    end
+
+    return Plots.plot(
+        plts...;
+        layout = (n_rows, 3),
+        size   = (400 * 3, 250 * n_rows),
+    )
 end
 
 end # module

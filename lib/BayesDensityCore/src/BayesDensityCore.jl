@@ -6,6 +6,9 @@ using Random
 
 import Distributions: support
 
+include("plotting/Makie.jl")
+include("plotting/Plots.jl")
+
 export linebandplot
 export linebandplot!
 
@@ -173,5 +176,14 @@ function default_grid_points(bdm::AbstractBayesDensityModel{T}) where {T}
 end
 
 export default_grid_points
+
+# Internal function used by check_chains
+function _default_check_chains_grid(ps::PosteriorSamples)
+    grid = BayesDensityCore.default_grid_points(model(ps))
+    xmin = grid[begin]
+    xmax = grid[end]
+    R = xmax - xmin
+    return LinRange(xmin + R/6, xmax - R/6, 5)
+end
 
 end # module
