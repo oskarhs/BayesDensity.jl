@@ -82,14 +82,14 @@ For reliable posterior inference, running multiple Markov chains with different 
 
 Both the graphical and the scalar MCMC diagnostics are designed to work with the results from multiple Markov chains. We return to the income dataset to illustrate their application to multiple chains in practice.
 
-First, we run four chains with different starting values for the parameters. Note that we have increased the length of each chain to `4500`, since a chain length of `1500` appeared to be much too short based on our previous diagnostic assessment.
+First, we run four chains with different starting values for the parameters. Note that we have increased the length of each chain to `5500`, since a chain length of `1500` appeared to be much too short based on our previous diagnostic assessment.
 
 ```julia
 using Distributions # For initialization of the chains
 ps_chains = Vector{Any}(undef, 4)
 for i in eachindex(ps_chains)
     init_params = (β = rand(rng, Normal(0, 1), length(bsm)-1), τ2 = rand(rng, InverseGamma(1, 2e-4)))
-    ps_chains[i] = sample(rng, bsm, 4500; n_burnin=500, initial_params=init_params)
+    ps_chains[i] = sample(rng, bsm, 5500; n_burnin=500, initial_params=init_params)
 end
 
 fig2 = BayesDensityCore.Makie.check_chains(ps_chains...; grid=quantile(data, (1:5)/6), include_burnin=true)
@@ -98,7 +98,7 @@ save(joinpath("src", "assets", "diagnostics_example", "diagnostics_example2.svg"
 
 ![Multiple chains diagnostic plot](assets/diagnostics_example/diagnostics_example2.svg)
 
-The above trace plots indicate that all chains converge quickly to the stationary distribution. The autocorrelation functions also decay quite quickly to ``0`` indicating good mixing.
+The above trace plots indicate that all chains converge quickly to the stationary distribution. The autocorrelation functions also decay reasonably fast to ``0`` indicating good mixing.
 
 Next, we compute the ESS and ``\hat{R}`` diagnostics:
 ```julia
@@ -108,4 +108,4 @@ println("Effective sample size for four chains: ", round.(ess_chains; sigdigits=
 println("R-hat for four chains: ", round.(rhat_chains; sigdigits=4))
 ```
 
-In this case, the ``\hat{R}`` and ESS all meet the threshholds recommended by [Vehtari2021Rank](@citet), indicating that the obtained samples can be used to reliably infer the posterior mean.
+In this case, the minimum ``\hat{R}`` and ESS are ``1.007`` and ``1153`` respectively, both meeting the threshholds recommended by [Vehtari2021Rank](@citet). This indicates that the obtained samples can be used to reliably infer the posterior mean of the density ``f``.

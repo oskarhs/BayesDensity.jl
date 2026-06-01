@@ -36,7 +36,7 @@ using Distributions # For initialization of the chains
 ps_chains = Vector{Any}(undef, 4)
 for i in eachindex(ps_chains)
     init_params = (β = rand(rng, Normal(0, 1), length(bsm)-1), τ2 = rand(rng, InverseGamma(1, 2e-4)))
-    ps_chains[i] = sample(rng, bsm, 4500; n_burnin=500, initial_params=init_params)
+    ps_chains[i] = sample(rng, bsm, 5500; n_burnin=500, initial_params=init_params)
 end
 
 fig2 = BayesDensityCore.Makie.check_chains(ps_chains...; grid=quantile(data, (1:5)/6), include_burnin=true)
