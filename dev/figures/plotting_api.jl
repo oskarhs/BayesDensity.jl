@@ -7,7 +7,7 @@ d_true = MixtureModel(
     vcat(Normal(0, 1), [Normal(0.5*j, 0.1) for j in -2:2]),
     [0.5, 0.1, 0.1, 0.1, 0.1, 0.1]
 )
-x = rand(rng, d_true, 1000)
+x = rand(rng, d_true, 5000)
 
 # Fit the model via MCMC and VI
 histsmoother = HistSmoother(x)
@@ -50,7 +50,14 @@ end
 
 save(joinpath("src", "assets", "plotting_api", "makie.svg"), fig)
 
-### Example
+### Convergence diagnostics
+fig = BayesDensityCore.Makie.check_chains(
+      posterior_sample;
+      grid = quantile(x, [j/6 for j in 1:5])
+)
+save(joinpath("src", "assets", "plotting_api", "makie_mcmc_diag_single.svg"), fig)
+
+### Example Plots
 
 import Plots
 
@@ -85,3 +92,10 @@ Plots.xlims!(p4, -2.2, 2.2)
 p = Plots.plot(p1, p2, p3, p4, layout=(2,2), size=(550, 550))
 
 Plots.savefig(p, joinpath("src", "assets", "plotting_api", "plots.svg"))
+
+### Convergence diagnostics
+fig = BayesDensityCore.Plots.check_chains(
+      posterior_sample;
+      grid = quantile(x, [j/6 for j in 1:5])
+)
+save(joinpath("src", "assets", "plotting_api", "plots_mcmc_diag_single.svg"), fig)
