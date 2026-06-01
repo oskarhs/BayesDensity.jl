@@ -1,5 +1,6 @@
 using BayesDensityCore
 using Distributions
+using MCMCDiagnosticTools
 using Random
 using StatsBase
 using Test
@@ -352,5 +353,18 @@ end
 
     for func in (:pdf, :cdf, :quantile)
         @eval @test quantile($rhp, $func, 0.5, [0.2, 0.8]) isa AbstractMatrix{Float64}
+    end
+end
+
+@testset "Core: MCMCDiagnosticTools extension" begin
+    for f in (:ess, :rhat, :mcse)
+        @eval begin
+            ps1 = PosteriorSamples{Float64}(fill((θ = fill(0.5, 15),), 100), RandomHistogram{Float64}(LinRange(0, 1, 11), 15), 100, 0)
+            ps2 = PosteriorSamples{Float64}(fill((θ = fill(0.5, 15),), 100), RandomHistogram{Float64}(LinRange(0, 1, 11), 15), 100, 0)
+            @test $f(ps1) isa AbstractVector{<:Real}
+            @test $f(ps1; grid = LinRange(0, 1, 11)) isa AbstractVector{<:Real}
+            @test $f(ps1, ps2) isa AbstractVector{<:Real}
+            @test $f(ps1, ps2; grid = LinRange(0, 1, 11)) isa AbstractVector{<:Real}
+        end
     end
 end

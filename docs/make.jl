@@ -9,6 +9,7 @@ using Documenter
 using DocumenterCitations
 using DocumenterInterLinks
 using Random
+using MCMCDiagnosticTools
 
 using TOML
 
@@ -27,6 +28,7 @@ bib = CitationBibliography(joinpath(@__DIR__, "bibliography.bib"), style=:author
 links = DocumenterInterLinks.InterLinks(
     "Distributions" => "https://juliastats.org/Distributions.jl/stable/",
     "StatsBase" => "https://juliastats.org/StatsBase.jl/stable/",
+    "MCMCDiagnosticTools" => "https://julia.arviz.org/MCMCDiagnosticTools/stable/"
 )
 
 makedocs(;
@@ -37,7 +39,8 @@ makedocs(;
         BayesDensityFiniteGaussianMixture,
         BayesDensityHistSmoother,
         BayesDensityPitmanYorMixture,
-        BayesDensityRandomBernsteinPoly
+        BayesDensityRandomBernsteinPoly,
+        Base.get_extension(BayesDensityCore, :BayesDensityCoreMCMCDiagnosticToolsExt)
     ],
     authors="Oskar Høgberg Simensen",
     sitename="BayesDensity.jl",
@@ -48,9 +51,11 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "A primer on Bayesian nonparametric density estimation" => "density_estimation_primer.md",
+        "MCMC diagnostics" => "diagnostics_example.md",
         "API" => [
             "api/general_api.md",
-            "api/plotting_api.md" # Also add a subpage here with methods api
+            "api/plotting_api.md",
+            "api/diagnostics_api.md"
         ],
         "Methods" => [
             "methods/index.md",
