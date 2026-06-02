@@ -159,7 +159,7 @@ as it is often possible to implement batch evaluation more efficiently, e.g. by 
 
 Next, we need to implement the cdf method. Owing to the nice structure of the cdf ``F`` in this example, this is no more complicated than implementing the pdf:
 ```@example Bernstein; continued = true
-function Distributions.cdf(bdm::BernsteinDensity{T, D}, params::NamedTuple, t::S) where {T<:Real, S<:Real}
+function Distributions.cdf(bdm::BernsteinDensity{T}, params::NamedTuple, t::S) where {T<:Real, S<:Real}
     K = bdm.K
     (; θ) = params
     f = zero(promote_type(T, S))
