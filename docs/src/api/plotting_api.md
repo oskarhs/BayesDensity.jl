@@ -66,7 +66,7 @@ vi_posterior, info = varinf(histsmoother)
 ```
 
 Having fitted the model, we can use the extended plot function to generate various plots from the fitted model objects, be it the variational posterior or the MCMC samples.
-The most basic usage of the is to simply call `plot(posterior_sample)` or `plot(vi_posterior)`, which both generate a plot of the estimated posterior mean of ``f``, along with 95 % pointwise credible bands.
+The most basic usage of the plotting function is to simply call `plot(posterior_sample)` or `plot(vi_posterior)`, which both generate a plot of the estimated posterior mean of ``f``, along with 95 % pointwise credible bands.
 The code snippet below illustrates how one can customize the posterior plots:
 
 ```julia

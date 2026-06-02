@@ -75,7 +75,7 @@ println("Effective sample size for single chain: ", round.(ess_single; sigdigits
 println("R-hat for single chain: ", round.(rhat_single; sigdigits=4))
 ```
 
-Running the above code snippet yields an `\hat{R}` of ``1.024`` and an ESS of ``54.21`` for the density evaluations at the first hexile. [Vehtari2021Rank](@citet) suggest using the threshholds ``\hat{R} < 1.01`` and `ESS > 400` indicate that the number of posterior samples is satisfactory. None of these thressholds are satisfied here, indicating that a greater number of samples is needed to make reliable posterior inferences.
+Running the above code snippet yields an ``\hat{R}`` of ``1.024`` and an ESS of ``54.21`` for the density evaluations at the first hexile. [Vehtari2021Rank](@citet) suggest using the threshholds ``\hat{R} < 1.01`` and `ESS > 400` indicate that the number of posterior samples is satisfactory. None of these thressholds are satisfied here, indicating that a greater number of samples is needed to make reliable posterior inferences.
 
 ## Diagnosis tools for multiple chains
 For reliable posterior inference, running multiple Markov chains with different starting values of the parameters is strongly recommended. In cases where the posterior distribution is multimodal, a single chain may appear to mix well based on various convergence diagnostics, despite not having explored a high-probability region of the posterior distribution. In such cases, running multiple chains may be helpful in capturing convergence issues that would not have been revealed if a single chain was run instead.
@@ -108,4 +108,4 @@ println("Effective sample size for four chains: ", round.(ess_chains; sigdigits=
 println("R-hat for four chains: ", round.(rhat_chains; sigdigits=4))
 ```
 
-In this case, the minimum ``\hat{R}`` and ESS are ``1.007`` and ``1153`` respectively, both meeting the threshholds recommended by [Vehtari2021Rank](@citet). This indicates that the obtained samples can be used to reliably infer the posterior mean of the density ``f``.
+In this case, the maximum ``\hat{R}`` and the minimum ESS are ``1.007`` and ``1153`` respectively, both meeting the threshholds recommended by [Vehtari2021Rank](@citet). This indicates that the obtained samples can be used to reliably infer the posterior mean of the density ``f``.
