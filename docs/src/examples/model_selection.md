@@ -3,14 +3,14 @@ In this example notebook, we will show how `BayesDensity` can be used to investi
 
 Suppose that we observe two independent samples ``x_1, \ldots, x_n \sim f`` and ``y_1, \ldots, y_m \sim g``. In many applications it is of interest to test whether both samples come from a common distribution ``f`` against the alternative that ``f \neq g``. Although this is a problem that can be tackled by frequentist methods, the Bayesian solution based on model selection, that we focus on here, provides a rather elegant alternative. Here, we proceed by constructing two competing models, one under which the data-generating density is constrained to be the same across both groups, and another where the densities are allowed to differ.
 
-To assess which model fits the data better, a popular approach is to use an estimate of out-of sample predictive performance, and to choose the model that performs better with respect to this criterion. A popular metric for Bayesian model comparison is the [widely applicable information criterion](https://en.wikipedia.org/wiki/Watanabe-Akaike_information_criterion), [Watanabe2010WAIC](@citep), as it is large-sample equivalent to leave-one-out cross-validation, and it is easily computed from posterior samples. For the model where the two densities are not equal, the WAIC can be computed via
+To assess which model fits the data better, a popular approach is to use an estimate of out-of-sample predictive performance, and to choose the model that performs better with respect to this criterion. A popular metric for Bayesian model comparison is the [widely applicable information criterion](https://en.wikipedia.org/wiki/Watanabe-Akaike_information_criterion), [Watanabe2010WAIC](@citep), as it is large-sample equivalent to leave-one-out cross-validation, and it is easily computed from posterior samples. For the model where the two densities are not equal, the WAIC can be computed via
 
 ```math
 \begin{align*}
 \text{WAIC} =& -2\sum_{i=1}^n \log \Big\{\frac{1}{S}\sum_{s=1}^S f^{(s)}(x_i)\Big\} -2\sum_{j=1}^m \log \Big\{\frac{1}{S}\sum_{s=1}^S g^{(s)}(y_j)\Big\} \\ &+ 2\sum_{i=1}^n \widehat{\mathbb{V}}\big[\log f(x_i)\big] + 2\sum_{j=1}^m \widehat{\mathbb{V}}\big[\log g(y_j)\big],
 \end{align*}
 ```
-where ``f^{(s)}, g^{(s)}`` are samples from the posterior distributions ``p(f\,|\, \boldsymbol{x})`` and ``p(g\,|\, \boldsymbol{y})`` under the independent model assumption, and ``\widehat{\mathbb{V}}\big[\log h(y_i)\big]`` is the sample variance of ``\log h^{(s)}(y_i)`` for ``h \in \{f, g\}``. In particular, a smaller value of this criterion is indicative of better model fit. On the other hand, the WAIC under the pooled data model where ``f = g`` the WAIC is given by
+where ``f^{(s)}, g^{(s)}`` are samples from the posterior distributions ``p(f\,|\, \boldsymbol{x})`` and ``p(g\,|\, \boldsymbol{y})`` under the independent model assumption, and ``\widehat{\mathbb{V}}\big[\log h(y_i)\big]`` is the sample variance of ``\log h^{(s)}(y_i)`` for ``h \in \{f, g\}``. In particular, a smaller value of this criterion is indicative of better model fit. On the other hand, the WAIC under the pooled data model where ``f = g`` is given by
 
 ```math
 \begin{align*}
@@ -53,7 +53,7 @@ female_viposterior, female_info = varinf(model_female)
 joint_viposterior, joint_info = varinf(model_joint)
 ```
 
-To have a cursory look at whether or not the hypothesis that the two samples have the same distribution, we decided to plot the estimated posterior medians of the densities of the male and female relative wage distributions separately:
+To have a cursory look at whether or not the hypothesis that the two samples have the same distribution holds, we decided to plot the estimated posterior medians of the densities of the male and female relative wage distributions separately:
 
 ```julia
 using CairoMakie
@@ -69,7 +69,7 @@ save(joinpath("src", "assets", "model_selection", "relative_wages_by_sex.svg"), 
 
 Based on the above display, it appears that the distribution of male wages is a bit more dispersed than the female distribution, which could indicate that the null hypothesis is false in this case, especially given the fact that the sample sizes involved are quite large.
 
-To carry out the formal Bayesian analysis of this question, we need to compute the ``\text{WAIC}`` under both model specifications. We start by writing a funtion for computing the WAIC of each model:
+To carry out the formal Bayesian analysis of this question, we need to compute the ``\text{WAIC}`` under both model specifications. We start by writing a function for computing the WAIC of each model:
 ```julia
 function compute_waic(ps::PosteriorSamples, data::AbstractVector{<:Real})
     logpdfs = log.(pdf(ps, data))
@@ -94,4 +94,4 @@ waic_joint, waic_separate
 ```
 
 
-After running the above code snippet, we obtain a WAIC of ``11032`` for the constrained model and a ``10962`` for the unconstrained one, strongly favoring the latter model. The results obtained here indicate that the two samples indeed follow different distributions.
+After running the above code snippet, we obtain a WAIC of ``11032`` for the constrained model and a WAIC of ``10962`` for the unconstrained one, strongly favoring the latter model. The results obtained here indicate that the two samples indeed follow different distributions.

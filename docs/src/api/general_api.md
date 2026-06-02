@@ -33,7 +33,7 @@ pdf(::AbstractBayesDensityModel, ::Any, ::Real)
 
 For models that only implement the signature `pdf(::AbstractBayesDensityModel, ::Any, ::Real)`, a generic fallback method is provided for vectors of parameters and vector evaluation grids. However, it is recommended that most models provide specialized methods for vectors of parameters and vectors of evaluation points, as it is often possible to implement batch evaluation more efficiently (e.g. by leveraging BLAS calls instead of loops) when the parameters and the evaluation grid are provided in batches.
 
-The cumulative distribution function ``F(t\,|\, \boldsymbol{\eta}) = \int_0^\infty f(t\,|\, \boldsymbol{\eta})\, \text{d}t`` of a model can be computed in a similar way by using the `cdf` method:
+The cumulative distribution function ``F(t\,|\, \boldsymbol{\eta}) = \int_{-\infty}^\t f(x\,|\, \boldsymbol{\eta})\, \text{d}x`` of a model can be computed in a similar way by using the `cdf` method:
 ```@docs
 cdf(::AbstractBayesDensityModel, ::Any, ::Real)
 ```
@@ -197,7 +197,7 @@ std(::AbstractVIPosterior)
 ```
 
 !!! note
-    Note that each call to `mean`, `quantile`, `median`, `var` or `std` in most cases will first simulate a random sample from the posterior distribution, and then uses this sample to compute a Monte Carlo approximation of the quantity of interest using these samples.
+    Note that each call to `mean`, `quantile`, `median`, `var` or `std` in most cases will first simulate a random sample from the posterior distribution, and then use this sample to compute a Monte Carlo approximation of the quantity of interest using these samples.
     If posterior inference for multiple quantities is desired, then it is recommended to first use [`sample`](@ref), and call these functions on this object as only a single batch of posterior samples is generated in this case.
 
 #### Storing info from the variational optimization
