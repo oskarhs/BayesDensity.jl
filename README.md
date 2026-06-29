@@ -8,7 +8,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhs.github.io/BayesDensity.jl/dev/)
 [![Build Status](https://github.com/oskarhs/BayesDensity.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/oskarhs/BayesDensity.jl/actions/workflows/CI.yml?query=branch%3main)
 [![codecov](https://codecov.io/gh/oskarhs/BayesDensity.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/oskarhs/BayesDensity.jl)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18956109.svg)](https://doi.org/10.5281/zenodo.18956109)
+[![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.softx.2026.102847-3DAC8F)](https://doi.org/10.1016/j.softx.2026.102847)
 [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 </div>
 
@@ -71,3 +71,18 @@ For a more thorough introduction to the API and the capabilities of the package,
 This package makes use of the workspaces feature introduced in Julia 1.12. As a result, this package currently supports release 1.12.0 and newer ones. In the future, the plan is to support the Long-Term Support (LTS) release and newer versions, but only after the version of the LTS release exceeds 1.12.0.
 
 The package is continuously tested via CI on the latest stable Julia 1.12 release as well as Julia `pre` releases (i.e. upcoming versions in their pre-release stage). This helps ensure compatibility with future Julia versions while maintaining stability on the current stable release.
+
+## Citation
+
+If you find BayesDensity.jl useful in your scientific endeavours, please cite our [paper](https://doi.org/10.1016/j.softx.2026.102847) in SoftwareX:
+
+```
+@article{simensen2026softwarex,
+  title = {{BayesDensity.jl: Bayesian nonparametric density estimation in Julia}},
+  journal = {SoftwareX},
+  volume = {35},
+  year = {2026},
+  doi = {10.1016/j.softx.2026.102847},
+  author = {Oskar Høgberg Simensen},
+}
+```
