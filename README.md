@@ -83,6 +83,6 @@ If you find BayesDensity.jl useful in your scientific endeavours, please cite ou
   volume = {35},
   year = {2026},
   doi = {10.1016/j.softx.2026.102847},
-  author = {Oskar Høgberg Simensen},
+  author = {Oskar H{\o}gberg Simensen},
 }
 ```
