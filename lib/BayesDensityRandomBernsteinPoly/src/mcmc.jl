@@ -94,14 +94,16 @@ function _sample_posterior(
                 basis_eval[k] = pdf(Beta(k, K - k + 1), x_trans[i])
             end
             probs_y[i] = sum(basis_eval) * prior_strength / K
-            for j in eachindex(setdiff(1:n, i))
-                probs_y[j] = basis_eval[cluster_alloc[j]]
+            for j in 1:n
+                if j != i
+                    probs_y[j] = basis_eval[cluster_alloc[j]]
+                end
             end
             j = wsample(rng, 1:n, probs_y / sum(probs_y))
             if j == i # sample new component
                 new_bin_prob = Vector{T}(undef, K)
                 for k in 1:K
-                    new_bin_prob[k] = basis_eval[cluster_alloc[j]]
+                    new_bin_prob[k] = basis_eval[k]
                 end
                 k = wsample(rng, 1:K, new_bin_prob / sum(new_bin_prob))
                 y[i] = rand(rng, Uniform((k-1)/K, k/K))
