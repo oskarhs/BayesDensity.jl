@@ -78,17 +78,34 @@ function _sample_posterior(rng::AbstractRNG, shs::HistSmoother{T}, initial_param
     CTN = transpose(C) * N
     Cβ_k = C * β # Equal to Cbeta
 
+    # Prior variances of the spline coefficients; only the random-effect block (3:K) changes per sweep.
+    v = Vector{T}(undef, K)
+    v[1] = prior_scaled_fixed2
+    v[2] = prior_scaled_fixed2
+
     samples_temp = Vector{NamedTuple{(:β, :σ2), Tuple{Vector{T}, T}}}(undef, n_samples)
 
     for m in 1:n_samples
-        v = vcat([prior_scaled_fixed2, prior_scaled_fixed2], fill(σ2, K-2))
+        @inbounds for k in 3:K
+            v[k] = σ2
+        end
         
         # Sample beta (slice sampler) (consider trying ARS instead at a later point in time)
         for k in 1:K
-            Cβ_k .-= β[k] * C[:, k]
-            logdensity = β_k -> CTN[k] * β_k - β_k^2 / (2*v[k]) - sum(exp, β_k*C[:,k] + Cβ_k)
+            col = view(C, :, k)
+            Cβ_k .-= β[k] .* col
+            vk = v[k]
+            ck = CTN[k]
+            # Allocation-free log-density: linear-predictor sum over bins without temporaries.
+            logdensity = function (β_k)
+                s = zero(T)
+                @inbounds for i in eachindex(Cβ_k)
+                    s += exp(β_k * col[i] + Cβ_k[i])
+                end
+                return ck * β_k - β_k^2 / (2*vk) - s
+            end
             β[k] = slice_sampling_univariate(rng, 1.0, logdensity, β[k])
-            Cβ_k .+= β[k] * C[:, k] 
+            Cβ_k .+= β[k] .* col
         end
 
         # Sample ξ
