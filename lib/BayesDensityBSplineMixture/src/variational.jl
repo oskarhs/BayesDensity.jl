@@ -161,7 +161,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
     d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
     d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-    E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+    E_β = μ_opt         # μ_opt is reassigned (never mutated in place), so aliasing is safe
     E_β2 = abs2.(μ_opt) .+ d0
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -173,6 +173,8 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
 
     non_basis_term = Vector{T}(undef, K)
     logprobs = Vector{T}(undef, n_overlap)
+    probs = Vector{T}(undef, n_overlap)
+    E_N = Vector{T}(undef, K)
     E_S = Vector{T}(undef, K)
     E_ω = Vector{T}(undef, K-1)
 
@@ -190,21 +192,25 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0[1:2]) + sum(abs2, E_β[1:2] - μ[1:2]))/ (2*prior_stdev^2)
 
         # Update q(z, ω)
-        E_N = zeros(T, K)
+        fill!(E_N, zero(T))
         non_basis_term[1:K-1] = cumsum(@. -log(cosh(T(0.5)*sqrt(E_β2))) - T(0.5) * E_β - log(T(2))) # Replace the β's with the corresponding expectations
         non_basis_term[K] = non_basis_term[K-1]
         non_basis_term[1:K-1] .+= E_β
         last_term = zero(T)
         @inbounds for i in 1:n_bins
-            # Compute the four nonzero probabilities:
             k0 = b_ind[i]
-            for l in axes(log_B, 2)
-                k = k0 + l - 1
-                logprobs[l] = log_B[i,l] + non_basis_term[k] 
+            for l in 1:n_overlap
+                logprobs[l] = log_B[i,l] + non_basis_term[k0 + l - 1]
             end
-            probs = softmax(logprobs)
-            E_N[k0:k0+n_overlap-1] .+= bincounts[i] * probs
-            last_term += bincounts[i] * sum(probs .* (log_B[i,:] - log.(probs)))
+            _softmax!(probs, logprobs, n_overlap)
+            bc = bincounts[i]
+            lt = zero(T)
+            for l in 1:n_overlap
+                p = probs[l]
+                E_N[k0 + l - 1] += bc * p
+                lt += p * (log_B[i,l] - log(p))
+            end
+            last_term += bc * lt
         end
         E_S[1] = n
         E_S[2:K] .= n .- cumsum(view(E_N, 1:K-1))
@@ -218,19 +224,19 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         Q = transpose(P) * D * P + (Q0 / a_τ_opt * b_τ_opt)
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
-        h2 = Q*μ
-        h1 = h2 + Ωκ
-        μ_opt = inv_Σ_opt \ h1
+        F = cholesky(Symmetric(inv_Σ_opt))     # one factorization reused for solve, selinv, logdet
+        h1 = Q*μ + Ωκ
+        μ_opt = F \ h1
 
         # Compute ELBO:
         KL_τ2 = (a_τ_opt - prior_global_shape) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(prior_global_shape) + prior_global_shape*(log(b_τ_opt) - log(prior_global_rate)) + a_τ_opt/b_τ_opt * (prior_global_rate - b_τ_opt)
         KL_δ2 = @. (a_δ_opt - prior_local_shape) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(prior_local_shape) + prior_local_shape*(log(b_δ_opt) - log(prior_local_rate)) + a_δ_opt / b_δ_opt * (prior_local_rate - b_δ_opt)
         # Find the required posterior moments of q(β):
-        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
+        Z, _ = selinv(F; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-        E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+        E_β = μ_opt         # μ_opt is reassigned (never mutated in place), so aliasing is safe
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -238,7 +244,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-1) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
         term_β = term_β - (sum(view(d0, 1:2)) + sum(abs2, view(E_β, 1:2) - view(μ, 1:2)))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
-        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
+        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logdet(F)) / 2 # Contribution from q(β)
 
         nonprob_term = sum(-view(E_S, 1:K-1) * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
 
@@ -271,7 +277,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
     d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
     d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
     d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-    E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+    E_β = μ_opt         # μ_opt is reassigned (never mutated in place), so aliasing is safe
     E_β2 = abs2.(μ_opt) .+ d0
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -282,6 +288,9 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
     n_overlap = size(log_B, 2)
 
     non_basis_term = Vector{T}(undef, K)
+    logprobs = Vector{T}(undef, n_overlap)
+    probs = Vector{T}(undef, n_overlap)
+    E_N = Vector{T}(undef, K)
     E_S = Vector{T}(undef, K)
     E_ω = Vector{T}(undef, K-1)
 
@@ -299,21 +308,26 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
         b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0[1:2]) + sum(abs2, E_β[1:2] - μ[1:2]))/ (2*prior_stdev^2)
 
         # Update q(z, ω)
-        E_N = zeros(T, K)
+        fill!(E_N, zero(T))
         non_basis_term[1:K-1] = cumsum(@. -log(cosh(T(0.5)*sqrt(E_β2))) - T(0.5) * E_β - log(T(2))) # Replace the β's with the corresponding expectations
         non_basis_term[K] = non_basis_term[K-1]
         non_basis_term[1:K-1] .+= E_β
         last_term = zero(T)
         @inbounds for i in 1:n_bins
-            # Compute the four nonzero probabilities:
             ks = b_ind[i]
-            logprobs = Vector{T}(undef, ks[2]-ks[1]+1)
-            for k in ks[1]:ks[2]
-                logprobs[k-ks[1]+1] = log_B[i,k-ks[1]+1] + non_basis_term[k] 
+            w = ks[2] - ks[1] + 1
+            for l in 1:w
+                logprobs[l] = log_B[i,l] + non_basis_term[ks[1] + l - 1]
             end
-            probs = softmax(logprobs)
-            E_N[ks[1]:ks[2]] .+= bincounts[i] * probs
-            last_term += bincounts[i] * sum(probs .* (log_B[i,1:ks[2]-ks[1]+1] - log.(probs)))
+            _softmax!(probs, logprobs, w)
+            bc = bincounts[i]
+            lt = zero(T)
+            for l in 1:w
+                p = probs[l]
+                E_N[ks[1] + l - 1] += bc * p
+                lt += p * (log_B[i,l] - log(p))
+            end
+            last_term += bc * lt
         end
         E_S[1] = n
         E_S[2:K] .= n .- cumsum(view(E_N, 1:K-1))
@@ -327,19 +341,19 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
         Q = transpose(P) * D * P + (Q0 / a_τ_opt * b_τ_opt)
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
-        h2 = Q*μ
-        h1 = h2 + Ωκ
-        μ_opt = inv_Σ_opt \ h1
+        F = cholesky(Symmetric(inv_Σ_opt))     # one factorization reused for solve, selinv, logdet
+        h1 = Q*μ + Ωκ
+        μ_opt = F \ h1
 
         # Compute ELBO:
         KL_τ2 = (a_τ_opt - prior_global_shape) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(prior_global_shape) + prior_global_shape*(log(b_τ_opt) - log(prior_global_rate)) + a_τ_opt/b_τ_opt * (prior_global_rate - b_τ_opt)
         KL_δ2 = @. (a_δ_opt - prior_local_shape) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(prior_local_shape) + prior_local_shape*(log(b_δ_opt) - log(prior_local_rate)) + a_δ_opt / b_δ_opt * (prior_local_rate - b_δ_opt)
         # Find the required posterior moments of q(β):
-        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
+        Z, _ = selinv(F; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-        E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+        E_β = μ_opt         # μ_opt is reassigned (never mutated in place), so aliasing is safe
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -347,7 +361,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:hist, :lo
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-1) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
         term_β = term_β - (sum(view(d0, 1:2)) + sum(abs2, view(E_β, 1:2) - view(μ, 1:2)))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
-        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
+        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logdet(F)) / 2 # Contribution from q(β)
 
         nonprob_term = sum(-view(E_S, 1:K-1) * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
 
@@ -379,7 +393,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
     d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
     d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-    E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+    E_β = μ_opt         # μ_opt is reassigned (never mutated in place), so aliasing is safe
     E_β2 = abs2.(μ_opt) .+ d0
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -387,8 +401,11 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     a_τ_opt = prior_global_shape + (K-1)/2
     a_δ_opt = fill(prior_local_shape + 1/2, K-3)
 
+    n_overlap = size(log_B, 2)
     non_basis_term = Vector{T}(undef, K)
-    logprobs = Vector{T}(undef, 4)
+    logprobs = Vector{T}(undef, n_overlap)
+    probs = Vector{T}(undef, n_overlap)
+    E_N = Vector{T}(undef, K)
     E_S = Vector{T}(undef, K)
     E_ω = Vector{T}(undef, K-1)
 
@@ -406,21 +423,24 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         b_τ_opt = prior_global_rate + T(0.5) * sum(E_Δ2 .* a_δ_opt ./ b_δ_opt) + (sum(d0[1:2]) + sum(abs2, E_β[1:2] - μ[1:2]))/ (2*prior_stdev^2)
 
         # Update q(z, ω)
-        E_N = zeros(T, K)
+        fill!(E_N, zero(T))
         non_basis_term[1:K-1] = cumsum(@. -log(cosh(T(0.5)*sqrt(E_β2))) - T(0.5) * E_β - log(T(2))) # Replace the β's with the corresponding expectations
         non_basis_term[K] = non_basis_term[K-1]
         non_basis_term[1:K-1] .+= E_β
         last_term = zero(T)
         @inbounds for i in 1:n
-            # Compute the four nonzero probabilities:
             k0 = b_ind[i]
-            for l in axes(log_B, 2)
-                k = k0 + l - 1
-                logprobs[l] = log_B[i,l] + non_basis_term[k] 
+            for l in 1:n_overlap
+                logprobs[l] = log_B[i,l] + non_basis_term[k0 + l - 1]
             end
-            probs = softmax(logprobs)
-            E_N[k0:k0+3] .+= probs
-            last_term += sum(probs .* (log_B[i,:] - log.(probs)))
+            _softmax!(probs, logprobs, n_overlap)
+            lt = zero(T)
+            for l in 1:n_overlap
+                p = probs[l]
+                E_N[k0 + l - 1] += p
+                lt += p * (log_B[i,l] - log(p))
+            end
+            last_term += lt
         end
         E_S[1] = n
         E_S[2:K] .= n .- cumsum(view(E_N, 1:K-1))
@@ -434,19 +454,19 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         Q = transpose(P) * D * P + (Q0 / a_τ_opt * b_τ_opt)
         Ωκ = view(E_N, 1:K-1) - view(E_S, 1:K-1) / 2
         inv_Σ_opt = Q + Diagonal(E_ω)
-        h2 = Q*μ
-        h1 = h2 + Ωκ
-        μ_opt = inv_Σ_opt \ h1
+        F = cholesky(Symmetric(inv_Σ_opt))     # one factorization reused for solve, selinv, logdet
+        h1 = Q*μ + Ωκ
+        μ_opt = F \ h1
 
         # Compute ELBO:
         KL_τ2 = (a_τ_opt - prior_global_shape) * digamma(a_τ_opt) - loggamma(a_τ_opt) + loggamma(prior_global_shape) + prior_global_shape*(log(b_τ_opt) - log(prior_global_rate)) + a_τ_opt/b_τ_opt * (prior_global_rate - b_τ_opt)
         KL_δ2 = @. (a_δ_opt - prior_local_shape) * digamma(a_δ_opt) - loggamma(a_δ_opt) + loggamma(prior_local_shape) + prior_local_shape*(log(b_δ_opt) - log(prior_local_rate)) + a_δ_opt / b_δ_opt * (prior_local_rate - b_δ_opt)
         # Find the required posterior moments of q(β):
-        Z, _ = selinv(inv_Σ_opt; depermute=true) # Get pentadiagonal entries of Σ*
+        Z, _ = selinv(F; depermute=true) # Get pentadiagonal entries of Σ*
         d0 = Vector(diag(Z)) # Vector of Σ*_{k,k}
         d1 = Vector(diag(Z, 1)) # Vector of Σ*_{k,k+1}
         d2 = Vector(diag(Z, 2)) # Vector of Σ*_{k,k+2}
-        E_β = copy(μ_opt)         # Do this for enhanced readability, remove later
+        E_β = μ_opt         # μ_opt is reassigned (never mutated in place), so aliasing is safe
         E_β2 = abs2.(μ_opt) .+ d0
         E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
@@ -454,7 +474,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
         term_β = -(K-1)/2 * log(2*T(pi)) - 2*log(prior_stdev) - (K-1) * (log(b_τ_opt) - digamma(a_τ_opt)) / 2 - sum(log.(b_δ_opt) - digamma.(a_δ_opt)) / 2
         term_β = term_β - (sum(view(d0, 1:2)) + sum(abs2, view(E_β, 1:2) - view(μ, 1:2)))/ (2*prior_stdev^2) * (a_τ_opt / b_τ_opt)
         term_β = term_β - sum(a_τ_opt / b_τ_opt * a_δ_opt ./ b_δ_opt .* E_Δ2) / 2
-        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logabsdet(inv_Σ_opt)[1]) / 2 # Contribution from q(β)
+        term_β = term_β + ((K-1)*(1 + log(T(2*pi))) - logdet(F)) / 2 # Contribution from q(β)
 
         nonprob_term = sum(-view(E_S, 1:K-1) * log(T(2)) + Ωκ .* μ_opt - E_ω .* E_β2 / 2)
 

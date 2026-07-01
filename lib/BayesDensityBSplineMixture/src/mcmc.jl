@@ -62,6 +62,54 @@ function _get_default_initparams_mcmc(bsm::BSplineMixture{T}) where {T}
     return (β = β, τ2 = τ2)
 end
 
+# --- Performance helpers for the augmented Gibbs sampler ---
+
+# In-place numerically stable softmax over the first `L` entries: dst[1:L] .= softmax(src[1:L]).
+function _softmax!(dst::AbstractVector{T}, src::AbstractVector{T}, L::Int) where {T<:Real}
+    m = src[1]
+    @inbounds for l in 2:L
+        src[l] > m && (m = src[l])
+    end
+    s = zero(T)
+    @inbounds for l in 1:L
+        e = exp(src[l] - m)
+        dst[l] = e
+        s += e
+    end
+    @inbounds for l in 1:L
+        dst[l] /= s
+    end
+    return dst
+end
+
+# Draw counts ~ Multinomial(m, probs[1:L]) into counts[1:L] by direct categorical counting.
+# Allocation-free and avoids constructing a `Multinomial`; efficient for the small L (≤5) here.
+function _multinomial_counts!(rng::AbstractRNG, counts::AbstractVector{<:Integer}, m::Integer, probs::AbstractVector{T}, L::Int) where {T<:Real}
+    @inbounds for l in 1:L
+        counts[l] = 0
+    end
+    @inbounds for _ in 1:m
+        u = rand(rng, T)
+        c = 1
+        acc = probs[1]
+        while c < L && u > acc
+            c += 1
+            acc += probs[c]
+        end
+        counts[c] += 1
+    end
+    return counts
+end
+
+# Sample β ~ N(J⁻¹h, J⁻¹) from the canonical (precision) parametrization, exploiting the banded
+# (pentadiagonal) structure of the precision `J` via a banded Cholesky.
+# Removes some overhead from the generic `rand(MvNormalCanon(...))` approach.
+function _sample_canon_banded(rng::AbstractRNG, h::AbstractVector{T}, J::AbstractMatrix{T}) where {T<:Real}
+    C = cholesky(Symmetric(J))
+    z = randn(rng, length(h))
+    return (C \ h) .+ (C.U \ z)   # mean J⁻¹h, and Cov = (UᵀU)⁻¹ = J⁻¹
+end
+
 # To do: make a multithreaded version (also one for unbinned data)
 function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B, :b_ind, :bincounts, :μ, :P, :n), Vals}}, initial_params::NamedTuple, n_samples::Int, n_burnin::Int) where {T, A, Vals}
     basis = BSplineKit.basis(bsm)
@@ -81,8 +129,13 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     ω = Vector{T}(undef, K-1)
 
     n_overlap = size(log_B, 2)
-    
-    logprobs = Vector{T}(undef, n_overlap)  # class label probabilities
+
+    # Preallocated buffers reused across sweeps
+    logprobs = Vector{T}(undef, n_overlap)
+    probs    = Vector{T}(undef, n_overlap)
+    counts   = Vector{Int}(undef, n_overlap)
+    N        = Vector{Int}(undef, K)
+    S        = Vector{Int}(undef, K-1)
 
     #θ = Vector{T}(undef, K) # Mixture probabilities
     θ = max.(eps(), logistic_stickbreaking(β))
@@ -91,59 +144,57 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Get normalization factor
     norm_fac = compute_norm_fac(basis, T)
-    
+
     # Initialize vector of samples
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
 
     for m in 1:n_samples
-        # Update δ2: (some inefficiencies here, but okay for now)
+        # Second differences of (β - μ): Δ[k] = (P(β-μ))[k]; shared by the δ² and τ² updates.
+        Δ = P * (β .- μ)
+
+        # Update δ2
         for k in 1:K-3
             a_δ_k_new = prior_local_shape + T(0.5)
-            b_δ_k_new = prior_local_rate + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
+            b_δ_k_new = prior_local_rate + T(0.5) * abs2(Δ[k]) / τ2
             δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
         end
 
         # Update τ2
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
-        b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2))/ (2*prior_stdev^2)
+        b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2)) / (2*prior_stdev^2)
         for k in 1:K-3
-            b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
+            b_τ_new += T(0.5) * abs2(Δ[k]) / δ2[k]
         end
         τ2 = rand(rng, InverseGamma(a_τ_new, b_τ_new))
 
-        # Update z (N and S)
-        N = zeros(Int, K)               # class label counts (of z[i]'s)
+        # Update z (accumulate class-label counts N)
+        fill!(N, 0)
         for i in 1:n_bins
-            # Compute the four nonzero probabilities:
             k0 = b_ind[i]
-            for l in axes(log_B, 2)
-                k = k0 + l - 1
-                logprobs[l] = log_B[i,l] + log_θ[k] 
+            for l in 1:n_overlap
+                logprobs[l] = log_B[i,l] + log_θ[k0 + l - 1]
             end
-            probs = softmax(logprobs)
-            counts = rand(rng, Multinomial(bincounts[i], probs))
-            N[k0:k0+n_overlap-1] .+= counts
-        end
-        # Update ω
-        # Compute N and S
-        S = n .- cumsum(vcat(0, N[1:K-1]))
-        for k in 1:K-1
-            c_k_new = S[k]
-            d_k_new = β[k]
-            ω[k] = rand(rng, PolyaGammaHybridSampler(c_k_new, d_k_new))
+            _softmax!(probs, logprobs, n_overlap)
+            _multinomial_counts!(rng, counts, bincounts[i], probs, n_overlap)
+            @inbounds for l in 1:n_overlap
+                N[k0 + l - 1] += counts[l]
+            end
         end
 
-        # Update β
-        # Compute the Q matrix
-        D = Diagonal(1 ./(τ2*δ2))
+        # Update ω. S[k] = n - Σ_{j<k} N[j] (no clamp, matching the original binned-x variant).
+        acc = 0
+        for k in 1:K-1
+            S[k] = n - acc
+            acc += N[k]
+            ω[k] = rand(rng, PolyaGammaHybridSampler(S[k], β[k]))
+        end
+
+        # Update β (canonical Gaussian; pentadiagonal precision → banded Cholesky draw)
+        D = Diagonal(1 ./ (τ2 .* δ2))
         Q = transpose(P) * D * P + (Q0 / τ2)
-        # Compute the Ω matrix (Note: Q + D retains the banded structure!)
-        Ω = Diagonal(ω)
-        inv_Σ_new = Ω + Q
-        # Compute inv(Σ_new) * μ_new
-        canon_mean_new = Q * μ + (N[1:K-1] - S[1:K-1]/2)
-        # Sample β
-        β = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
+        inv_Σ_new = Diagonal(ω) + Q                       # Q + Ω retains banded structure
+        canon_mean_new = Q * μ .+ (view(N, 1:K-1) .- S ./ 2)
+        β = _sample_canon_banded(rng, canon_mean_new, inv_Σ_new)
 
         # Record θ
         θ = max.(eps(), logistic_stickbreaking(β))
@@ -175,7 +226,14 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     ω = Vector{T}(undef, K-1)
 
     n_overlap = size(log_B, 2)
-    
+
+    # Preallocated buffers reused across sweeps
+    logprobs = Vector{T}(undef, n_overlap)
+    probs    = Vector{T}(undef, n_overlap)
+    counts   = Vector{Int}(undef, n_overlap)
+    N        = Vector{Int}(undef, K)
+    S        = Vector{Int}(undef, K-1)
+
     #θ = Vector{T}(undef, K) # Mixture probabilities
     θ = max.(eps(), logistic_stickbreaking(β))
     θ = θ / sum(θ)
@@ -183,15 +241,18 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Get normalization factor
     norm_fac = compute_norm_fac(basis, T)
-    
+
     # Initialize vector of samples
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
 
     for m in 1:n_samples
-        # Update δ2: (some inefficiencies here, but okay for now)
+        # Second differences of (β - μ): Δ[k] = (P(β-μ))[k]; shared by the δ² and τ² updates.
+        Δ = P * (β .- μ)
+
+        # Update δ2
         for k in 1:K-3
             a_δ_k_new = prior_local_shape + T(0.5)
-            b_δ_k_new = prior_local_rate + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
+            b_δ_k_new = prior_local_rate + T(0.5) * abs2(Δ[k]) / τ2
             δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
         end
 
@@ -199,45 +260,39 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
         b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2)) / (2*prior_stdev^2)
         for k in 1:K-3
-            b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
+            b_τ_new += T(0.5) * abs2(Δ[k]) / δ2[k]
         end
         τ2 = rand(rng, InverseGamma(a_τ_new, b_τ_new))
 
-        # Update z (N and S)
-        N = zeros(Int, K)               # class label counts (of z[i]'s)
+        # Update z (accumulate class-label counts N)
+        fill!(N, 0)
         for i in 1:n_bins
-            # Compute the nonzero probabilities:
             ks = b_ind[i]
-            logprobs = Vector{T}(undef, ks[2] - ks[1]+1)  # class label probabilities
-
-            for k in ks[1]:ks[2]
-                logprobs[k-ks[1]+1] = log_B[i,k-ks[1]+1] + log_θ[k] 
+            w = ks[2] - ks[1] + 1
+            for l in 1:w
+                logprobs[l] = log_B[i,l] + log_θ[ks[1] + l - 1]
             end
-            probs = softmax(logprobs)
-            counts = rand(rng, Multinomial(bincounts[i], probs))
-            N[ks[1]:ks[2]] .+= counts
-        end
-        # Update ω
-        # Compute N and S
-        S = n .- cumsum(vcat(0, N[1:K-1]))
-        S = max.(S, 0)
-        for k in 1:K-1
-            c_k_new = S[k]
-            d_k_new = β[k]
-            ω[k] = rand(rng, PolyaGammaHybridSampler(c_k_new, d_k_new))
+            _softmax!(probs, logprobs, w)
+            _multinomial_counts!(rng, counts, bincounts[i], probs, w)
+            @inbounds for l in 1:w
+                N[ks[1] + l - 1] += counts[l]
+            end
         end
 
-        # Update β
-        # Compute the Q matrix
-        D = Diagonal(1 ./(τ2*δ2))
+        # Update ω. S[k] = max(n - Σ_{j<k} N[j], 0).
+        acc = 0
+        for k in 1:K-1
+            S[k] = max(n - acc, 0)
+            acc += N[k]
+            ω[k] = rand(rng, PolyaGammaHybridSampler(S[k], β[k]))
+        end
+
+        # Update β (canonical Gaussian; pentadiagonal precision → banded Cholesky draw)
+        D = Diagonal(1 ./ (τ2 .* δ2))
         Q = transpose(P) * D * P + (Q0 / τ2)
-        # Compute the Ω matrix (Note: Q + D retains the banded structure!)
-        Ω = Diagonal(ω)
-        inv_Σ_new = Ω + Q
-        # Compute inv(Σ_new) * μ_new
-        canon_mean_new = Q * μ + (N[1:K-1] - S[1:K-1]/2)
-        # Sample β
-        β = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
+        inv_Σ_new = Diagonal(ω) + Q                       # Q + Ω retains banded structure
+        canon_mean_new = Q * μ .+ (view(N, 1:K-1) .- S ./ 2)
+        β = _sample_canon_banded(rng, canon_mean_new, inv_Σ_new)
 
         # Record θ
         θ = max.(eps(), logistic_stickbreaking(β))
@@ -267,7 +322,14 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
     δ2 = Vector{T}(undef, K-3)
     ω = Vector{T}(undef, K-1)
 
-    logprobs = Vector{T}(undef, 4)  # class label probabilities
+    n_overlap = size(log_B, 2)
+
+    # Preallocated buffers reused across sweeps
+    logprobs = Vector{T}(undef, n_overlap)
+    probs    = Vector{T}(undef, n_overlap)
+    counts   = Vector{Int}(undef, n_overlap)
+    N        = Vector{Int}(undef, K)
+    S        = Vector{Int}(undef, K-1)
 
     #θ = Vector{T}(undef, K) # Mixture probabilities
     θ = max.(eps(), logistic_stickbreaking(β))
@@ -276,18 +338,20 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
     # Get normalization factor
     norm_fac = compute_norm_fac(basis, T)
-    
+
     # Initialize vector of samples
     samples = Vector{NamedTuple{(:spline_coefs, :β, :τ2, :δ2), Tuple{Vector{T}, Vector{T}, T, Vector{T}}}}(undef, n_samples)
     spline_coefs = theta_to_coef(θ, basis)
     samples[1] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
 
     for m in 2:n_samples
+        # Second differences of (β - μ): Δ[k] = (P(β-μ))[k]; shared by the δ² and τ² updates.
+        Δ = P * (β .- μ)
 
-        # Update δ2: (some inefficiencies here, but okay for now)
+        # Update δ2
         for k in 1:K-3
             a_δ_k_new = prior_local_shape + T(0.5)
-            b_δ_k_new = prior_local_rate + T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / τ2
+            b_δ_k_new = prior_local_rate + T(0.5) * abs2(Δ[k]) / τ2
             δ2[k] = rand(rng, InverseGamma(a_δ_k_new, b_δ_k_new))
         end
 
@@ -295,50 +359,44 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
         a_τ_new = prior_global_shape + T(0.5) * (K - 1)
         b_τ_new = prior_global_rate + sum(abs2, view(β, 1:2) - view(μ, 1:2)) / (2*prior_stdev^2)
         for k in 1:K-3
-            b_τ_new += T(0.5) * abs2( β[k+2] -  μ[k+2] - ( 2*(β[k+1] - μ[k+1]) - (β[k] - μ[k]) )) / δ2[k]
+            b_τ_new += T(0.5) * abs2(Δ[k]) / δ2[k]
         end
         τ2 = rand(rng, InverseGamma(a_τ_new, b_τ_new))
 
-        # Update z (N and S)
-        N = zeros(Int, K)               # class label counts (of z[i]'s)
+        # Update z (accumulate class-label counts N)
+        fill!(N, 0)
         for i in 1:n
-            # Compute the four nonzero probabilities:
             k0 = b_ind[i]
-            for l in axes(log_B, 2)
-                k = k0 + l - 1
-                logprobs[l] = log_B[i,l] + log_θ[k] 
+            for l in 1:n_overlap
+                logprobs[l] = log_B[i,l] + log_θ[k0 + l - 1]
             end
-            probs = softmax(logprobs)
-            counts = rand(rng, Multinomial(1, probs))
-            N[k0:k0+3] .+= counts
-        end
-        # Update ω
-        # Compute N and S
-        S = n .- cumsum(vcat(0, N[1:K-1]))
-        S = max.(S, 0)
-        for k in 1:K-1
-            c_k_new = S[k]
-            d_k_new = β[k]
-            ω[k] = rand(rng, PolyaGammaHybridSampler(c_k_new, d_k_new))
+            _softmax!(probs, logprobs, n_overlap)
+            _multinomial_counts!(rng, counts, 1, probs, n_overlap)
+            @inbounds for l in 1:n_overlap
+                N[k0 + l - 1] += counts[l]
+            end
         end
 
-        # Update β
-        # Compute the Q matrix
-        D = Diagonal(1 ./(τ2*δ2))
+        # Update ω. S[k] = max(n - Σ_{j<k} N[j], 0).
+        acc = 0
+        for k in 1:K-1
+            S[k] = max(n - acc, 0)
+            acc += N[k]
+            ω[k] = rand(rng, PolyaGammaHybridSampler(S[k], β[k]))
+        end
+
+        # Update β (canonical Gaussian; pentadiagonal precision → banded Cholesky draw)
+        D = Diagonal(1 ./ (τ2 .* δ2))
         Q = transpose(P) * D * P + (Q0 / τ2)
-        # Compute the Ω matrix (Note: Q + Ω retains the banded structure!)
-        Ω = Diagonal(ω)
-        inv_Σ_new = Ω + Q
-        # Compute inv(Σ_new) * μ_new
-        canon_mean_new = Q * μ + (N[1:K-1] - S[1:K-1]/2)
-        # Sample β
-        β = rand(rng, MvNormalCanon(canon_mean_new, inv_Σ_new))
+        inv_Σ_new = Diagonal(ω) + Q                       # Q + Ω retains banded structure
+        canon_mean_new = Q * μ .+ (view(N, 1:K-1) .- S ./ 2)
+        β = _sample_canon_banded(rng, canon_mean_new, inv_Σ_new)
 
         # Record θ
         θ = max.(eps(), logistic_stickbreaking(β))
         θ = θ / sum(θ)
         log_θ = log.(θ)
-        
+
         # Compute coefficients in terms of unnormalized B-spline basis
         spline_coefs = θ .* norm_fac
         samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
