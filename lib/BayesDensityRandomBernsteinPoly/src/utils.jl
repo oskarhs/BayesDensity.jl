@@ -18,8 +18,14 @@ function bin_regular(x::AbstractVector{T}, xmin::T, xmax::T, n_bins::Int) where 
 end
 
 function bin_regular_ind(y::AbstractVector{T}, xmin::T, xmax::T, n_bins::Int) where {T<:Real}
-    R = xmax - xmin
     bin_inds = zeros(Int, length(y))
+    return bin_regular_ind!(bin_inds, y, xmin, xmax, n_bins)
+end
+
+# In-place variant of `bin_regular_ind` that writes into a caller-supplied buffer,
+# avoiding per-call allocation in hot loops.
+function bin_regular_ind!(bin_inds::AbstractVector{Int}, y::AbstractVector{T}, xmin::T, xmax::T, n_bins::Int) where {T<:Real}
+    R = xmax - xmin
     edges_inc = n_bins/R
     for i in eachindex(y)
         idval = min(n_bins-1, floor(Int, (y[i]-xmin)*edges_inc+eps())) + 1
