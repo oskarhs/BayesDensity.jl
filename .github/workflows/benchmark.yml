@@ -1,0 +1,99 @@
+name: Performance benchmark
+
+# Manual only. Runs the perf/ benchmark, uploads the timing + density results as an artifact, and
+# checks the pooled density estimates against the committed baseline (perf/baselines/densities.csv).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Benchmark size"
+        type: choice
+        options: [reduced, smoke, full]
+        default: reduced
+      ratio_threshold:
+        description: "compare.jl REVIEW threshold (Δ / Monte-Carlo noise)"
+        type: string
+        default: "5.0"
+      update_baseline:
+        description: "Commit the resulting density estimates as the new baseline"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # only exercised when update_baseline = true (to push the refreshed baseline)
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    # Reduced (5 chains, n in {400,2000}) is ~2-3 h on a stock runner; keep clear of the 6 h cap.
+    # "full" may not finish within the cap — results are written incrementally and still uploaded.
+    timeout-minutes: 350
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+          arch: x64
+
+      - name: Cache Julia artifacts
+        uses: julia-actions/cache@v2
+
+      - name: Build perf environment
+        env:
+          JULIA_PKG_OFFLINE: 'false'   # CI has a cold depot + only the public General registry
+        run: julia perf/setup.jl
+
+      - name: Run benchmark (${{ inputs.mode }})
+        run: julia -t auto --project=perf perf/benchmark.jl "${{ inputs.mode }}" perf/results/ci
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ inputs.mode }}-${{ github.run_id }}
+          path: perf/results/ci/
+          if-no-files-found: warn
+
+      - name: Timing summary
+        if: always()
+        run: |
+          if [ -s perf/results/ci/timings.csv ]; then
+            {
+              echo "### Timings (${{ inputs.mode }})"
+              echo '```'
+              column -t -s, perf/results/ci/timings.csv
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Density-stability check vs baseline
+        if: always()
+        run: |
+          if [ -s perf/baselines/densities.csv ]; then
+            julia --project=perf perf/compare.jl \
+              perf/baselines/densities.csv perf/results/ci/densities.csv \
+              "${{ inputs.ratio_threshold }}" | tee compare.out || true
+            {
+              echo "### Density-stability vs baseline"
+              echo '```'
+              cat compare.out
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No committed baseline (perf/baselines/densities.csv is empty) — comparison skipped." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Update committed baseline
+        if: ${{ inputs.update_baseline && success() }}
+        run: |
+          cp perf/results/ci/densities.csv perf/baselines/densities.csv
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add perf/baselines/densities.csv
+          git commit -m "perf: refresh density baseline (${{ inputs.mode }}, run ${{ github.run_id }}) [skip ci]" \
+            || { echo "baseline unchanged"; exit 0; }
+          git push

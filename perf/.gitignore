@@ -1,0 +1,5 @@
+# machine-specific environment (regenerate with setup.jl)
+Manifest.toml
+
+# fresh benchmark outputs (baselines/ is committed, results/ is not)
+results/
