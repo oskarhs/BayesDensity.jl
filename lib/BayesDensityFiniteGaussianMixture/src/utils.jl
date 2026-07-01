@@ -7,6 +7,25 @@ function softmax(x::AbstractVector{T}) where {T<:Real}
     return num /sum(num)
 end
 
+# In-place numerically stable softmax over the first `L` entries: dst[1:L] .= softmax(src[1:L]).
+# `dst` and `src` may alias. Allocation-free.
+function _softmax!(dst::AbstractVector{T}, src::AbstractVector{T}, L::Int = length(src)) where {T<:Real}
+    m = src[1]
+    @inbounds for k in 2:L
+        src[k] > m && (m = src[k])
+    end
+    s = zero(T)
+    @inbounds for k in 1:L
+        e = exp(src[k] - m)
+        dst[k] = e
+        s += e
+    end
+    @inbounds for k in 1:L
+        dst[k] /= s
+    end
+    return dst
+end
+
 function _get_default_location(x::AbstractVector{<:Real})
     xmin, xmax = extrema(x)
     return (xmax + xmin) / 2

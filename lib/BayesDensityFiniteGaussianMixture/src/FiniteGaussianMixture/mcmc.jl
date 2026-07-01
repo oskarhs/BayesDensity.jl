@@ -82,16 +82,30 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
     
     cluster_alloc = Vector{Int}(undef, n)
     logprobs = Vector{T}(undef, K)
+    probs = Vector{T}(undef, K)
+    logw = Vector{T}(undef, K)
+    cc = Vector{T}(undef, K)              # per-component Gaussian log-density constants
+    inv2σ2 = Vector{T}(undef, K)          # 1/(2σ2[k])
+    cluster_sum = Vector{T}(undef, K)
+    cluster_sumsq = Vector{T}(undef, K)
     samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
+    log2π = log(2*T(pi))
     for m in 1:n_samples
-        # Sample from p(cluster_alloc|⋯)
-        log_w = log.(w)
+        # Sample from p(cluster_alloc|⋯). The Gaussian log-density constants depend only on the
+        # component k, so precompute them once per sweep instead of rebuilding a Normal per (i, k).
+        @inbounds for k in 1:K
+            logw[k] = log(w[k])
+            inv2σ2[k] = inv(2*σ2[k])
+            cc[k] = logw[k] - T(0.5)*log2π - T(0.5)*log(σ2[k])
+        end
         for i in eachindex(x)
-            for k in 1:K
-                logprobs[k] = log_w[k] + logpdf(Normal(μ[k], sqrt(σ2[k])), x[i])
+            xi = x[i]
+            @inbounds for k in 1:K
+                d = xi - μ[k]
+                logprobs[k] = cc[k] - d*d*inv2σ2[k]
             end
-            probs = softmax(logprobs)
+            _softmax!(probs, logprobs, K)
             cluster_alloc[i] = wsample(rng, 1:K, probs)
         end
 
@@ -103,13 +117,14 @@ function _sample_posterior(rng::AbstractRNG, fgm::FiniteGaussianMixture{T}, init
         w = rand(rng, Dirichlet(prior_strength .+ cluster_counts))
         
         # Compute sufficient statistics for non-empty components
-        cluster_sum = zeros(T, K)
-        cluster_sumsq = zeros(T, K)
+        fill!(cluster_sum, zero(T))
+        fill!(cluster_sumsq, zero(T))
         for i in eachindex(x)
             k_ind = cluster_alloc[i]
-            cluster_sum[k_ind] += x[i]
-            cluster_sumsq[k_ind] += x[i]^2
-        end        
+            xi = x[i]
+            cluster_sum[k_ind] += xi
+            cluster_sumsq[k_ind] += xi*xi
+        end
 
         # Sample from p(μ|⋯)
         for k in 1:K
