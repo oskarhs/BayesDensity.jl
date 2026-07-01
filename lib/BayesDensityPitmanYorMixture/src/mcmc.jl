@@ -63,6 +63,14 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T}, initial_p
     marginal_scale = sqrt(prior_rate*(1 + 1/prior_inv_scale_fac)/prior_shape)
     marginal_dist = TDistLocationScale(2.0*prior_shape, prior_location, marginal_scale)
 
+    # Reused buffers. Class logits: K+1 ≤ n+1. Per-cluster sufficient-statistic scratch: K ≤ n.
+    logprobs = Vector{T}(undef, n+1)
+    probs = Vector{T}(undef, n+1)
+    clust_sum = Vector{T}(undef, n)
+    clust_meanbuf = Vector{T}(undef, n)
+    clust_ss = Vector{T}(undef, n)
+    log2π = log(2*T(pi))
+
     samples = Vector{NamedTuple{(:μ, :σ2, :cluster_counts), Tuple{Vector{T}, Vector{T}, Vector{Int}}}}(undef, n_samples)
 
     for m in 1:n_samples
@@ -77,20 +85,23 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T}, initial_p
                 pop!(μ)
                 pop!(σ2)
                 pop!(cluster_counts)
-                cluster_alloc[cluster_alloc .== K] .= old_alloc
+                @inbounds for j in 1:n
+                    cluster_alloc[j] == K && (cluster_alloc[j] = old_alloc)
+                end
                 K = K - 1
             else
                 cluster_counts[old_alloc] -= 1
             end
 
-            # Assign obervation x[i] to a new cluster:
-            logprobs = Vector{T}(undef, K+1)
-            for k in 1:K
-                logprobs[k] = logpdf(Normal(μ[k], sqrt(σ2[k])), x[i]) + log(cluster_counts[k] - discount)
+            # Assign obervation x[i] to a new cluster (inline Gaussian log-density; reused buffers):
+            xi = x[i]
+            @inbounds for k in 1:K
+                d = xi - μ[k]
+                logprobs[k] = -T(0.5)*log2π - T(0.5)*log(σ2[k]) - d*d/(2*σ2[k]) + log(cluster_counts[k] - discount)
             end
-            logprobs[K+1] = logpdf(marginal_dist, x[i]) + log(strength + K * discount)
-            probs = softmax(logprobs)
-            new_alloc = wsample(rng, 1:K+1, probs)
+            logprobs[K+1] = logpdf(marginal_dist, xi) + log(strength + K * discount)
+            _softmax!(probs, logprobs, K+1)
+            new_alloc = wsample(rng, 1:K+1, view(probs, 1:K+1))
             cluster_alloc[i] = new_alloc
             
             if new_alloc == K+1
@@ -108,14 +119,27 @@ function _sample_posterior(rng::AbstractRNG, pym::PitmanYorMixture{T}, initial_p
                 cluster_counts[new_alloc] += 1
             end
         end
-        # Sample parameters given clusters.
+        # Sample parameters given clusters. Accumulate per-cluster sufficient statistics in O(n)
+        # (two passes) rather than an O(n) boolean scan per cluster.
+        fill!(view(clust_sum, 1:K), zero(T))
+        @inbounds for i in 1:n
+            clust_sum[cluster_alloc[i]] += x[i]
+        end
+        @inbounds for k in 1:K
+            clust_meanbuf[k] = clust_sum[k] / cluster_counts[k]
+        end
+        fill!(view(clust_ss, 1:K), zero(T))
+        @inbounds for i in 1:n
+            k = cluster_alloc[i]
+            d = x[i] - clust_meanbuf[k]
+            clust_ss[k] += d*d
+        end
         for k in 1:K
             # Compute updated cluster-specific hyperparameters
-            clust_k_ind = (cluster_alloc .== k)
-            clust_mean = mean(view(x, clust_k_ind))
+            clust_mean = clust_meanbuf[k]
             inv_scale_fac_post = prior_inv_scale_fac + cluster_counts[k]
             shape_post = prior_shape + cluster_counts[k]/2
-            rate_post = prior_rate + (sum(abs2, view(x, clust_k_ind) .- clust_mean) + cluster_counts[k] * prior_inv_scale_fac / inv_scale_fac_post * sum(abs2, clust_mean - prior_location)) / 2
+            rate_post = prior_rate + (clust_ss[k] + cluster_counts[k] * prior_inv_scale_fac / inv_scale_fac_post * sum(abs2, clust_mean - prior_location)) / 2
             location_post = (prior_inv_scale_fac * prior_location + cluster_counts[k] * clust_mean) / inv_scale_fac_post
 
             # Sample cluster parameters
