@@ -89,20 +89,35 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
     # Initial number of components
     K = length(w)
     
+    Kmax = maximum(K_support)
     cluster_alloc = Vector{Int}(undef, n)
-    cluster_alloc_new = Vector{Int}(undef, n)
+    logprobs = Vector{T}(undef, Kmax)
+    probs = Vector{T}(undef, Kmax)
+    logw = Vector{T}(undef, Kmax)
+    cc = Vector{T}(undef, Kmax)              # per-component Gaussian log-density constants
+    inv2σ2 = Vector{T}(undef, Kmax)          # 1/(2σ2[k])
+    inv_perm = Vector{Int}(undef, Kmax)      # inverse of the relabelling permutation
+    cluster_sum = Vector{T}(undef, Kmax)
+    cluster_sumsq = Vector{T}(undef, Kmax)
+    log2π = log(2*T(pi))
     samples = Vector{NamedTuple{(:μ, :σ2, :w, :β), Tuple{Vector{T}, Vector{T}, Vector{T}, T}}}(undef, n_samples)
 
     for m in 1:n_samples
-        # Sample from p(cluster_alloc|⋯)
-        log_w = log.(w)
+        # Sample from p(cluster_alloc|⋯). The Gaussian log-density constants depend only on the
+        # component k, so precompute them once per sweep instead of rebuilding a Normal per (i, k).
+        @inbounds for k in 1:K
+            logw[k] = log(w[k])
+            inv2σ2[k] = inv(2*σ2[k])
+            cc[k] = logw[k] - T(0.5)*log2π - T(0.5)*log(σ2[k])
+        end
         for i in eachindex(x)
-            logprobs = Vector{T}(undef, K)
-            for k in 1:K
-                logprobs[k] = log_w[k] + logpdf(Normal(μ[k], sqrt(σ2[k])), x[i])
+            xi = x[i]
+            @inbounds for k in 1:K
+                d = xi - μ[k]
+                logprobs[k] = cc[k] - d*d*inv2σ2[k]
             end
-            probs = softmax(logprobs)
-            cluster_alloc[i] = wsample(rng, 1:K, probs)
+            _softmax!(probs, logprobs, K)
+            cluster_alloc[i] = wsample(rng, 1:K, view(probs, 1:K))
         end
         # Relabel clusters so that the K_plus first clusters are filled:
         cluster_counts = StatsBase.counts(cluster_alloc, K)
@@ -112,12 +127,14 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
         # Update μ, σ2 according to new labelling
         μ = μ[cluster_rearranged_ind]
         σ2 = σ2[cluster_rearranged_ind]
-        # Update cluster allocations according to new labelling
-        for k in eachindex(cluster_rearranged_ind)
-            cluster_alloc_new[cluster_alloc .== k] .= findall(cluster_rearranged_ind .== k)
+        # Update cluster allocations via the inverse permutation (O(K + n), no per-label scans)
+        @inbounds for j in 1:K
+            inv_perm[cluster_rearranged_ind[j]] = j
         end
-        copy!(cluster_alloc, cluster_alloc_new) # Update allocation
-        
+        @inbounds for i in eachindex(cluster_alloc)
+            cluster_alloc[i] = inv_perm[cluster_alloc[i]]
+        end
+
         # Update the cluster counts to use the new labels
         cluster_counts = StatsBase.counts(cluster_alloc, K)
 
@@ -127,8 +144,10 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
         # Sample from p(K|⋯)
         K_support_given_K_plus = setdiff(K_support, 1:K_plus-1) # possible values are those in the support of the prior that are ≥ the number of nonempty components
         logprobs_K = Vector{T}(undef, length(K_support_given_K_plus))
+        # Only the prior term depends on the candidate K; compute the rest once per sweep.
+        const_term_K = loggamma(K + 1) - loggamma(K - K_plus + 1) + sum(loggamma.(cluster_counts .+ prior_strength)) - K_plus * loggamma(1 + prior_strength)
         for j in eachindex(K_support_given_K_plus)
-            logprobs_K[j] = logpdf(prior_components, K_support_given_K_plus[j]) + loggamma(K + 1) - loggamma(K - K_plus + 1) + sum(loggamma.(cluster_counts .+ prior_strength)) - K_plus * loggamma(1 + prior_strength)
+            logprobs_K[j] = logpdf(prior_components, K_support_given_K_plus[j]) + const_term_K
         end
         K = wsample(rng, K_support_given_K_plus, softmax(logprobs_K))
         # Add empty clusters if K > K_plus
@@ -149,12 +168,13 @@ function _sample_posterior(rng::AbstractRNG, rfgm::RandomFiniteGaussianMixture{T
         w = rand(rng, Dirichlet(prior_strength .+ cluster_counts))
 
         # Compute sufficient statistics for non-empty components
-        cluster_sum = zeros(T, K_plus)
-        cluster_sumsq = zeros(T, K_plus)
+        fill!(view(cluster_sum, 1:K_plus), zero(T))
+        fill!(view(cluster_sumsq, 1:K_plus), zero(T))
         for i in eachindex(x)
             k_ind = cluster_alloc[i]
-            cluster_sum[k_ind] += x[i]
-            cluster_sumsq[k_ind] += x[i]^2
+            xi = x[i]
+            cluster_sum[k_ind] += xi
+            cluster_sumsq[k_ind] += xi*xi
         end
 
         # Sample from p(μ|⋯)

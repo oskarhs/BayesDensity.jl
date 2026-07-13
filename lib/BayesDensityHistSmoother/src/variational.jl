@@ -149,6 +149,21 @@ function _get_default_initparams_varinf(shs::HistSmoother{T}) where {T<:Real}
     return (μ_opt = μ_opt, Σ_opt = Σ_opt, b_σ_opt = b_σ_opt)
 end
 
+# Compute the per-bin mean rates w = exp.(Cμ + ½ diag(C Σ Cᵀ)) into `w`, allocation-free,
+# reusing the buffers Cμ (=Cμ) and CΣ (=C*Σ).
+function _predictor_w!(w, C, μ, Σ, Cμ, CΣ)
+    mul!(Cμ, C, μ)
+    mul!(CΣ, C, Σ)
+    @inbounds for i in axes(C, 1)
+        q = zero(eltype(w))
+        for j in axes(C, 2)
+            q += CΣ[i, j] * C[i, j]
+        end
+        w[i] = exp(Cμ[i] + q/2)
+    end
+    return w
+end
+
 function _variational_inference(shs::HistSmoother{T}, initial_params::NamedTuple, max_iter::Int, rtol::Real) where {T<:Real}
     (; data, bs, prior_scale_fixed, prior_scale_random) = shs
     (; n, x_grid, N, C, LZ, bounds) = data
@@ -164,7 +179,18 @@ function _variational_inference(shs::HistSmoother{T}, initial_params::NamedTuple
     ELBO_const_terms_sum = 1/2 * (K - one(T)) + loggamma(1/2 * (K - one(T))) - log(T(pi)) - log(prior_scale_random) - sum(loggamma.(N .+ 1)) - log(prior_scale_fixed)
     ELBO = fill(ELBO_const_terms_sum, max_iter)
 
-    w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
+    # Preallocated buffers reused across iterations
+    n_bins = length(N)
+    Cw = Matrix{T}(undef, n_bins, K)      # C scaled row-wise by w
+    CΣ = Matrix{T}(undef, n_bins, K)      # C * Σ_opt
+    Cμ = Vector{T}(undef, n_bins)         # C * μ_opt
+    Nw = Vector{T}(undef, n_bins)         # N - w
+    λvec = Vector{T}(undef, K)            # diagonal of Λ; only the 3:K block changes per iteration
+    λvec[1] = 1/prior_scale_fixed^2
+    λvec[2] = 1/prior_scale_fixed^2
+
+    w = Vector{T}(undef, n_bins)
+    _predictor_w!(w, C, μ_opt, Σ_opt, Cμ, CΣ)
     N_transpose_C = transpose(N) * C
 
     while !converged && iter ≤ max_iter
@@ -177,17 +203,22 @@ function _variational_inference(shs::HistSmoother{T}, initial_params::NamedTuple
         relative_change = abs(b_σ_opt/b_σ_new - 1)
 
         # Update q(β)
-        Λ = Diagonal(vcat(fill(1/prior_scale_fixed^2, 2), fill(a_σ_opt/b_σ_opt, K-2)))
-        inv_Σ_opt = transpose(C) * (C .* w) + Λ
+        @inbounds for k in 3:K
+            λvec[k] = a_σ_opt/b_σ_opt
+        end
+        Λ = Diagonal(λvec)
+        Cw .= C .* w
+        inv_Σ_opt = transpose(C) * Cw + Λ
         Σ_opt = inv(inv_Σ_opt)
-        μ_opt = μ_opt + Σ_opt * (transpose(C) * (N - w) - Λ * μ_opt) 
+        Nw .= N .- w
+        μ_opt = μ_opt + Σ_opt * (transpose(C) * Nw - Λ * μ_opt)
 
         # Check convergence criterion
         b_σ_opt = b_σ_new
         converged = (relative_change < rtol)
 
         # Compute the ELBO:
-        w = exp.(C * μ_opt + vec(sum(C * Σ_opt .* C / 2; dims=2)))
+        _predictor_w!(w, C, μ_opt, Σ_opt, Cμ, CΣ)
         ELBO[iter] += N_transpose_C * μ_opt - sum(w)
         ELBO[iter] += -1/(2*prior_scale_fixed^2) * @views(sum(abs2, μ_opt[1:2]) + tr(Σ_opt[1:2, 1:2])) + 1/2 * logabsdet(Σ_opt)[1]
         ELBO[iter] += -1/2 * (K - one(T)) * log(a_a_opt/b_a_opt + 1/2 * @views(sum(abs2, μ_opt[3:end]) + tr(Σ_opt[3:end, 3:end])))

@@ -141,6 +141,19 @@ function _get_default_initparams_varinf(fgm::FiniteGaussianMixture{T}) where {T}
     )
 end
 
+# kernel_terms[k,i] = kernel_term0[k] - E_inv_σ2[k]*((x[i]-loc[k])^2 + var[k])/2, allocation-free.
+function _fill_kernel_terms!(kernel_terms, kernel_term0, E_inv_σ2, loc, var, x)
+    K = length(kernel_term0)
+    @inbounds for i in eachindex(x)
+        xi = x[i]
+        for k in 1:K
+            d = xi - loc[k]
+            kernel_terms[k, i] = kernel_term0[k] - E_inv_σ2[k]*(d*d + var[k])/2
+        end
+    end
+    return kernel_terms
+end
+
 function _variational_inference(
     fgm::FiniteGaussianMixture{T},
     initial_params::NamedTuple,
@@ -159,14 +172,15 @@ function _variational_inference(
     rate_hyperparam = zero(T)
     prior_dirichlet_params = fill(prior_strength, K)
     q_mat = Matrix{T}(undef, (K, n))
-    E_inv_σ2 = shape_params ./ rate_params 
+    E_inv_σ2 = shape_params ./ rate_params
     kernel_terms = Matrix{T}(undef, (K, n))
+    logprobs = Vector{T}(undef, K)       # buffer for per-point class logits
+    E_N = Vector{T}(undef, K)            # expected class counts (reused each iteration)
+    weighted_rss = Vector{T}(undef, K)   # reused each iteration
     digamma_sum_dirichlet_params = digamma(sum(dirichlet_params))
     non_kernel_terms = @. digamma(dirichlet_params) - digamma_sum_dirichlet_params
     kernel_term0 = @. -log(2*T(pi))/2 - (log(rate_params) - digamma(shape_params)) / 2
-    for i in eachindex(x)
-        kernel_terms[:, i] = kernel_term0 - @. E_inv_σ2 * ((x[i] - location_params)^2 + variance_params) / 2
-    end
+    _fill_kernel_terms!(kernel_terms, kernel_term0, E_inv_σ2, location_params, variance_params, x)
 
     # Optimization loop
     converged = false
@@ -176,13 +190,18 @@ function _variational_inference(
     ELBO_last = 1.0
     iter = 1
     while !converged && iter ≤ max_iter
-        # Update q(z|k) 
-        E_N = zeros(T, K)
+        # Update q(z|k)
+        fill!(E_N, zero(T))
         for i in eachindex(x)
-            logprobs = kernel_terms[:, i] + non_kernel_terms
-            probs = softmax(logprobs)
-            q_mat[:, i] = probs
-            E_N .+= probs
+            kt = view(kernel_terms, :, i)
+            @inbounds for k in 1:K
+                logprobs[k] = kt[k] + non_kernel_terms[k]
+            end
+            qi = view(q_mat, :, i)
+            _softmax!(qi, logprobs, K)
+            @inbounds for k in 1:K
+                E_N[k] += qi[k]
+            end
         end
         weighted_sum = q_mat * x
         # ELBO contribution from -E[log q(z)]
@@ -211,11 +230,18 @@ function _variational_inference(
         # Update q(μ|k)
         variance_params = @. inv(1/prior_variance + E_inv_σ2 * E_N)
         location_params = @. variance_params * (prior_location / prior_variance + E_inv_σ2 * weighted_sum)
-        weighted_rss = zeros(T, K)
+        fill!(weighted_rss, zero(T))
         for i in eachindex(x)
-            weighted_rss += @. q_mat[:,i] * (x[i] - location_params)^2
+            xi = x[i]
+            qi = view(q_mat, :, i)
+            @inbounds for k in 1:K
+                d = xi - location_params[k]
+                weighted_rss[k] += qi[k] * d*d
+            end
         end
-        weighted_rss += E_N .* variance_params
+        @inbounds for k in 1:K
+            weighted_rss[k] += E_N[k] * variance_params[k]
+        end
         # KL between q(μ|k) and p(μ|k)
         KL_μ = sum(
             @. (location_params - prior_location)^2 / (2*prior_variance) + (variance_params / prior_variance - 1 - log(variance_params / prior_variance)) / 2
@@ -235,11 +261,12 @@ function _variational_inference(
         )
 
         kernel_term0 = @. -log(2*T(pi))/2 - E_log_σ2 / 2
-        for i in eachindex(x)
-            kernel_terms[:, i] = kernel_term0 - @. E_inv_σ2 * ((x[i] - location_params)^2 + variance_params) / 2
-        end
+        _fill_kernel_terms!(kernel_terms, kernel_term0, E_inv_σ2, location_params, variance_params, x)
         # ELBO contributions from terms in the likelihood depending on μ, σ2
-        ELBO_θ_term = sum(q_mat .* kernel_terms)
+        ELBO_θ_term = zero(T)
+        @inbounds for idx in eachindex(q_mat)
+            ELBO_θ_term += q_mat[idx] * kernel_terms[idx]
+        end
 
         # Check convergence
         ELBO[iter] =  ELBO_q_term + ELBO_w_term + ELBO_θ_term - KL_w - KL_β - KL_μ - KL_σ2

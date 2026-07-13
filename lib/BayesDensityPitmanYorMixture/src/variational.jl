@@ -127,6 +127,19 @@ function _get_default_initparams(pym::PitmanYorMixture, truncation_level::Int)
         )
 end
 
+# kernel_terms[k,i] = kernel_term0[k] - shapes[k]*(x[i]-locations[k])^2/(2*rates[k]), allocation-free.
+function _fill_kernel_terms!(kernel_terms, kernel_term0, shapes, locations, rates, x)
+    K = length(kernel_term0)
+    @inbounds for i in eachindex(x)
+        xi = x[i]
+        for k in 1:K
+            d = xi - locations[k]
+            kernel_terms[k, i] = kernel_term0[k] - shapes[k]*d*d/(2*rates[k])
+        end
+    end
+    return kernel_terms
+end
+
 function _variational_inference(
     pym::PitmanYorMixture{T},
     initial_params::NamedTuple,
@@ -143,15 +156,15 @@ function _variational_inference(
     
     # Matrix of q(zᵢ = k)
     q_mat = Matrix{T}(undef, (K, n))
+    logprobs = Vector{T}(undef, K)     # reused per-point class logits
+    wsumsq = Vector{T}(undef, K)       # reused per-cluster weighted RSS
 
     # Precompute some quantities that are used for the ELBO
     E_log_v = @. digamma(a_v) - digamma(a_v + b_v)
     E_log_cv = @. digamma(b_v) - digamma(a_v + b_v)
     kernel_terms = Matrix{T}(undef, (K, n))
     kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs) - log(2*T(pi)) / 2
-    for i in eachindex(x)
-        kernel_terms[:, i] = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
-    end
+    _fill_kernel_terms!(kernel_terms, kernel_term0, shapes, locations, rates, x)
 
     # Optimize:
     ELBO = Vector{T}(undef, max_iter)
@@ -163,19 +176,24 @@ function _variational_inference(
         # Compute contribution to logprobabilities from non-kernel terms
         non_kernel_term = vcat(E_log_v, zero(T)) + cumsum(vcat(zero(T), E_log_cv))
         for i in eachindex(x)
-            # Contributions from kernel
-            logprobs = kernel_terms[:, i] + non_kernel_term
-            probs = softmax(logprobs)
-            q_mat[:, i] = probs
+            kt = view(kernel_terms, :, i)
+            @inbounds for k in 1:K
+                logprobs[k] = kt[k] + non_kernel_term[k]
+            end
+            _softmax!(view(q_mat, :, i), logprobs, K)
         end
         ELBO_q_term = -sum(xlogx, q_mat)
         # Vector of number of observations with label greater than k
         E_N = vec(sum(q_mat; dims=2))
         E_S = n .- cumsum(E_N)
         wmeans = (q_mat * x) ./ (E_N)
-        wsumsq = Vector{T}(undef, K)
-        for k in 1:K
-            wsumsq[k] = sum(q_mat[k, :] .* (x .- wmeans[k]).^2)
+        fill!(wsumsq, zero(T))
+        @inbounds for i in eachindex(x)
+            xi = x[i]
+            for k in 1:K
+                d = xi - wmeans[k]
+                wsumsq[k] += q_mat[k, i] * d*d
+            end
         end
 
         # Update q(v)
@@ -193,10 +211,11 @@ function _variational_inference(
         rates = prior_rate .+ (wsumsq + prior_inv_scale_fac * E_N ./ inv_scale_facs .* (wmeans .- prior_location).^2) / 2
         # ELBO contribution
         kernel_term0 = @. -1/2 * (log(rates) - digamma(shapes)) - 1/(2*inv_scale_facs) - 1/2 * log(2*T(pi))
-        for i in eachindex(x)
-            kernel_terms[:, i] = @. kernel_term0 - shapes * (x[i] - locations)^2 / (2*rates) # Parts of this can be precomputed before the loop!
+        _fill_kernel_terms!(kernel_terms, kernel_term0, shapes, locations, rates, x)
+        ELBO_θ_term = zero(T)
+        @inbounds for idx in eachindex(q_mat)
+            ELBO_θ_term += q_mat[idx] * kernel_terms[idx]
         end
-        ELBO_θ_term = sum(q_mat .* kernel_terms) # Here we just esentially get what we compute when considering q_z
 
         # Compute KL-divergences between q and priors
         KL_v = sum(@. logbeta(1-discount, strength + discount*(1:K-1)) - logbeta(a_v, b_v) + (a_v-(1-discount))*digamma(a_v) + (b_v - (strength + discount*(1:K-1)))*digamma(b_v) + (1 - discount + strength + discount*(1:K-1) - b_v - a_v) * digamma(a_v + b_v))
