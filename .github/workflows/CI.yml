@@ -81,7 +81,7 @@ jobs:
           arch: ${{ matrix.arch }}
 
       - name: Cache Julia artifacts
-        uses: julia-actions/cache@v2
+        uses: julia-actions/cache@v3
 
       - name: Instantiate and test ${{ matrix.package }}
         run: |
