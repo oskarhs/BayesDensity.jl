@@ -166,7 +166,7 @@ function _variational_inference(bsm::BSplineMixture{T, A, NamedTuple{(:x, :log_B
     E_Δ2 = abs2.(diff(diff(μ_opt - μ))) + view(d0, 3:K-1) + 4 * view(d0, 2:K-2) + view(d0, 1:K-3) - 4 * view(d1, 2:K-2) - 4 * view(d1, 1:K-3) + 2 * d2
 
     # These two stay constant throughout the optimization loop.
-    a_τ_opt = prior_global_shape + (K-3)/2
+    a_τ_opt = prior_global_shape + (K-1)/2
     a_δ_opt = fill(prior_local_shape + 1/2, K-3)
 
     n_overlap = size(log_B, 2)
