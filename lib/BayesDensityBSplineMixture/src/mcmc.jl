@@ -203,7 +203,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Compute coefficients in terms of unnormalized B-spline basis
         spline_coefs = θ .* norm_fac
-        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = copy(δ2))
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end
@@ -301,7 +301,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Compute coefficients in terms of unnormalized B-spline basis
         spline_coefs = θ .* norm_fac
-        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = copy(δ2))
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end
@@ -399,7 +399,7 @@ function _sample_posterior(rng::AbstractRNG, bsm::BSplineMixture{T, A, NamedTupl
 
         # Compute coefficients in terms of unnormalized B-spline basis
         spline_coefs = θ .* norm_fac
-        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = δ2)
+        samples[m] = (spline_coefs = spline_coefs, β = β, τ2 = τ2, δ2 = copy(δ2))
     end
     return PosteriorSamples{T}(samples, bsm, n_samples, n_burnin)
 end
