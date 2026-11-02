@@ -82,22 +82,10 @@ function _softmax!(dst::AbstractVector{T}, src::AbstractVector{T}, L::Int) where
     return dst
 end
 
-# Draw counts ~ Multinomial(m, probs[1:L]) into counts[1:L] by direct categorical counting.
-# Allocation-free and avoids constructing a `Multinomial`; efficient for the small L (≤5) here.
+# Draw counts ~ Multinomial(m, probs[1:L]) into counts[1:L].
+# Uses the sequential binomial sampler of `Multinomial`, whose cost does not grow with the number of trials m.
 function _multinomial_counts!(rng::AbstractRNG, counts::AbstractVector{<:Integer}, m::Integer, probs::AbstractVector{T}, L::Int) where {T<:Real}
-    @inbounds for l in 1:L
-        counts[l] = 0
-    end
-    @inbounds for _ in 1:m
-        u = rand(rng, T)
-        c = 1
-        acc = probs[1]
-        while c < L && u > acc
-            c += 1
-            acc += probs[c]
-        end
-        counts[c] += 1
-    end
+    rand!(rng, Multinomial(m, view(probs, 1:L); check_args=false), view(counts, 1:L))
     return counts
 end
 
